@@ -1,10 +1,14 @@
+# Userscript Library
+> This repository houses all of my userscripts including works-in-progress. Finished userscripts will be published directly to Greasyfork.
+
+## AO3 Userscript Menu
 The **AO3: Userscript Menu** provides a shared dropdown menu for userscripts. Compatible scripts will appear in a consolidated menu instead of creating individual buttons/menus.
 
 ### 💗 For Users
-> Simply install the AO3: Userscript Menu script as usual and use it with compatible scripts.
+Simply install the AO3: Userscript Menu script as usual and use it with compatible scripts.
 
 ### 💡 For Developers
-> Follow these steps to make your userscript compatible:
+<details> Follow these steps to make your userscript compatible:
 
 #### 1. Check for the Menu API
 Before registering your menu item, ensure the `AO3UserScriptMenu` global object exists:
@@ -102,3 +106,5 @@ injectMenuRegistration();
 - **Injection**: Always inject registration code into the page context
 
 Your script will now integrate seamlessly with the shared AO3 Userscript Menu!
+</details>
+
