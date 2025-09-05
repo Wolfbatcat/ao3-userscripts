@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         AO3: Userscript Menu
 // @namespace    https://github.com/ao3-userscripts
-// @version      3.1
-// @description  Unified menu for AO3 userscripts. Install this script to enable a shared menu for all AO3 userscripts that support it.
-// @author       Wolfbatcat
+// @version      1
+// @description  Unified menu for AO3 userscripts. Install this script to enable a shared menu for all scripts that support it.
+// @author       Blackbatcat
 // @match        *://archiveofourown.org/*
 // @match        *://*.archiveofourown.org/*
 // @grant        none

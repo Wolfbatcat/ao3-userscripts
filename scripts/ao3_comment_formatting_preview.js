@@ -1,23 +1,12 @@
 // ==UserScript==
 // @name         AO3: Comment Formatting and Preview
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
-// @version      5.1
+// @version      1
 // @description  Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like
-// @author       escctrl
+// @author       Blackbatcat, escctrl
 // @license      MIT
-// @match        *://*.archiveofourown.org/tags/*/comments*
-// @match        *://*.archiveofourown.org/tags/*/wrangle?*
-// @match        *://*.archiveofourown.org/users/*/inbox*
-// @match        *://*.archiveofourown.org/users/*/bookmarks*
-// @match        *://*.archiveofourown.org/tags/*/bookmarks*
-// @match        *://*.archiveofourown.org/works/*
-// @match        *://*.archiveofourown.org/chapters/*
-// @match        *://archiveofourown.org/collections/*/works/*
-// @match        *://archiveofourown.org/collections/*/bookmarks*
-// @match        *://*.archiveofourown.org/comments/*
-// @match        *://*.archiveofourown.org/comments?*
-// @match        *://*.archiveofourown.org/admin_posts/*
-// @exclude      *://archiveofourown.org/works/search*
+// @match        *://archiveofourown.org/*
+// @match        *://*.archiveofourown.org/*
 // @grant        none
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.7.0/jquery.min.js
 // @require      https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js
@@ -140,7 +129,7 @@
     $( "#cmtFmtDialog" ).dialog({
         appendTo: "#main",
         modal: true,
-        title: 'Comment Formatting Buttons',
+        title: 'Comment Formatting & Preview',
         draggable: true,
         resizable: false,
         autoOpen: false,
@@ -209,15 +198,13 @@
         $( "#cmtFmtDialog" ).dialog( "close" );
     }
 
-
-
     // Register with AO3UserScriptMenu by injecting a script into the page context
     function injectMenuRegistration() {
         const fn = function() {
             function waitForMenu(attempts = 20, interval = 250) {
                 if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === 'function') {
                     window.AO3UserScriptMenu.register({
-                        label: 'Comment Formatting Buttons',
+                        label: 'Comment Formatting & Preview',
                         onClick: function() {
                             window.dispatchEvent(new CustomEvent('ao3commentformatting-open'));
                         }
