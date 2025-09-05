@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         AO3 FicTracker
+// @name         AO3 FicTracker (edited)
 // @author       infiniMotis
 // @version      1.6.2
 // @namespace    https://github.com/infiniMotis/AO3-FicTracker
@@ -386,7 +386,7 @@
         saveNote(workId, noteText) {
             const notes = this.getAllNotes();
             const date = new Date().toISOString();
-            
+
             if (noteText.trim() === "") {
                 delete notes[workId];
             } else {
@@ -397,7 +397,7 @@
             }
 
             this.storageManager.setItem("FT_userNotes", JSON.stringify(notes));
-            
+
             if (this.remoteSyncManager) {
                 this.remoteSyncManager.addPendingNoteUpdate(workId, noteText, date);
             }
@@ -410,7 +410,7 @@
             const notes = this.getAllNotes();
             delete notes[workId];
             this.storageManager.setItem("FT_userNotes", JSON.stringify(notes));
-            
+
             if (this.remoteSyncManager) {
                 this.remoteSyncManager.addPendingNoteUpdate(workId, "", null);
             }
@@ -775,7 +775,7 @@
                     if (this.isOnline) this.performSync();
                 }, this.syncInterval);
 
-                // If not enough time has passed, schedule a one-time timeout to sync later    
+                // If not enough time has passed, schedule a one-time timeout to sync later
             } else {
                 const timeUntilNextSync = this.syncInterval - timeSinceLastSync;
                 this.timeUntilNextSync = Math.ceil(timeUntilNextSync / 1000);
@@ -855,7 +855,7 @@
                 text: text || '',
                 date: date || null
             });
-            
+
             this.savePendingChanges(pendingChanges);
         }
 
@@ -1134,7 +1134,7 @@
                 DEBUG && console.log(`[FicTracker] Removing tag: ${tag}`);
                 bookmarkData.bookmarkTags.splice(bookmarkData.bookmarkTags.indexOf(tag), 1);
                 storageManager.removeIdFromCategory(storageKey, bookmarkData.workId);
-                
+
             if (remoteSyncManager) {
                 remoteSyncManager.addPendingStatusChange('remove', storageKey, bookmarkData.workId);
             }
@@ -1213,13 +1213,13 @@
         addButtons() {
             const actionsMenu = document.querySelector('ul.work.navigation.actions');
             const bottomActionsMenu = document.querySelector('div#feedback > ul');
-            
+
             // Add user notes if enabled
             if (settings.displayUserNotes) {
                 const ficWrapperContainer = document.querySelector('#main div.wrapper');
                 const containerForNotes = ficWrapperContainer.parentElement;
 
-                ficWrapperContainer.insertAdjacentHTML('beforebegin', 
+                ficWrapperContainer.insertAdjacentHTML('beforebegin',
                     this.userNotesManager.generateNoteHtml(this.bookmarkData.workId, true)
                 );
                 this.userNotesManager.setupNoteHandlers(containerForNotes, true);
@@ -1368,7 +1368,7 @@
                 this.highlightWorkStatus(work, workId);
 
                 // Reload stored IDs to reflect any changes in storage (from fic card)
-                this.loadStoredIds(); 
+                this.loadStoredIds();
 
                 this.addQuickTagDropdown(work);
 
@@ -1530,7 +1530,7 @@
             const tagsList = work.querySelector('ul.tags.commas');
             if (tagsList) {
                 DEBUG && console.log('[FicTracker] Inserting notes block after ul.tags.commas:', tagsList);
-                tagsList.insertAdjacentHTML('afterend', 
+                tagsList.insertAdjacentHTML('afterend',
                     this.userNotesManager.generateNoteHtml(workId)
                 );
             } else {
@@ -1538,7 +1538,7 @@
                 const container = work.querySelector('div.header.module');
                 DEBUG && console.log('[FicTracker] ul.tags.commas not found, using header.module:', container);
                 if (container) {
-                    container.insertAdjacentHTML('beforeend', 
+                    container.insertAdjacentHTML('beforeend',
                         this.userNotesManager.generateNoteHtml(workId)
                     );
                 }
@@ -1548,7 +1548,7 @@
         // Setup note handlers for the works list
         prefillNotes() {
             if (!settings.displayUserNotes) return;
-            
+
             const container = document.querySelector('div#main.filtered.region');
             this.userNotesManager.setupNoteHandlers(container);
         }
@@ -1586,7 +1586,7 @@
         constructor(settings) {
             this.settings = settings;
             this.init();
-            
+
             if (this.settings.syncEnabled) {
                 this.initRemoteSyncManager();
             }
@@ -1724,7 +1724,7 @@
                                 Auto-expand your notes in work cards
                             </label>
                         </li>
-                        
+
                         <!-- Bookmark Behavior -->
                         <li>
                             <input type="checkbox" id="toggle_private" v-model="ficTrackerSettings.newBookmarksPrivate">
@@ -1740,7 +1740,7 @@
                             Auto-delete empty bookmarks
                             </label>
                         </li>
-                        
+
                         <!-- Interface Customization -->
                         <li>
                             <input type="checkbox" id="hide_default_toread" v-model="ficTrackerSettings.hideDefaultToreadBtn">
@@ -1750,13 +1750,13 @@
                             <input type="checkbox" id="toggle_displayBottomActionButtons" v-model="ficTrackerSettings.displayBottomActionButtons">
                             <label for="toggle_displayBottomActionButtons" title="Adds duplicate tracking buttons at the bottom of long work lists for easier access">Duplicate action buttons at page bottom</label>
                         </li>
-                        
+
                         <!-- Advanced Options -->
                         <li>
                             <input type="checkbox" id="toggle_debug" v-model="ficTrackerSettings.debug">
                             <label for="toggle_debug" title="Enables console logging and debug information for troubleshooting">Debug mode (for troubleshooting)</label>
                         </li>
-                        
+
                         <!-- Reset Option -->
                         <li style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
                             <input type="submit" id="reset_settings" value="Reset Settings to Default"
@@ -1776,21 +1776,21 @@
                     <ul>
                         <li>
                             <label>
-                                <input type="checkbox" v-model="ficTrackerSettings.syncEnabled"> 
+                                <input type="checkbox" v-model="ficTrackerSettings.syncEnabled">
                                 Enable automatic sync
                             </label>
                         </li>
                         <div v-show="ficTrackerSettings.syncEnabled">
                             <li>
                                 <label title="Show a floating sync status indicator with countdown timer and manual sync button">
-                                    <input type="checkbox" v-model="ficTrackerSettings.syncWidgetEnabled"> 
+                                    <input type="checkbox" v-model="ficTrackerSettings.syncWidgetEnabled">
                                     Show sync status widget
                                 </label>
                             </li>
                             <li v-if="ficTrackerSettings.syncWidgetEnabled">
                                 <label for="sync_widget_opacity">Sync widget opacity:</label>
-                                <input type="range" id="sync_widget_opacity" 
-                                    v-model="ficTrackerSettings.syncWidgetOpacity" 
+                                <input type="range" id="sync_widget_opacity"
+                                    v-model="ficTrackerSettings.syncWidgetOpacity"
                                     min="0.1" max="1" step="0.1"
                                     style="width: 200px; margin-right: 10px;">
                                 <strong>{{ ficTrackerSettings.syncWidgetOpacity }}</strong>
@@ -1801,8 +1801,8 @@
                             </li>
                             <li>
                                 <label for="sync_interval">Sync interval:</label>
-                                <input type="range" id="sync_interval" 
-                                    v-model="ficTrackerSettings.syncInterval" 
+                                <input type="range" id="sync_interval"
+                                    v-model="ficTrackerSettings.syncInterval"
                                     min="60" max="3600" step="60"
                                     style="width: 200px; margin-right: 10px;">
                                 <strong>{{ ficTrackerSettings.syncInterval }} seconds</strong>
@@ -1836,26 +1836,26 @@
                             </li>
 
                             <li>
-                                <input type="submit" 
-                                    @click="testSheetConnection" 
+                                <input type="submit"
+                                    @click="testSheetConnection"
                                     :value="loadingStates.testConnection ? 'Testing...' : 'Test Connection'"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
-                                
-                                <input v-if="ficTrackerSettings.syncDBInitialized" 
-                                    type="submit" 
-                                    @click="syncNow" 
+
+                                <input v-if="ficTrackerSettings.syncDBInitialized"
+                                    type="submit"
+                                    @click="syncNow"
                                     :value="loadingStates.sync ? 'Syncing...' : 'Sync Now'"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
-                                
-                                <input type="submit" 
-                                    v-if="ficTrackerSettings.syncDBInitialized" 
-                                    @click="resetSyncSettings" 
+
+                                <input type="submit"
+                                    v-if="ficTrackerSettings.syncDBInitialized"
+                                    @click="resetSyncSettings"
                                     value="Reset Sync Settings"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
 
                                 <li v-if="readyToInitDB && !ficTrackerSettings.syncDBInitialized">
-                                    <input type="submit" 
-                                        @click="initializeSheetStorage" 
+                                    <input type="submit"
+                                        @click="initializeSheetStorage"
                                         :value="loadingStates.initialize ? 'Initializing...' : 'Initialize Google Sheet Storage'"
                                         :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
                                 </li>
@@ -1924,7 +1924,7 @@
                     initialize: false
                 },
 
-                // Computed 
+                // Computed
                 get currentSettings() {
                     return this.ficTrackerSettings.statuses[this.selectedStatus];
                 },
@@ -2353,11 +2353,11 @@
                 try {
                     const currentNotes = JSON.parse(localStorage.getItem('FT_userNotes') || '{}');
                     const importedNotes = JSON.parse(importedData.FT_userNotes);
-                    
+
                     // Merge notes, keeping newer versions if there are conflicts
                     const mergedNotes = { ...currentNotes, ...importedNotes };
                     localStorage.setItem('FT_userNotes', JSON.stringify(mergedNotes));
-                    
+
                     const newNotesCount = Object.keys(importedNotes).length - Object.keys(currentNotes).length;
                     newEntries[4] = Math.max(0, newNotesCount);
                 } catch (err) {
