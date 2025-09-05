@@ -8,8 +8,9 @@ The **AO3: Userscript Menu** provides a shared dropdown menu for userscripts. Co
 Simply install the AO3: Userscript Menu script as usual and use it with compatible scripts.
 
 ### 💡 For Developers
-<details> Follow these steps to make your userscript compatible:
-
+Follow these steps to make your userscript compatible:
+<details>
+    
 #### 1. Check for the Menu API
 Before registering your menu item, ensure the `AO3UserScriptMenu` global object exists:
 
@@ -104,7 +105,6 @@ injectMenuRegistration();
 - **No Conflicts**: The menu API won't break if your script runs alone
 - **Simplicity**: Keep menu item registration minimal
 - **Injection**: Always inject registration code into the page context
-
-Your script will now integrate seamlessly with the shared AO3 Userscript Menu!
 </details>
+
 
