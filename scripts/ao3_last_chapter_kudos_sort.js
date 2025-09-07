@@ -4,7 +4,6 @@
 // @version      1
 // @description  Adds shortcuts for first/last chapter and bookmark sorting by kudos and filtering by complete only.
 // @author       saxamaphone, Fangirlishness
-// @require      http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @match        http://archiveofourown.org/*
 // @match        https://archiveofourown.org/*
 // @exclude      http://archiveofourown.org/*/edit
@@ -113,14 +112,53 @@ function showKudosSortMenu() {
     });
     // Save/cancel
     dialog.querySelector('#kudos-sort-save').addEventListener('click', () => {
-    KUDOS_SORT_CONFIG.lastChapterSymbol = dialog.querySelector('#custom-symbol').value || '»';
-    KUDOS_SORT_CONFIG.defaultCompleteChecked = dialog.querySelector('#default-complete-checked').checked;
-    KUDOS_SORT_CONFIG.defaultOngoingChecked = dialog.querySelector('#default-ongoing-checked').checked;
-    KUDOS_SORT_CONFIG.defaultBookmarkSort = dialog.querySelector('#default-bookmark-sort').value;
-    saveKudosSortConfig();
-    dialog.remove();
-        // Optionally refresh display if needed
+        KUDOS_SORT_CONFIG.lastChapterSymbol = dialog.querySelector('#custom-symbol').value || '»';
+        KUDOS_SORT_CONFIG.defaultCompleteChecked = dialog.querySelector('#default-complete-checked').checked;
+        KUDOS_SORT_CONFIG.defaultOngoingChecked = dialog.querySelector('#default-ongoing-checked').checked;
+        KUDOS_SORT_CONFIG.defaultBookmarkSort = dialog.querySelector('#default-bookmark-sort').value;
+        saveKudosSortConfig();
+        dialog.remove();
+        // After saving, ensure checkboxes are present in filter UI
+        injectCompletionCheckboxes();
     });
+// Inject completion checkboxes into the bookmarks filter UI if missing
+function injectCompletionCheckboxes() {
+    const filterForm = document.querySelector('form#bookmark-filters');
+    if (!filterForm) return;
+    // Check if already present
+    let complete = document.getElementById('work_search_complete');
+    let ongoing = document.getElementById('work_search_complete_f');
+    if (!complete || !ongoing) {
+        // Find the notes field and its parent <li>
+        let notesElem = document.getElementById('bookmark_search_with_notes');
+        let insertAfter = notesElem ? notesElem.closest('li') : null;
+        const li = document.createElement('li');
+        li.innerHTML = `<dt>Completion status</dt><dd>
+            <div style="padding-block:0.25em;">
+                <label for="work_search_complete">
+                    <input type="checkbox" value="1" name="work_search[complete]" id="work_search_complete">
+                    <span class="indicator" aria-hidden="true"></span><span style="padding-left:0.5em;">Complete works only</span>
+                </label>
+            </div>
+            <div style="padding-block:0.25em;">
+                <label for="work_search_complete_f">
+                    <input type="checkbox" value="F" name="work_search[complete_f]" id="work_search_complete_f">
+                    <span class="indicator" aria-hidden="true"></span><span style="padding-left:0.5em;">Works in progress only</span>
+                </label>
+            </div>
+        </dd>`;
+        if (insertAfter && insertAfter.parentNode) {
+            insertAfter.parentNode.insertBefore(li, insertAfter.nextSibling);
+        } else {
+            filterForm.appendChild(li);
+        }
+    }
+    // Set checked state from config
+    complete = document.getElementById('work_search_complete');
+    ongoing = document.getElementById('work_search_complete_f');
+    if (complete) complete.checked = !!KUDOS_SORT_CONFIG.defaultCompleteChecked;
+    if (ongoing) ongoing.checked = !!KUDOS_SORT_CONFIG.defaultOngoingChecked;
+}
     dialog.querySelector('#kudos-sort-cancel').addEventListener('click', () => {
         dialog.remove();
     });
@@ -158,85 +196,96 @@ function getURLParameter(name) {
 }
 
 function getStoryId() {
-    var aMatch = window.location.pathname.match(/works\/(\d+)/);
-    if(aMatch !== null)
+    const aMatch = window.location.pathname.match(/works\/(\d+)/);
+    if (aMatch !== null) {
         return aMatch[1];
-    else
-        return jQuery('#chapter_index li form').attr('action').match(/works\/(\d+)/)[1];
+    } else {
+        const form = document.querySelector('#chapter_index li form');
+        if (form && form.action) {
+            const match = form.action.match(/works\/(\d+)/);
+            return match ? match[1] : null;
+        }
+        return null;
+    }
 }
 
-function getBookmarks(sNextPath, aBookmarks, oDeferred) {
-    jQuery.get(sNextPath, function(oData) {
-        aBookmarks = jQuery.merge(aBookmarks, jQuery(oData).find('li.bookmark'));
-        if(jQuery(oData).find('.next a').length) {
-            // Add a delay of 1 second between requests to avoid rate-limiting
-            setTimeout(function() {
-                getBookmarks(jQuery(oData).find('.next').first().find('a').attr('href'), aBookmarks, oDeferred);
+async function getBookmarks(sNextPath, aBookmarks, oDeferred) {
+    try {
+        const response = await fetch(sNextPath);
+        const text = await response.text();
+        const parser = new DOMParser();
+        const oData = parser.parseFromString(text, 'text/html');
+        aBookmarks.push(...Array.from(oData.querySelectorAll('li.bookmark')));
+        const nextLink = oData.querySelector('.next a');
+        if (nextLink) {
+            setTimeout(() => {
+                getBookmarks(nextLink.getAttribute('href'), aBookmarks, oDeferred);
             }, 1000);
-        }
-        else {
-            jQuery("#sortable_bookmarks_loading").remove();
+        } else {
+            const loading = document.getElementById('sortable_bookmarks_loading');
+            if (loading) loading.remove();
             oDeferred.resolve();
         }
-    });
+    } catch (e) {
+        console.error('Error fetching bookmarks:', e);
+        oDeferred.resolve();
+    }
 }
 
-jQuery(window).ready(function() {
+window.addEventListener('DOMContentLoaded', function() {
     // Process bookmarks first because of extra sorting steps. Once this is done, handle everything else
-    var oBookmarksProcessed = jQuery.Deferred();
+    // Simple Deferred polyfill for compatibility
+    function Deferred() {
+        let resolve, promise = new Promise(r => resolve = r);
+        return { resolve, promise };
+    }
+    var oBookmarksProcessed = Deferred();
     
     // If on the bookmarks page, add option to sort by kudos
     if(window.location.pathname.indexOf('/bookmarks') != -1) {
         // Wait to handle the bookmarks after they're loaded
-        var oBookmarksLoaded = jQuery.Deferred();
+    var oBookmarksLoaded = Deferred();
         var bKudos = false;
         // If the search/sort/submit button is clicked and kudos is selected, change selection and save the value in local storage before calling the search
-        jQuery("form#bookmark-filters").find(':submit').click(function(e) {
-          var val = jQuery('#bookmark_search_sort_column').val();
-          if(val == 'kudos_count') {
-            jQuery('#bookmark_search_sort_column').val('created_at');
-            localStorage.setItem('sort_by_kudos', 'true');
-          }
+        document.querySelectorAll("form#bookmark-filters button, form#bookmark-filters input[type='submit']").forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const sortSelect = document.getElementById('bookmark_search_sort_column');
+                if (sortSelect && sortSelect.value === 'kudos_count') {
+                    sortSelect.value = 'created_at';
+                    localStorage.setItem('sort_by_kudos', 'true');
+                }
+            });
         });
         // Add option for Kudos sorting
-        if(jQuery('#bookmark_search_sort_column option[value="kudos_count"]').length === 0) {
-            jQuery('#bookmark_search_sort_column').append('<option value="kudos_count">Kudos</option>');
+        const sortSelect = document.getElementById('bookmark_search_sort_column');
+        if (sortSelect && !sortSelect.querySelector('option[value="kudos_count"]')) {
+            const option = document.createElement('option');
+            option.value = 'kudos_count';
+            option.textContent = 'Kudos';
+            sortSelect.appendChild(option);
         }
             // Ensure default sort is set immediately after options are appended
             if (KUDOS_SORT_CONFIG.defaultBookmarkSort && jQuery('#bookmark_search_sort_column').length) {
                 jQuery('#bookmark_search_sort_column').val(KUDOS_SORT_CONFIG.defaultBookmarkSort).trigger('change');
             }
         // Add Complete/Ongoing checkboxes to the filter UI if not present
-        if (jQuery('#work_search_complete').length === 0) {
-            jQuery('#bookmark_search_with_notes').parent().parent().after(
-                '<li><dt>Completion status</dt><dd>' +
-                '<div style="padding-block:0.25em;">' +
-                '<label for="work_search_complete">' +
-                '<input type="checkbox" value="1" name="work_search[complete]" id="work_search_complete">' +
-                '<span class="indicator" aria-hidden="true"></span><span style="padding-left:0.5em;">Complete works only</span></label>' +
-                '</div>' +
-                '<div style="padding-block:0.25em;">' +
-                '<label for="work_search_complete_f">' +
-                '<input type="checkbox" value="F" name="work_search[complete_f]" id="work_search_complete_f">' +
-                '<span class="indicator" aria-hidden="true"></span><span style="padding-left:0.5em;">Works in progress only</span></label>' +
-                '</div></dd></li>'
-            );
-        }
+    injectCompletionCheckboxes();
         // Set default checked state and sort/language from config
         setTimeout(function() {
             if (KUDOS_SORT_CONFIG.defaultCompleteChecked) {
-                jQuery('#work_search_complete').prop('checked', true);
+                const complete = document.getElementById('work_search_complete');
+                if (complete) complete.checked = true;
             }
             if (KUDOS_SORT_CONFIG.defaultOngoingChecked) {
-                jQuery('#work_search_complete_f').prop('checked', true);
+                const ongoing = document.getElementById('work_search_complete_f');
+                if (ongoing) ongoing.checked = true;
             }
-            if (KUDOS_SORT_CONFIG.defaultBookmarkSort && jQuery('#bookmark_search_sort_column').length) {
-                jQuery('#bookmark_search_sort_column').val(KUDOS_SORT_CONFIG.defaultBookmarkSort);
+            if (KUDOS_SORT_CONFIG.defaultBookmarkSort && sortSelect) {
+                sortSelect.value = KUDOS_SORT_CONFIG.defaultBookmarkSort;
             }
-            // Removed default language setting
         }, 0);
         if(localStorage.getItem('sort_by_kudos') == 'true') {
-            jQuery('#bookmark_search_sort_column').val('kudos_count');
+            if (sortSelect) sortSelect.value = 'kudos_count';
             localStorage.removeItem('sort_by_kudos');
             bKudos = true;
         }
@@ -244,20 +293,29 @@ jQuery(window).ready(function() {
         if(bKudos) {
             // Get bookmarks, this takes at least a few seconds so we have to wait for that to finish
             var aBookmarks = [];
-            jQuery("ol.pagination").before('<div id="sortable_bookmarks_loading">(Loading...)</div>');
+            const pagination = document.querySelector('ol.pagination');
+            if (pagination) {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = 'sortable_bookmarks_loading';
+                loadingDiv.textContent = '(Loading...)';
+                pagination.parentNode.insertBefore(loadingDiv, pagination);
+            }
             getBookmarks(window.location.href.replace(/&page=\d+/, '').replace(/&bookmark_search%5Bsort_column%5D=kudos_count/, ''), aBookmarks, oBookmarksLoaded);
-            jQuery.when(oBookmarksLoaded).done(function () {
+            oBookmarksLoaded.promise.then(function () {
                 aBookmarks.sort(function(oA, oB) {
-                    return (parseInt(jQuery(oB).find('dd.kudos').find('a').html()) || 0) - (parseInt(jQuery(oA).find('dd.kudos').find('a').html()) || 0);
+                    const kudosA = parseInt((oA.querySelector('dd.kudos a') || {}).textContent) || 0;
+                    const kudosB = parseInt((oB.querySelector('dd.kudos a') || {}).textContent) || 0;
+                    return kudosB - kudosA;
                 });
                 var iPage = getURLParameter('page');
                 if(iPage === null)
                     iPage = 1;
-                jQuery('li.bookmark').remove();
+                document.querySelectorAll('li.bookmark').forEach(el => el.remove());
                 var iIndex;
                 var iNumBookmarks = aBookmarks.length;
+                const olBookmark = document.querySelector('ol.bookmark');
                 for(iIndex = (iPage-1) * 20; iIndex < (iPage*20) && iIndex < iNumBookmarks; iIndex++) {
-                    jQuery('ol.bookmark').append(aBookmarks[iIndex]);
+                    if (olBookmark) olBookmark.appendChild(aBookmarks[iIndex]);
                 }
                 oBookmarksProcessed.resolve();
             });
@@ -268,50 +326,76 @@ jQuery(window).ready(function() {
         oBookmarksProcessed.resolve();
     }
     
-    jQuery.when(oBookmarksProcessed).done(function() {
+    oBookmarksProcessed.promise.then(function() {
         // Check if you're on a story or a list
         // If not a story page, presume an index page (tags, collections, author, bookmarks, series) and process each work individually
-        if(jQuery('.header h4.heading').length) {
-            // Near as I can figure, the best way of identifying actual stories in an index page is with the h4 tag with class 'heading' within a list of type 'header' 
-            jQuery('.header h4.heading').each(function() {
-                var sStoryPath = jQuery(this).find('a').first().attr('href');
-                var oHeader = this;
-
+        const headers = document.querySelectorAll('.header h4.heading');
+        if (headers.length) {
+            headers.forEach(function(header) {
+                const link = header.querySelector('a');
+                const sStoryPath = link ? link.getAttribute('href') : null;
                 // If link is from collections, get proper link
-                var aMatch = sStoryPath.match(/works\/(\d+)/);
-                if(aMatch !== null) {
-                    var iStoryId = aMatch[1];
-                    jQuery.get('/works/' + iStoryId + '/navigate', function(oData) {
-                        var sLastChapterPath = jQuery(oData).find('ol li').last().find('a').attr('href');
-                        loadKudosSortConfig();
-                        var symbol = KUDOS_SORT_CONFIG.lastChapterSymbol || '';
-                        jQuery(oHeader).append('<a href="' + sLastChapterPath +'" title="Jump to last chapter"> ' + symbol + '</a>');
-                    });
+                const aMatch = sStoryPath ? sStoryPath.match(/works\/(\d+)/) : null;
+                if (aMatch !== null) {
+                    const iStoryId = aMatch[1];
+                    fetch('/works/' + iStoryId + '/navigate')
+                        .then(resp => resp.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const oData = parser.parseFromString(html, 'text/html');
+                            const lastLi = oData.querySelector('ol li:last-child a');
+                            const sLastChapterPath = lastLi ? lastLi.getAttribute('href') : null;
+                            loadKudosSortConfig();
+                            const symbol = KUDOS_SORT_CONFIG.lastChapterSymbol || '';
+                            if (sLastChapterPath) {
+                                const a = document.createElement('a');
+                                a.href = sLastChapterPath;
+                                a.title = 'Jump to last chapter';
+                                a.textContent = ' ' + symbol;
+                                header.appendChild(a);
+                            }
+                        });
                 }
             });
         }
         // Last chapter buttons are story-specific
-        else if(jQuery('ul.work') && !jQuery('ul.index').length) {
+        else if(document.querySelector('ul.work') && !document.querySelector('ul.index')) {
             // Before adding button for Last Chapter, make sure we're not on the last (or only) chapter already
-            if(jQuery('.next').length) {
+            if(document.querySelector('.next')) {
                 // Add button for Last Chapter
-                jQuery('ul.work').prepend('<li id="go_to_last_chap"><a>Last Chapter</a></li>');
-
-                // If the above button is clicked, go to last chapter
-                jQuery('#go_to_last_chap').click(function() {
-                    window.location.href = '/works/' + getStoryId() + '/chapters/' + jQuery('#selected_id option').last().val();
-                });
+                const ulWork = document.querySelector('ul.work');
+                if (ulWork) {
+                    const li = document.createElement('li');
+                    li.id = 'go_to_last_chap';
+                    const a = document.createElement('a');
+                    a.textContent = 'Last Chapter';
+                    li.appendChild(a);
+                    ulWork.insertBefore(li, ulWork.firstChild);
+                    li.addEventListener('click', function() {
+                        const selectedId = document.getElementById('selected_id');
+                        if (selectedId) {
+                            const lastOption = selectedId.querySelector('option:last-child');
+                            if (lastOption) {
+                                window.location.href = '/works/' + getStoryId() + '/chapters/' + lastOption.value;
+                            }
+                        }
+                    });
+                }
             }
-
             // Adding a First Chapter button
-            if(jQuery('.previous').length) {
-                // Add button for First Chapter
-                jQuery('ul.work').prepend('<li id="go_to_first_chap"><a>First Chapter</a></li>');
-
-                // If the above button is clicked, go to first chapter
-                jQuery('#go_to_first_chap').click(function() {
-                    window.location.href = '/works/' + getStoryId();
-                });
+            if(document.querySelector('.previous')) {
+                const ulWork = document.querySelector('ul.work');
+                if (ulWork) {
+                    const li = document.createElement('li');
+                    li.id = 'go_to_first_chap';
+                    const a = document.createElement('a');
+                    a.textContent = 'First Chapter';
+                    li.appendChild(a);
+                    ulWork.insertBefore(li, ulWork.firstChild);
+                    li.addEventListener('click', function() {
+                        window.location.href = '/works/' + getStoryId();
+                    });
+                }
             }
         }
     });
@@ -319,20 +403,9 @@ jQuery(window).ready(function() {
     // In the bookmarks page logic, set the default sort based on config
     if(window.location.pathname.indexOf('/bookmarks') != -1) {
         // Do not add extra sort options, just use the ones already present
-        const $sortSelect = jQuery('#bookmark_search_sort_column');
         // ...existing code...
         setTimeout(function() {
-            /*
-            if (KUDOS_SORT_CONFIG.defaultCompleteChecked) {
-                jQuery('#work_search_complete').prop('checked', true);
-            }
-            if (KUDOS_SORT_CONFIG.defaultOngoingChecked) {
-                jQuery('#work_search_complete_f').prop('checked', true);
-            }
-            if (KUDOS_SORT_CONFIG.defaultBookmarkSort && $sortSelect.length) {
-                $sortSelect.val(KUDOS_SORT_CONFIG.defaultBookmarkSort);
-            }
-            */
+            // (No jQuery code here; already handled above)
         }, 0);
     }
 });

@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         AO3: Comment Formatting and Preview (Usercript Menu-compatible)
+// @name         AO3: Comment Formatting and Preview
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
 // @version      1
 // @description  Adds compatibility with Userscript Menu, and a preview box to see how the comment will look. Configure which buttons you want to see in the button bar, and add your own custom buttons to insert HTML or text. Changes are saved in localStorage and persist across sessions. Only affects comment boxes on Archive of Our Own (AO3). Based on the original script by Blackbatcat, with permission.
