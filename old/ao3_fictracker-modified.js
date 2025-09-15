@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         AO3 FicTracker (edited)
+// @name         AO3 FicTracker
 // @author       infiniMotis
-// @version      1.6.2
+// @version      1.6.3
 // @namespace    https://github.com/infiniMotis/AO3-FicTracker
 // @description  Track your favorite, finished, to-read and disliked fanfics on AO3 with sync across devices. Customizable tags and highlights make it easy to manage and spot your tracked works. Full UI customization on the preferences page.
 // @license      GNU GPLv3
@@ -115,7 +115,6 @@
         deleteEmptyBookmarks: true,
         debug: false,
         displayUserNotes: true,
-        displayUserNotesBtn: true,
         expandUserNoteDetails: true,
         sheetUrl: "",
         syncInterval: 60,
@@ -124,6 +123,7 @@
         syncWidgetEnabled: true,
         syncWidgetOpacity: .5,
         exportStatusesConfig: true,
+        collapseAndHideOnBookmarks: false,
     };
 
     // Toggle debug info
@@ -133,6 +133,18 @@
     function getStatusSettingsByStorageKey(storageKey) {
         return settings.statuses.find(status => status.storageKey === storageKey);
     }
+
+    // Utility function to check if current page is users own bookmarks page
+    function isOwnBookmarksPage() {
+        // TODO: use regex for precise detection
+        const userMenu = document.querySelector('ul.menu.dropdown-menu');
+        const username = userMenu?.previousElementSibling?.getAttribute('href')?.split('/').pop() ?? '';
+        if (!username) return false;
+    
+        const url = window.location.pathname + window.location.search;
+        return url.includes('/bookmarks') && url.includes(username);
+    }
+    
 
     // Utility function for displaying modals
     function displayModal(modalTitle, htmlContent) {
@@ -177,10 +189,14 @@
                 const opacity = status.opacity;
                 const hasBorder = status.borderSize > 0;
                 const hide = status.hide;
+                
+                // Check if we should hide this status based on bookmarks page setting
+                const ownBookmarksPage = isOwnBookmarksPage();
+                const shouldHide = hide && ((ownBookmarksPage && settings.collapseAndHideOnBookmarks) || !ownBookmarksPage);            
 
                 css += `
                     .${className} {
-                        ${hide ? 'display: none !important;' : ''}
+                        ${shouldHide ? 'display: none !important;' : ''}
                         ${hasBorder ? `border: ${border} !important;` : 'border: none !important;'}
                         border-radius: 8px !important;
                         padding: 15px !important;
@@ -386,7 +402,7 @@
         saveNote(workId, noteText) {
             const notes = this.getAllNotes();
             const date = new Date().toISOString();
-
+            
             if (noteText.trim() === "") {
                 delete notes[workId];
             } else {
@@ -397,7 +413,7 @@
             }
 
             this.storageManager.setItem("FT_userNotes", JSON.stringify(notes));
-
+            
             if (this.remoteSyncManager) {
                 this.remoteSyncManager.addPendingNoteUpdate(workId, noteText, date);
             }
@@ -410,7 +426,7 @@
             const notes = this.getAllNotes();
             delete notes[workId];
             this.storageManager.setItem("FT_userNotes", JSON.stringify(notes));
-
+            
             if (this.remoteSyncManager) {
                 this.remoteSyncManager.addPendingNoteUpdate(workId, "", null);
             }
@@ -601,7 +617,8 @@
     class RemoteStorageSyncManager {
         constructor() {
             this.storageManager = new StorageManager();
-            this.syncedKeys = ['FT_favorites', 'FT_disliked', 'FT_toread', 'FT_finished'];
+            // Sync all configured status storage keys dynamically
+            this.syncedKeys = settings.statuses.map(s => s.storageKey);
             this.PENDING_CHANGES_KEY = 'FT_pendingChanges';
             this.LAST_SYNC_KEY = 'FT_lastSync';
 
@@ -775,7 +792,7 @@
                     if (this.isOnline) this.performSync();
                 }, this.syncInterval);
 
-                // If not enough time has passed, schedule a one-time timeout to sync later
+                // If not enough time has passed, schedule a one-time timeout to sync later    
             } else {
                 const timeUntilNextSync = this.syncInterval - timeSinceLastSync;
                 this.timeUntilNextSync = Math.ceil(timeUntilNextSync / 1000);
@@ -855,7 +872,7 @@
                 text: text || '',
                 date: date || null
             });
-
+            
             this.savePendingChanges(pendingChanges);
         }
 
@@ -1134,7 +1151,7 @@
                 DEBUG && console.log(`[FicTracker] Removing tag: ${tag}`);
                 bookmarkData.bookmarkTags.splice(bookmarkData.bookmarkTags.indexOf(tag), 1);
                 storageManager.removeIdFromCategory(storageKey, bookmarkData.workId);
-
+                
             if (remoteSyncManager) {
                 remoteSyncManager.addPendingStatusChange('remove', storageKey, bookmarkData.workId);
             }
@@ -1213,13 +1230,13 @@
         addButtons() {
             const actionsMenu = document.querySelector('ul.work.navigation.actions');
             const bottomActionsMenu = document.querySelector('div#feedback > ul');
-
+            
             // Add user notes if enabled
             if (settings.displayUserNotes) {
                 const ficWrapperContainer = document.querySelector('#main div.wrapper');
                 const containerForNotes = ficWrapperContainer.parentElement;
 
-                ficWrapperContainer.insertAdjacentHTML('beforebegin',
+                ficWrapperContainer.insertAdjacentHTML('afterend', 
                     this.userNotesManager.generateNoteHtml(this.bookmarkData.workId, true)
                 );
                 this.userNotesManager.setupNoteHandlers(containerForNotes, true);
@@ -1236,7 +1253,11 @@
                 // Skip rendering btn for disabled status
                 if (!enabled) return;
 
-                const isTagged = this.bookmarkData.bookmarkTags.includes(tag);
+                // Case insensitive tag matching
+                const isTagged = this.bookmarkData.bookmarkTags.some(
+                    t => t.toLowerCase() === tag.toLowerCase()
+                );
+
                 const buttonHtml = `<li class="mark-as-read" id="${selector}"><a href="#">${isTagged ? negativeLabel : positiveLabel}</a></li>`;
 
                 actionsMenu.insertAdjacentHTML('beforeend', buttonHtml);
@@ -1365,15 +1386,15 @@
                 }
 
                 // Only status highlighting for now, TBA
-                this.highlightWorkStatus(work, workId);
+                this.highlightWorkStatus(work, workId, true);
 
                 // Reload stored IDs to reflect any changes in storage (from fic card)
-                this.loadStoredIds();
+                this.loadStoredIds(); 
 
                 this.addQuickTagDropdown(work);
 
                 // Display note management btn if enabled
-                if (settings.displayUserNotesBtn) {
+                if (settings.displayUserNotes) {
                     this.addNoteButton(work);
                 }
             });
@@ -1390,7 +1411,7 @@
         }
 
         // Change the visuals of each work's status
-        highlightWorkStatus(work, workId) {
+        highlightWorkStatus(work, workId, cardToStorageSync = false) {
             let shouldBeCollapsable = false;
             const appliedStatuses = new Set();
 
@@ -1414,7 +1435,7 @@
             });
 
             // If no status was found in localStorage, check for bookmark tags in the card
-            if (appliedStatuses.size === 0) {
+            if (appliedStatuses.size === 0 && cardToStorageSync === true) {
                 const userModule = work.querySelector('div.own.user.module.group');
                 DEBUG && console.debug(`[FicTracker] Checking bookmark card for work ${workId}`);
                 if (userModule) {
@@ -1444,8 +1465,12 @@
                 }
             }
 
+            const ownBookmarksPage = isOwnBookmarksPage();
+            const collapseAllowed = !ownBookmarksPage || settings.collapseAndHideOnBookmarks;
+            
             // If at least one of the statuses of the work is set to be collapsable - let it be so
-            if (shouldBeCollapsable) {
+            // But check if we're on own bookmarks page and collapse is disabled there
+            if (shouldBeCollapsable && collapseAllowed) {
                 work.classList.add('FT_collapsable');
             } else {
                 work.classList.remove('FT_collapsable');
@@ -1526,17 +1551,16 @@
         // Add note functionality to the work
         addNoteButton(work) {
             const workId = this.getWorkId(work);
-            // Insert after ul.tags.commas for better styling
-            const tagsList = work.querySelector('ul.tags.commas');
-            if (tagsList) {
-                DEBUG && console.log('[FicTracker] Inserting notes block after ul.tags.commas:', tagsList);
-                tagsList.insertAdjacentHTML('afterend',
+            // Find the tag section (ul.tags.commas) within the work card
+            const tagSection = work.querySelector('ul.tags.commas');
+            if (tagSection) {
+                // Insert the note block after the tag section
+                tagSection.insertAdjacentHTML('afterend',
                     this.userNotesManager.generateNoteHtml(workId)
                 );
             } else {
-                // fallback: original behavior
+                // Fallback: insert at the end of the header if tag section not found
                 const container = work.querySelector('div.header.module');
-                DEBUG && console.log('[FicTracker] ul.tags.commas not found, using header.module:', container);
                 if (container) {
                     container.insertAdjacentHTML('beforeend',
                         this.userNotesManager.generateNoteHtml(workId)
@@ -1548,8 +1572,8 @@
         // Setup note handlers for the works list
         prefillNotes() {
             if (!settings.displayUserNotes) return;
-
-            const container = document.querySelector('div#main.filtered.region');
+            
+            const container = document.querySelector('div#main.filtered.region, div#main.works-search.region');
             this.userNotesManager.setupNoteHandlers(container);
         }
 
@@ -1586,7 +1610,7 @@
         constructor(settings) {
             this.settings = settings;
             this.init();
-
+            
             if (this.settings.syncEnabled) {
                 this.initRemoteSyncManager();
             }
@@ -1628,13 +1652,30 @@
                 <!-- FicTracker Settings Panel HTML -->
                 <h1>FicTracker Settings</h1>
                 <section>
-                    <label for="status_select">Status to Configure:</label>
-                    <select id="status_select" v-model="selectedStatus">
-                        <option value="0">Finished</option>
-                        <option value="1">Favorite</option>
-                        <option value="2">To Read</option>
-                        <option value="3">Disliked</option>
-                    </select>
+                    <label for="status_select">Tag to Configure:</label>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+                        <select id="status_select" v-model="selectedStatus">
+                            <option v-for="(s, idx) in ficTrackerSettings.statuses" :key="s.storageKey || idx" :value="idx">{{ s.tag }}</option>
+                        </select>
+                        <input type="submit" value="＋ Add Tag" @click="addStatus">
+                        <input type="submit" :disabled="!canDeleteSelected" value="🗑️ Delete Tag" @click="deleteStatus">
+                    </div>
+                    <details style="margin-top: 10px;">
+                        <summary>Change Tag Order</summary>
+                        <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                            <p>Use arrows to change order. This will affect the order of buttons on work pages and in "Change Status" dropdown.</p>
+                            <ul style="list-style: none; padding: 0;">
+                                <li v-for="(s, idx) in ficTrackerSettings.statuses" :key="s.storageKey || idx" 
+                                    :style="{padding: '5px', borderRadius: '3px', background: selectedStatus === idx ? 'rgba(0, 0, 0, 0.3)' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}">
+                                    <span @click="selectedStatus = idx" :style="{cursor: 'pointer'}" :title="'Click to edit ' + s.tag">{{ idx + 1 }}. {{ s.tag }}</span>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button @click.stop="moveStatus(idx, -1)" :disabled="idx === 0" title="Move Up" style="cursor: pointer;">⬆️</button>
+                                        <button @click.stop="moveStatus(idx, 1)" :disabled="idx === ficTrackerSettings.statuses.length - 1" title="Move Down" style="cursor: pointer;">⬇️</button>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
                     <details open>
                         <summary>Tag And Labels Settings</summary>
                         <ul id="input_settings">
@@ -1663,6 +1704,9 @@
                             <li>
                                 <label for="tag_name">Tag Name:</label>
                                 <input type="text" id="tag_name" v-model="currentSettings.tag">
+                            </li>
+                            <li>
+                                <small>Storage key: <code>{{ currentSettings.storageKey }}</code></small>
                             </li>
                             <li>
                                 <label for="dropdown_label">Dropdown Label:</label>
@@ -1711,12 +1755,11 @@
                     <ul>
                         <!-- Core Functionality -->
                         <li>
-                            <input type="checkbox" id="toggle_displayUserNotesBtn" v-model="ficTrackerSettings.displayUserNotesBtn">
-                            <label for="toggle_displayUserNotesBtn" title="Shows the 📓 note button on each work card for writing personal notes">Display note management button</label>
-                        </li>
-                        <li>
                             <input type="checkbox" id="toggle_displayUserNotes" v-model="ficTrackerSettings.displayUserNotes">
-                            <label for="toggle_displayUserNotes" title="Shows your saved notes directly in work cards as collapsible sections">Display your notes in work cards</label>
+                            <label for="toggle_displayUserNotes" 
+                                title="Shows the "Add note" button on each work card and your saved notes as collapsible sections">
+                                Display "Add Note" button and your notes in work cards
+                            </label>
                         </li>
                         <li>
                             <input type="checkbox" id="toggle_expandUserNoteDetails" v-model="ficTrackerSettings.expandUserNoteDetails">
@@ -1724,7 +1767,7 @@
                                 Auto-expand your notes in work cards
                             </label>
                         </li>
-
+                        
                         <!-- Bookmark Behavior -->
                         <li>
                             <input type="checkbox" id="toggle_private" v-model="ficTrackerSettings.newBookmarksPrivate">
@@ -1740,7 +1783,12 @@
                             Auto-delete empty bookmarks
                             </label>
                         </li>
-
+                        <li>
+                            <input type="checkbox" id="toggle_collapseAndHideOnBookmarks" v-model="ficTrackerSettings.collapseAndHideOnBookmarks">
+                            <label for="toggle_collapseAndHideOnBookmarks" title="If enabled, works on your bookmarks page will collapse or be hidden based on your tag settings, just like on works browsing pages. If disabled, all bookmarked works will remain uncollapsed and visible.">
+                                Collapse and hide works on my bookmarks page
+                            </label>
+                        </li>                        
                         <!-- Interface Customization -->
                         <li>
                             <input type="checkbox" id="hide_default_toread" v-model="ficTrackerSettings.hideDefaultToreadBtn">
@@ -1750,13 +1798,13 @@
                             <input type="checkbox" id="toggle_displayBottomActionButtons" v-model="ficTrackerSettings.displayBottomActionButtons">
                             <label for="toggle_displayBottomActionButtons" title="Adds duplicate tracking buttons at the bottom of long work lists for easier access">Duplicate action buttons at page bottom</label>
                         </li>
-
+                        
                         <!-- Advanced Options -->
                         <li>
                             <input type="checkbox" id="toggle_debug" v-model="ficTrackerSettings.debug">
                             <label for="toggle_debug" title="Enables console logging and debug information for troubleshooting">Debug mode (for troubleshooting)</label>
                         </li>
-
+                        
                         <!-- Reset Option -->
                         <li style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
                             <input type="submit" id="reset_settings" value="Reset Settings to Default"
@@ -1776,21 +1824,21 @@
                     <ul>
                         <li>
                             <label>
-                                <input type="checkbox" v-model="ficTrackerSettings.syncEnabled">
+                                <input type="checkbox" v-model="ficTrackerSettings.syncEnabled"> 
                                 Enable automatic sync
                             </label>
                         </li>
                         <div v-show="ficTrackerSettings.syncEnabled">
                             <li>
                                 <label title="Show a floating sync status indicator with countdown timer and manual sync button">
-                                    <input type="checkbox" v-model="ficTrackerSettings.syncWidgetEnabled">
+                                    <input type="checkbox" v-model="ficTrackerSettings.syncWidgetEnabled"> 
                                     Show sync status widget
                                 </label>
                             </li>
                             <li v-if="ficTrackerSettings.syncWidgetEnabled">
                                 <label for="sync_widget_opacity">Sync widget opacity:</label>
-                                <input type="range" id="sync_widget_opacity"
-                                    v-model="ficTrackerSettings.syncWidgetOpacity"
+                                <input type="range" id="sync_widget_opacity" 
+                                    v-model="ficTrackerSettings.syncWidgetOpacity" 
                                     min="0.1" max="1" step="0.1"
                                     style="width: 200px; margin-right: 10px;">
                                 <strong>{{ ficTrackerSettings.syncWidgetOpacity }}</strong>
@@ -1801,8 +1849,8 @@
                             </li>
                             <li>
                                 <label for="sync_interval">Sync interval:</label>
-                                <input type="range" id="sync_interval"
-                                    v-model="ficTrackerSettings.syncInterval"
+                                <input type="range" id="sync_interval" 
+                                    v-model="ficTrackerSettings.syncInterval" 
                                     min="60" max="3600" step="60"
                                     style="width: 200px; margin-right: 10px;">
                                 <strong>{{ ficTrackerSettings.syncInterval }} seconds</strong>
@@ -1836,26 +1884,26 @@
                             </li>
 
                             <li>
-                                <input type="submit"
-                                    @click="testSheetConnection"
+                                <input type="submit" 
+                                    @click="testSheetConnection" 
                                     :value="loadingStates.testConnection ? 'Testing...' : 'Test Connection'"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
-
-                                <input v-if="ficTrackerSettings.syncDBInitialized"
-                                    type="submit"
-                                    @click="syncNow"
+                                
+                                <input v-if="ficTrackerSettings.syncDBInitialized" 
+                                    type="submit" 
+                                    @click="syncNow" 
                                     :value="loadingStates.sync ? 'Syncing...' : 'Sync Now'"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
-
-                                <input type="submit"
-                                    v-if="ficTrackerSettings.syncDBInitialized"
-                                    @click="resetSyncSettings"
+                                
+                                <input type="submit" 
+                                    v-if="ficTrackerSettings.syncDBInitialized" 
+                                    @click="resetSyncSettings" 
                                     value="Reset Sync Settings"
                                     :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
 
                                 <li v-if="readyToInitDB && !ficTrackerSettings.syncDBInitialized">
-                                    <input type="submit"
-                                        @click="initializeSheetStorage"
+                                    <input type="submit" 
+                                        @click="initializeSheetStorage" 
                                         :value="loadingStates.initialize ? 'Initializing...' : 'Initialize Google Sheet Storage'"
                                         :disabled="loadingStates.testConnection || loadingStates.sync || loadingStates.initialize">
                                 </li>
@@ -1895,7 +1943,7 @@
                 <section>
                     <!-- Save Settings -->
                     <div style="text-align: right;">
-                        <input type="submit" id="save_settings" value="Save Settings" @click="saveSettings">
+                        <input type="submit" id="save_settings" value="Save Settings" @click="saveSettings();alert('Settings successfully saved :)')">
                     </div>
                 </section>
                 </div>
@@ -1924,9 +1972,15 @@
                     initialize: false
                 },
 
-                // Computed
+                // Computed 
                 get currentSettings() {
                     return this.ficTrackerSettings.statuses[this.selectedStatus];
+                },
+
+                get canDeleteSelected() {
+                    // Prevent deleting built-ins 
+                    const builtInKeys = ['FT_finished', 'FT_favorites', 'FT_toread', 'FT_disliked'];
+                    return !builtInKeys.includes(this.ficTrackerSettings.statuses[this.selectedStatus].storageKey);
                 },
 
                 get previewStyle() {
@@ -1971,9 +2025,64 @@
                 // Pass func through global scope
                 displayModal: displayModal,
 
+                // Status CRUD
+                moveStatus(index, direction) {
+                    const statuses = this.ficTrackerSettings.statuses;
+                    const selectedObject = statuses[this.selectedStatus];
+                    const newIndex = index + direction;
+
+                    if (newIndex < 0 || newIndex >= statuses.length) return;
+
+                    const [movedStatus] = statuses.splice(index, 1);
+                    statuses.splice(newIndex, 0, movedStatus);
+
+                    // Wait until Vue updates the DOM and reactivity system after the reorder,
+                    // then recalculate the selected index to keep the correct status selected.
+                    this.$nextTick(() => {
+                        this.selectedStatus = statuses.indexOf(selectedObject);
+                    });
+                },
+                
+                addStatus() {
+                    const baseKey = 'FT_custom_' + Date.now();
+                    const newStatus = {
+                        tag: 'New Tag',
+                        dropdownLabel: 'My New Tag Fanfics',
+                        positiveLabel: '➕ Add Tag',
+                        negativeLabel: '🧹 Remove Tag',
+                        selector: baseKey + '_btn',
+                        storageKey: baseKey,
+                        enabled: true,
+                        collapse: false,
+                        displayInDropdown: true,
+                        highlightColor: '#888888',
+                        borderSize: 2,
+                        opacity: 1,
+                        hide: false
+                    };
+                    this.ficTrackerSettings.statuses.push(newStatus);
+                    this.selectedStatus = this.ficTrackerSettings.statuses.length - 1;
+                },
+
+                deleteStatus() {
+                    if (!this.canDeleteSelected) return;
+                    const status = this.ficTrackerSettings.statuses[this.selectedStatus];
+                    const confirmMsg = `Delete tag "${status.tag}" and its highlighting settings?\nThis will not remove any AO3 bookmarks or tags.`;
+                    if (!confirm(confirmMsg)) return;
+
+                    // Remove local storage lists for this custom tag if we used any
+                    // We only stored lists under storageKey. Clean it.
+                    try { localStorage.removeItem(status.storageKey); } catch (e) {}
+
+                    // Remove from list and clamp selected index
+                    this.ficTrackerSettings.statuses.splice(this.selectedStatus, 1);
+                    this.selectedStatus = Math.max(0, Math.min(this.selectedStatus, this.ficTrackerSettings.statuses.length - 1));
+
+                    this.saveSettings();
+                },
+
                 saveSettings() {
                     localStorage.setItem('FT_settings', JSON.stringify(this.ficTrackerSettings));
-                    alert('Settings successfully saved :)')
                     DEBUG && console.log('[FicTracker] Settings saved.');
                 },
 
@@ -2157,11 +2266,15 @@
                     // Gather current local storage data to be uploaded to Google Sheets
                     const initData = {
                         FT_userNotes: JSON.stringify(JSON.parse(localStorage.getItem('FT_userNotes') || '{}')),
-                        FT_favorites: localStorage.getItem('FT_favorites') || '',
-                        FT_disliked: localStorage.getItem('FT_disliked') || '',
-                        FT_toread: localStorage.getItem('FT_toread') || '',
-                        FT_finished: localStorage.getItem('FT_finished') || '',
                     };
+                    try {
+                        const allStatuses = this.ficTrackerSettings.statuses;
+                        for (const s of allStatuses) {
+                            initData[s.storageKey] = localStorage.getItem(s.storageKey) || '';
+                        }
+                    } catch (e) {
+                        DEBUG && console.warn('[FicTracker] Failed to build initData for dynamic statuses:', e);
+                    }
 
                     DEBUG && console.log('[FicTracker] Initializing Google Sheets with data:', initData);
 
@@ -2260,17 +2373,21 @@
 
         }
 
-        // Exports user data (favorites, finished, toread, disliked, notes, and statuses config) into a JSON file
+        // Exports user data (all statuses, notes, and statuses config) into a JSON file
         exportSettings() {
             // Formatted timestamp for export
             const exportTimestamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
             const exportData = {
-                FT_favorites: localStorage.getItem('FT_favorites'),
-                FT_finished: localStorage.getItem('FT_finished'),
-                FT_toread: localStorage.getItem('FT_toread'),
-                FT_disliked: localStorage.getItem('FT_disliked'),
                 FT_userNotes: localStorage.getItem('FT_userNotes'),
             };
+            try {
+                const allStatuses = this.settings.statuses;
+                for (const s of allStatuses) {
+                    exportData[s.storageKey] = localStorage.getItem(s.storageKey);
+                }
+            } catch (e) {
+                DEBUG && console.warn('[FicTracker] Failed to collect dynamic status keys for export:', e);
+            }
 
             // Only include status configuration if the setting is enabled
             if (this.settings.exportStatusesConfig) {
@@ -2310,6 +2427,16 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            // Warn user when Google Sheets sync is enabled to prevent imported data being overwritten
+            if (this.settings && this.settings.syncEnabled) {
+                const proceed = confirm("Google Sheets sync is currently ENABLED.\n\nIf you import now, the next sync may overwrite your imported data with what is currently stored in the Sheet.\n\nRecommended options:\n  1) Disable Google Sheets sync, import your file. Re-enabling with the same Sheet will overwrite your import.\n  2) OR: Temporarily Disable sync, import, then re-enable sync using a NEW Google Sheet URL to avoid pulling stale data.\n\nDo you still want to proceed with the import right now?");
+
+                if (!proceed) {
+                    event.target.value = '';
+                    return;
+                }
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -2331,42 +2458,7 @@
         }
 
         mergeImportedData(importedData) {
-            // Order: [favorites, finished, toread, disliked, notes]
-            let newEntries = [0, 0, 0, 0, 0];
-
-            // Handle comma-separated list data (favorites, finished, toread, disliked)
-            const listKeys = ['FT_favorites', 'FT_finished', 'FT_toread', 'FT_disliked'];
-            listKeys.forEach((key, index) => {
-                if (!importedData[key]) return;
-                const currentData = localStorage.getItem(key) ? localStorage.getItem(key).split(',') : [];
-                const newData = importedData[key].split(',') || [];
-
-                const initialLen = currentData.length;
-                const mergedData = [...new Set([...currentData, ...newData])];
-
-                newEntries[index] = mergedData.length - initialLen;
-                localStorage.setItem(key, mergedData.join(','));
-            });
-
-            // Handle user notes (JSON data)
-            if (importedData.FT_userNotes) {
-                try {
-                    const currentNotes = JSON.parse(localStorage.getItem('FT_userNotes') || '{}');
-                    const importedNotes = JSON.parse(importedData.FT_userNotes);
-
-                    // Merge notes, keeping newer versions if there are conflicts
-                    const mergedNotes = { ...currentNotes, ...importedNotes };
-                    localStorage.setItem('FT_userNotes', JSON.stringify(mergedNotes));
-
-                    const newNotesCount = Object.keys(importedNotes).length - Object.keys(currentNotes).length;
-                    newEntries[4] = Math.max(0, newNotesCount);
-                } catch (err) {
-                    DEBUG && console.error('[FicTracker] Error merging user notes:', err);
-                    newEntries[4] = 0;
-                }
-            }
-
-            // Handle status configuration
+            // First, if statuses config provided, load it so we know all dynamic keys
             if (importedData.FT_statusesConfig) {
                 try {
                     const importedStatuses = JSON.parse(importedData.FT_statusesConfig);
@@ -2377,9 +2469,50 @@
                 }
             }
 
-            alert(`Data imported successfully!\nNew favorite entries: ${newEntries[0]}\nNew finished entries: ${newEntries[1]}\n` +
-                  `New To-Read entries: ${newEntries[2]}\nNew disliked entries: ${newEntries[3]}\nNew notes entries: ${newEntries[4]}`);
-            DEBUG && console.log('[FicTracker] Data imported successfully. Stats:', newEntries);
+            // Track new entries per known keys + notes at the end
+            let newEntriesMap = {};
+
+            // Merge all status list keys found in the file that are in our configured statuses
+            const knownKeys = new Set((this.settings.statuses || []).map(s => s.storageKey));
+            Object.keys(importedData).forEach((key) => {
+                if (!knownKeys.has(key)) return;
+                const currentData = localStorage.getItem(key) ? localStorage.getItem(key).split(',') : [];
+                const newData = (importedData[key] || '').split(',').filter(Boolean);
+                const initialLen = currentData.length;
+                const mergedData = [...new Set([...currentData, ...newData])];
+                newEntriesMap[key] = mergedData.length - initialLen;
+                localStorage.setItem(key, mergedData.join(','));
+            });
+
+            // Handle user notes (JSON data)
+            if (importedData.FT_userNotes) {
+                try {
+                    const currentNotes = JSON.parse(localStorage.getItem('FT_userNotes') || '{}');
+                    const importedNotes = JSON.parse(importedData.FT_userNotes);
+                    
+                    // Merge notes, keeping newer versions if there are conflicts
+                    const mergedNotes = { ...currentNotes, ...importedNotes };
+                    localStorage.setItem('FT_userNotes', JSON.stringify(mergedNotes));
+                    
+                    const newNotesCount = Object.keys(importedNotes).length - Object.keys(currentNotes).length;
+                    newEntriesMap['FT_userNotes'] = Math.max(0, newNotesCount);
+                } catch (err) {
+                    DEBUG && console.error('[FicTracker] Error merging user notes:', err);
+                    newEntriesMap['FT_userNotes'] = 0;
+                }
+            }
+
+            // Build a dynamic summary
+            let summaryLines = [];
+            (this.settings.statuses || []).forEach((s) => {
+                const count = newEntriesMap[s.storageKey] || 0;
+                summaryLines.push(`${s.tag}: ${count}`);
+            });
+            const notesAdded = newEntriesMap['FT_userNotes'] || 0;
+            summaryLines.push(`Notes: ${notesAdded}`);
+
+            alert(`Data imported successfully!\n` + summaryLines.join('\n'));
+            DEBUG && console.log('[FicTracker] Data imported successfully. Stats:', newEntriesMap);
         }
 
     }

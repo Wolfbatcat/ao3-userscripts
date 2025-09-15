@@ -11,6 +11,8 @@
 // @grant         GM.getValue
 // @grant         GM.setValue
 // @run-at        document-end
+// @downloadURL https://update.greasyfork.org/scripts/409956/AO3%20Blocker.user.js
+// @updateURL https://update.greasyfork.org/scripts/409956/AO3%20Blocker.meta.js
 // ==/UserScript==
 
 /* globals $, GM_config */
@@ -187,18 +189,36 @@
   // getFold(reason) - Create the work placeholder for blocked works. Optionally, this will show why the work was blocked and give the user the option to unhide it.
   function getFold(reasons) {
     const fold = $(`<div class="${CSS_NAMESPACE}-fold"></div>`);
-    const note = $(`<span class="${CSS_NAMESPACE}-note"</span>`).text("This work is hidden! ");
-
+    const note = $(`<span class="${CSS_NAMESPACE}-note"></span>`);
+    // Compose the new message based on reasons
+    if (reasons && reasons.length > 0) {
+      const parts = [];
+      reasons.forEach((reason) => {
+        if (reason.tags && reason.tags.length > 0) {
+          parts.push(`<em>Tags: ${reason.tags.join(", ")}</em>`);
+        }
+        if (reason.authors && reason.authors.length > 0) {
+          parts.push(`<em>Author: ${reason.authors.join(", ")}</em>`);
+        }
+        if (reason.titles && reason.titles.length > 0) {
+          parts.push(`<em>Title: ${reason.titles.join(", ")}</em>`);
+        }
+        if (reason.summaryTerms && reason.summaryTerms.length > 0) {
+          parts.push(`<em>Summary: ${reason.summaryTerms.join(", ")}</em>`);
+        }
+      });
+      note.html(parts.join('; '));
+    } else {
+      note.text("");
+    }
     fold.html(note);
-    fold.append(getReasonSpan(reasons));
     fold.append(getToggleButton());
-
     return fold;
   }
 
   // getToggleButton() - Create a button that will show or hide the "cut" on blocked works.
   function getToggleButton() {
-    const button = $(`<button class="${CSS_NAMESPACE}-toggle"></button>`).text("Unhide");
+    const button = $(`<button class="${CSS_NAMESPACE}-toggle"></button>`).text("Show");
     const unhideClassFragment = `${CSS_NAMESPACE}-unhide`;
 
     button.on("click", (event) => {
@@ -206,11 +226,9 @@
 
       if (work.hasClass(unhideClassFragment)) {
         work.removeClass(unhideClassFragment);
-        work.find(`.${CSS_NAMESPACE}-note`).text("This work is hidden.");
-        $(event.target).text("Unhide");
+        $(event.target).text("Show");
       } else {
         work.addClass(unhideClassFragment);
-        work.find(`.${CSS_NAMESPACE}-note`).text("ℹ️ This work was hidden.");
         $(event.target).text("Hide");
       }
     });
