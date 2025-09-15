@@ -191,6 +191,7 @@
     const fold = $(`<div class="${CSS_NAMESPACE}-fold"></div>`);
     const note = $(`<span class="${CSS_NAMESPACE}-note"></span>`);
     // Compose the new message based on reasons
+    let message = "";
     if (reasons && reasons.length > 0) {
       const parts = [];
       reasons.forEach((reason) => {
@@ -207,10 +208,11 @@
           parts.push(`<em>Summary: ${reason.summaryTerms.join(", ")}</em>`);
         }
       });
-      note.html(parts.join('; '));
-    } else {
-      note.text("");
+      message = parts.join('; ');
     }
+    // Add the icon before the message (default: hidden)
+    const iconUrl = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/assets/icon-hide-50.png";
+    note.html(`<img class="${CSS_NAMESPACE}-icon" src="${iconUrl}" style="height:1em;vertical-align:middle;margin-right:0.3em;">${message}`);
     fold.html(note);
     fold.append(getToggleButton());
     return fold;
@@ -220,15 +222,24 @@
   function getToggleButton() {
     const button = $(`<button class="${CSS_NAMESPACE}-toggle"></button>`).text("Show");
     const unhideClassFragment = `${CSS_NAMESPACE}-unhide`;
+    const iconHide = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/assets/icon-hide-50.png";
+    const iconEye = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/assets/icon-eye-50.png";
 
     button.on("click", (event) => {
       const work = $(event.target).closest(`.${CSS_NAMESPACE}-work`);
+      const note = work.find(`.${CSS_NAMESPACE}-note`);
+      // Find the current message (after the icon)
+      let message = note.html();
+      // Remove the icon HTML to get the message only
+      message = message.replace(/<img[^>]+>\s*/i, "");
 
       if (work.hasClass(unhideClassFragment)) {
         work.removeClass(unhideClassFragment);
+        note.html(`<img class=\"${CSS_NAMESPACE}-icon\" src=\"${iconHide}\" style=\"height:1em;vertical-align:middle;margin-right:0.3em;\">${message}`);
         $(event.target).text("Show");
       } else {
         work.addClass(unhideClassFragment);
+        note.html(`<img class=\"${CSS_NAMESPACE}-icon\" src=\"${iconEye}\" style=\"height:1em;vertical-align:middle;margin-right:0.3em;\">${message}`);
         $(event.target).text("Hide");
       }
     });
