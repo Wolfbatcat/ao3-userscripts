@@ -626,19 +626,36 @@
   };
 
   // --- UI MENU ---
+  // Helper: check if current page is one of the allowed types for menu options
+  function isAllowedMenuPage() {
+    const path = window.location.pathname;
+    // User bookmarks: /users/USERNAME/bookmarks or /bookmarks
+    if (/^\/users\/[^\/]+\/bookmarks(\/|$)/.test(path) || /^\/bookmarks(\/|$)/.test(path)) return true;
+    // User profile: /users/USERNAME (no trailing /works etc)
+    if (/^\/users\/[^\/]+\/?$/.test(path)) return true;
+    // Tag works: /tags/ANYTHING/works
+    if (/^\/tags\/[^\/]+\/works(\/|$)/.test(path)) return true;
+    // Collections: /collections/ANYTHING
+    if (/^\/collections\/[^\/]+(\/|$)/.test(path)) return true;
+    // Works index: /works
+    if (/^\/works(\/|$)/.test(path)) return true;
+    return false;
+  }
+
   const addCombinedMenu = () => {
+    const showMenuOptions = isAllowedMenuPage();
     // If AO3UserScriptMenu is present, register with shared menu
     if (
       window.AO3UserScriptMenu &&
       typeof window.AO3UserScriptMenu.register === "function"
     ) {
-      if (CONFIG.enableReadingTime) {
+      if (showMenuOptions && CONFIG.enableReadingTime) {
         window.AO3UserScriptMenu.register({
           label: "Reading Time: Calculate",
           onClick: calculateReadtime,
         });
       }
-      if (CONFIG.enableQualityScore) {
+      if (showMenuOptions && CONFIG.enableQualityScore) {
         window.AO3UserScriptMenu.register({
           label: "Quality Score: Calculate Scores",
           onClick: countRatio,
@@ -681,10 +698,10 @@
         return item;
       };
 
-      if (CONFIG.enableReadingTime) {
+      if (showMenuOptions && CONFIG.enableReadingTime) {
         addMenuItem("Calculate Reading Time", calculateReadtime);
       }
-      if (CONFIG.enableQualityScore) {
+      if (showMenuOptions && CONFIG.enableQualityScore) {
         addMenuItem("Calculate Quality Scores", countRatio);
         addMenuItem("Sort by Quality Score", () => sortByRatio());
       }

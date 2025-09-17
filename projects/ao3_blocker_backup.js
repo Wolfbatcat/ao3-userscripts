@@ -57,9 +57,10 @@
   }
   
   .ao3-blocker-unhide .ao3-blocker-fold {
-    border-bottom: 1px dashed;
-    margin-bottom: 15px;
-    padding-bottom: 5px;
+      border-bottom: 1px dashed;
+      border-bottom-color: inherit;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
   }
   
   button.ao3-blocker-toggle {
@@ -207,6 +208,16 @@
         "type": "text",
         "default": ""
       },
+      "blockComplete": {
+        "label": "Block Complete Works",
+        "type": "checkbox",
+        "default": false
+      },
+      "blockOngoing": {
+        "label": "Block Ongoing Works",
+        "type": "checkbox",
+        "default": false
+      },
       "authorBlacklist": {
         "label": "Author Blacklist",
         "type": "text",
@@ -308,7 +319,9 @@
             return Number.isFinite(n) ? n : null;
           })(),
           "disableOnBookmarks": GM_config.get("disableOnBookmarks"),
-          "disableOnCollections": GM_config.get("disableOnCollections")
+          "disableOnCollections": GM_config.get("disableOnCollections"),
+          "blockComplete": GM_config.get("blockComplete"),
+          "blockOngoing": GM_config.get("blockOngoing")
         }
 
         
@@ -471,12 +484,13 @@ function addBlockerToSharedMenu() {
     });
 
     // --- Help text toggle state ---
-    let showHelp = window.ao3Blocker.showHelp;
-    if (typeof showHelp === 'undefined') showHelp = true;
+  let showHelp = window.ao3Blocker.showHelp;
+  // Default to true if not set (checked by default)
+  if (typeof showHelp === 'undefined') showHelp = true;
 
     // --- Build the menu content ---
     dialog.html(`
-      <h3 style="text-align: center; margin-top: 0; color: inherit;">⚙️ Advanced Blocker Settings ⚙️</h3>
+      <h3 style="text-align: center; margin-top: 0; color: inherit;">🛡️ Advanced Blocker Settings 🛡️</h3>
       <div style="text-align:right;margin-bottom:8px;">
         <label style="font-size:0.95em;cursor:pointer;">
           <input type="checkbox" id="ao3-blocker-help-toggle" ${showHelp ? 'checked' : ''}>
@@ -484,9 +498,9 @@ function addBlockerToSharedMenu() {
         </label>
       </div>
 
+      <!-- 1. Tag Filtering -->
       <div class="settings-section">
-        <h4 class="section-title">📑 General Filtering</h4>
-
+        <h4 class="section-title">Tag Filtering 🔖</h4>
         <div class="setting-group">
           <label class="setting-label" for="tag-blacklist-input">Blacklist Tags</label>
           <span class="setting-description ao3-blocker-inline-help" style="display:${showHelp ? 'block' : 'none'};">
@@ -494,7 +508,6 @@ function addBlockerToSharedMenu() {
           </span>
           <textarea id="tag-blacklist-input" placeholder="Explicit, Major Character Death, Abandoned, Time Travel" title="Blocks if any tag matches. * is a wildcard.">${GM_config.get("tagBlacklist")}</textarea>
         </div>
-
         <div class="setting-group">
           <label class="setting-label" for="tag-whitelist-input">Whitelist Tags</label>
           <span class="setting-description ao3-blocker-inline-help" style="display:${showHelp ? 'block' : 'none'};">
@@ -502,63 +515,80 @@ function addBlockerToSharedMenu() {
           </span>
           <textarea id="tag-whitelist-input" placeholder="Happy Ending, Angst with a Happy Ending, Comedy" title="Always shows the work, even if blacklisted.">${GM_config.get("tagWhitelist")}</textarea>
         </div>
-
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="tag-highlights-input">Highlight Tags
-              <span class="symbol question" title="Keep and mark works with these tags."><span>?</span></span>
+              <span class="symbol question" title="Make these works stand out."><span>?</span></span>
             </label>
             <textarea id="tag-highlights-input" placeholder="Hurt/Comfort, Found Family, Slow Burn" title="Keep and mark works with these tags.">${GM_config.get("tagHighlights")}</textarea>
           </div>
           <div class="setting-group">
             <label class="setting-label" for="highlight-color-input">Highlight Color
-              <span class="symbol question" title="Pick the highlight color."><span>?</span></span>
+              <span class="symbol question" title="Pick a background color for these works."><span>?</span></span>
             </label>
             <input type="color" id="highlight-color-input" value="${GM_config.get("highlightColor") || "#fff9b1"}" title="Pick the highlight color.">
           </div>
         </div>
+      </div>
 
+
+      <!-- 3. Work Filtering -->
+      <div class="settings-section">
+        <h4 class="section-title">Work Filtering 📝</h4>
         <div class="two-column">
-          <div class="setting-group">
-            <label class="setting-label" for="min-words-input">Min Words
-              <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
-            </label>
-            <input id="min-words-input" type="text" style="width:100%;" placeholder="e.g. 1000" value="${GM_config.get("minWords") || ''}" title="Hide works under this many words.">
+          <div>
+            <div class="setting-group">
+              <label class="setting-label" for="allowed-languages-input">Allowed Languages
+                <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
+              </label>
+              <input id="allowed-languages-input" type="text"
+                     placeholder="english, Русский, 中文-普通话 國語"
+                     value="${GM_config.get("allowedLanguages") || ""}"
+                     title="Only show these languages. Leave empty for all.">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label" for="min-words-input">Min Words
+                <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
+              </label>
+              <input id="min-words-input" type="text" style="width:100%;" placeholder="e.g. 1000" value="${GM_config.get("minWords") || ''}" title="Hide works under this many words.">
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label" for="block-ongoing-checkbox">
+                <input type="checkbox" id="block-ongoing-checkbox" ${GM_config.get("blockOngoing") ? "checked" : ""}>
+                Block Ongoing Works
+                <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
+              </label>
+            </div>
           </div>
-          <div class="setting-group">
-            <label class="setting-label" for="max-words-input">Max Words
-              <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
-            </label>
-            <input id="max-words-input" type="text" style="width:100%;" placeholder="e.g. 100000" value="${GM_config.get("maxWords") || ''}" title="Hide works over this many words.">
+          <div>
+            <div class="setting-group">
+              <label class="setting-label" for="max-crossovers-input">Max Fandoms
+                <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
+              </label>
+              <input id="max-crossovers-input" type="number" min="1" step="1" 
+                     value="${GM_config.get("maxCrossovers") || ''}" 
+                     title="Hide works with more than this many fandoms.">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label" for="max-words-input">Max Words
+                <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
+              </label>
+              <input id="max-words-input" type="text" style="width:100%;" placeholder="e.g. 100000" value="${GM_config.get("maxWords") || ''}" title="Hide works over this many words.">
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label" for="block-complete-checkbox">
+                <input type="checkbox" id="block-complete-checkbox" ${GM_config.get("blockComplete") ? "checked" : ""}>
+                Block Complete Works
+                <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- 4. Author & Content Filtering -->
       <div class="settings-section">
-        <h4 class="section-title">🌐 Language & Fandom Settings</h4>
-        <div class="two-column">
-          <div class="setting-group">
-            <label class="setting-label" for="allowed-languages-input">Allowed Languages
-              <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
-            </label>
-            <input id="allowed-languages-input" type="text"
-                   placeholder="english, Русский, 中文-普通话 國語"
-                   value="${GM_config.get("allowedLanguages") || ""}"
-                   title="Only show these languages. Leave empty for all.">
-          </div>
-          <div class="setting-group">
-            <label class="setting-label" for="max-crossovers-input">Max Fandoms
-              <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
-            </label>
-            <input id="max-crossovers-input" type="number" min="1" step="1" 
-                   value="${GM_config.get("maxCrossovers") || ''}" 
-                   title="Hide works with more than this many fandoms.">
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <h4 class="section-title">📝 Work Content Filtering</h4>
+        <h4 class="section-title">Author & Content Filtering ✍️</h4>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="author-blacklist-input">Blacklist Authors
@@ -581,8 +611,9 @@ function addBlockerToSharedMenu() {
         </div>
       </div>
 
+      <!-- 4. Display Options -->
       <div class="settings-section">
-        <h4 class="section-title">👁️ Display Options</h4>
+        <h4 class="section-title">Display Options ⚙️</h4>
         <div class="two-column">
           <div>
             <div class="setting-group">
@@ -633,6 +664,7 @@ function addBlockerToSharedMenu() {
         </div>
       </div>
 
+      <!-- 6. Import/Export & Reset -->
       <div class="button-group">
         <button id="blocker-save">Save Settings</button>
         <button id="blocker-cancel">Cancel</button>
@@ -654,7 +686,12 @@ function addBlockerToSharedMenu() {
         const fields = GM_config.fields;
         const data = {};
         Object.keys(fields).forEach(key => {
-          data[key] = GM_config.get(key);
+          // Always include all options, using current value if set, otherwise default
+          let val = GM_config.get(key);
+          if (typeof val === 'undefined') {
+            val = fields[key].default;
+          }
+          data[key] = val;
         });
         // Get today's date in YYYY-MM-DD format
         const now = new Date();
@@ -723,7 +760,7 @@ function addBlockerToSharedMenu() {
 
     // Save button handler
     dialog.find("#blocker-save").on("click", () => {
-      // Get all values
+    // Get all values
   GM_config.set("tagBlacklist", dialog.find("#tag-blacklist-input").val());
   GM_config.set("tagWhitelist", dialog.find("#tag-whitelist-input").val());
   GM_config.set("tagHighlights", dialog.find("#tag-highlights-input").val());
@@ -739,6 +776,8 @@ function addBlockerToSharedMenu() {
   GM_config.set("maxCrossovers", dialog.find("#max-crossovers-input").val());
   GM_config.set("minWords", dialog.find("#min-words-input").val());
   GM_config.set("maxWords", dialog.find("#max-words-input").val());
+  GM_config.set("blockComplete", dialog.find("#block-complete-checkbox").is(":checked"));
+  GM_config.set("blockOngoing", dialog.find("#block-ongoing-checkbox").is(":checked"));
   GM_config.set("disableOnBookmarks", dialog.find("#disable-on-bookmarks-checkbox").is(":checked"));
   GM_config.set("disableOnCollections", dialog.find("#disable-on-collections-checkbox").is(":checked"));
       // Save help toggle state (off after save)
@@ -822,6 +861,9 @@ function addBlockerToSharedMenu() {
     if (showReasons && reasons && reasons.length > 0) {
       const parts = [];
       reasons.forEach((reason) => {
+        if (reason.completionStatus) {
+          parts.push(`<em>${reason.completionStatus}</em>`);
+        }
         if (reason.wordCount) {
           parts.push(`<em>${reason.wordCount}</em>`);
         }
@@ -899,6 +941,9 @@ function addBlockerToSharedMenu() {
     const reasonTexts = [];
 
     reasons.forEach((reason) => {
+      if (reason.completionStatus) {
+        reasonTexts.push(reason.completionStatus);
+      }
       if (reason.wordCount) {
         reasonTexts.push(reason.wordCount);
       }
@@ -1023,6 +1068,7 @@ function addBlockerToSharedMenu() {
 
 
   function getBlockReason(_ref, _ref2) {
+  const completionStatus = _ref.completionStatus;
 
     const authors = _ref.authors === undefined ? [] : _ref.authors,
       title = _ref.title === undefined ? "" : _ref.title,
@@ -1040,6 +1086,15 @@ function addBlockerToSharedMenu() {
       maxCrossovers = _ref2.maxCrossovers === undefined ? 0 : _ref2.maxCrossovers,
       minWords = _ref2.minWords === undefined ? null : _ref2.minWords,
       maxWords = _ref2.maxWords === undefined ? null : _ref2.maxWords;
+    const blockComplete = _ref2.blockComplete === undefined ? false : _ref2.blockComplete;
+    const blockOngoing = _ref2.blockOngoing === undefined ? false : _ref2.blockOngoing;
+    // Completion status filter
+    if (blockComplete && completionStatus === 'complete') {
+      return [{ completionStatus: 'Status: Complete' }];
+    }
+    if (blockOngoing && completionStatus === 'ongoing') {
+      return [{ completionStatus: 'Status: Ongoing' }];
+    }
 
   const reasons = [];
     // Word count filter (after whitelist check, before other reasons)
@@ -1052,10 +1107,10 @@ function addBlockerToSharedMenu() {
         return null;
       })();
       if (wcHit) {
-        // Reason string: Word count: 480 < 1000 or Word count: 128,400 > 100,000
+        // Reason string: Words: 480 < 1000 or Words: 128,400 > 100,000
         const wcStr = wc?.toLocaleString?.() ?? wc;
         const limStr = wcHit.limit?.toLocaleString?.() ?? wcHit.limit;
-        reasons.push({ wordCount: `Word count: ${wcStr} ${wcHit.over ? '>' : '<'} ${limStr}` });
+        reasons.push({ wordCount: `Words: ${wcStr} ${wcHit.over ? '>' : '<'} ${limStr}` });
       }
     }
 
@@ -1153,6 +1208,59 @@ function addBlockerToSharedMenu() {
 
   function selectFromBlurb(blurb) {
     const fandoms = $(blurb).find('h5.fandoms.heading a.tag');
+    // Parse completion status from chapters
+    let completionStatus = null;
+    // AO3 chapter markup: <dd class="chapters"><a>14</a>/25</dd>, <dd class="chapters">1/1</dd>, <dd class="chapters">7/?</dd>
+    let chaptersNum = null, chaptersDenom = null;
+    const chaptersNode = $(blurb).find('dd.chapters').first();
+    if (chaptersNode.length) {
+      // Try to get numerator and denominator from <a> and text node (old logic)
+      const a = chaptersNode.find('a').first();
+      if (a.length) {
+        chaptersNum = a.text().trim();
+        // Get denominator: text after the <a>
+        let raw = chaptersNode.html();
+        raw = raw.replace(/<a[^>]*>.*?<\/a>/, '');
+        raw = raw.replace(/&nbsp;/gi, ' ');
+        // Match e.g. '/?', '/ ?', '/ 27', etc. (allow spaces)
+        const match = raw.match(/\/\s*([\d\?]+)/);
+        if (match) {
+          chaptersDenom = match[1].trim();
+        }
+      } else {
+        // No <a>, so try to parse plain text like '1/1', '7/?', etc.
+        let txt = chaptersNode.text().replace(/&nbsp;/gi, ' ').trim();
+        // Match e.g. '1/1', '7/?', '12 / 27', '20 / ?'
+        const match = txt.match(/^(\d+)\s*\/\s*([\d\?]+)/);
+        if (match) {
+          chaptersNum = match[1].trim();
+          chaptersDenom = match[2].trim();
+        }
+      }
+    }
+    if (chaptersNum && chaptersDenom) {
+      // Always treat '?' as ongoing
+      if (chaptersDenom === '?') {
+        completionStatus = 'ongoing';
+      } else {
+        // Try to parse both as numbers
+        const current = parseInt(chaptersNum.replace(/\D/g, ''), 10);
+        const total = parseInt(chaptersDenom.replace(/\D/g, ''), 10);
+        if (!isNaN(current) && !isNaN(total)) {
+          if (current < total) {
+            completionStatus = 'ongoing';
+          } else if (current === total) {
+            completionStatus = 'complete';
+          } else if (current > total) {
+            // Defensive: if current > total, treat as ongoing (edge case)
+            completionStatus = 'ongoing';
+          }
+        } else {
+          // If denominator is not '?', but not a number, treat as ongoing (defensive)
+          completionStatus = 'ongoing';
+        }
+      }
+    }
     return {
       authors: selectTextsIn(blurb, "a[rel=author]"),
       tags: [].concat(selectTextsIn(blurb, "a.tag"), selectTextsIn(blurb, ".required-tags .text")),
@@ -1160,7 +1268,8 @@ function addBlockerToSharedMenu() {
       summary: selectTextsIn(blurb, "blockquote.summary")[0],
       language: selectTextsIn(blurb, "dd.language")[0],
       fandomCount: fandoms.length,
-      wordCount: getWordCount($(blurb))
+      wordCount: getWordCount($(blurb)),
+      completionStatus: completionStatus
     };
   }
 
@@ -1188,9 +1297,14 @@ function addBlockerToSharedMenu() {
       /^\/users\/[^\/]+\/?$/.test(window.location.pathname) ||
       /^\/users\/[^\/]+\/pseuds\/[^\/]+\/?$/.test(window.location.pathname)
     );
-    if (isUserDashboard) {
+    // Exclude user works and drafts pages
+    const isUserWorksOrDraftsPage = (
+      /^\/users\/[^\/]+\/works\/?$/.test(window.location.pathname) ||
+      /^\/users\/[^\/]+\/works\/drafts\/?$/.test(window.location.pathname)
+    );
+    if (isUserDashboard || isUserWorksOrDraftsPage) {
       if (debugMode) {
-        console.info("Advanced Blocker: Skipping user dashboard page.");
+        console.info("Advanced Blocker: Skipping user dashboard, user works, or user drafts page.");
       }
       return;
     }
@@ -1205,6 +1319,13 @@ function addBlockerToSharedMenu() {
       const isWorkOrBookmark = (blurb.hasClass("work") || blurb.hasClass("bookmark")) && !blurb.hasClass("picture");
       let reason = null;
       let blockables = selectFromBlurb(blurb);
+      if (debugMode && isWorkOrBookmark) {
+        // Log parsed completion status and config for each work
+        console.log(`[AO3 Blocker][DEBUG] Work ID: ${blurb.attr("id") || "(no id)"}`);
+        console.log(`[AO3 Blocker][DEBUG] Parsed completionStatus:`, blockables.completionStatus);
+        console.log(`[AO3 Blocker][DEBUG] blockComplete:`, config.blockComplete, `blockOngoing:`, config.blockOngoing);
+        console.log(`[AO3 Blocker][DEBUG] All blockables:`, blockables);
+      }
       // Only block if not on bookmarks/collections page or disabling is off
       if (isWorkOrBookmark && !((isBookmarksPage && disableOnBookmarks) || (isCollectionsPage && disableOnCollections))) {
         reason = getBlockReason(blockables, config);
@@ -1230,8 +1351,8 @@ function addBlockerToSharedMenu() {
           // Set the highlight color with !important using inline style (for maximum override)
           const color = config.highlightColor || '#fff9b1';
           blurb[0].setAttribute('style', (blurb[0].getAttribute('style') || '') + `;background-color:${color} !important;`);
-          // Only add style if blurb[0].id is non-empty
-          if (blurb[0].id) {
+          // Only add style if blurb[0].id is non-empty and not just whitespace
+          if (blurb[0].id && blurb[0].id.trim() !== "") {
             const styleId = 'ao3-blocker-style-' + blurb[0].id;
             if (!document.getElementById(styleId)) {
               const style = document.createElement('style');
