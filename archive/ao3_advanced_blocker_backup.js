@@ -5,19 +5,25 @@
 // @namespace     
 // @license       MIT
 // @match         http*://archiveofourown.org/*
-// @version       1
+// @version       1.1
 // @require       https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require       https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js
 // @grant         GM.getValue
 // @grant         GM.setValue
 // @run-at        document-end
+// @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
+// @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
 
 /* globals $, GM_config */
 
-(function () {
+;(function () {
   "use strict";
   window.ao3Blocker = {};
+    // Startup message
+    try {
+      console.log("[AO3: Advanced Blocker] loaded.");
+    } catch (e) {}
 
   // Define the CSS namespace. All CSS classes are prefixed with this.
   const CSS_NAMESPACE = "ao3-blocker";
@@ -65,6 +71,21 @@
   
   button.ao3-blocker-toggle {
     margin-left: auto;
+    min-width: inherit;
+    min-height: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
+  }
+
+  .ao3-blocker-toggle span {
+    width: 1em !important;
+    height: 1em !important;
+    display: inline-block;
+    vertical-align: -0.15em;
+    margin-right: 0.2em;
+    background-color: currentColor;
   }
 
   /* Settings menu styles */
@@ -243,11 +264,7 @@
         "type": "checkbox",
         "default": true
       },
-      "alertOnVisit": {
-        "label": "Alert When Opening Blocked Work",
-        "type": "checkbox",
-        "default": false
-      },
+      // Removed: alertOnVisit
       "debugMode": {
         "label": "Debug Mode",
         "type": "checkbox",
@@ -287,7 +304,7 @@
         window.ao3Blocker.config = {
           "showReasons": GM_config.get("showReasons"),
           "showPlaceholders": GM_config.get("showPlaceholders"),
-          "alertOnVisit": GM_config.get("alertOnVisit"),
+          // Removed: alertOnVisit
           "authorBlacklist": GM_config.get("authorBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
           "titleBlacklist": GM_config.get("titleBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
           "tagBlacklist": GM_config.get("tagBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
@@ -325,23 +342,63 @@
         }
 
         
-        // Try to join the shared "Userscripts" menu non-destructively; fallback to legacy menu
-        ;(function initBlockerMenu() {
-          function safeInit() {
-            try {
-              if (!addBlockerToSharedMenu()) {
-                try { if (!addBlockerToSharedMenu()) { try { addMenu(); } catch(_) {} } } catch (_) {}
-              }
-            } catch (e) {
-              try { if (!addBlockerToSharedMenu()) { try { addMenu(); } catch(_) {} } } catch (_) {}
+
+        // --- SHARED MENU REGISTRATION (MATCH ao3_chapter_shortcuts.js) ---
+        function registerBlockerMenu() {
+          if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === "function") {
+            window.AO3UserScriptMenu.register({
+              label: "Advanced Blocker",
+              onClick: showBlockerMenu
+            });
+            return true;
+          }
+          // Fallback: legacy direct DOM method (only if shared menu truly missing)
+          const headerMenu = document.querySelector("ul.primary.navigation.actions");
+          const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
+          if (!headerMenu || !searchItem) return false;
+          let menuContainer = document.getElementById('ao3-userscript-menu');
+          if (!menuContainer) {
+            menuContainer = document.createElement("li");
+            menuContainer.className = "dropdown";
+            menuContainer.id = "ao3-userscript-menu";
+            const title = document.createElement("a");
+            title.href = "#";
+            title.textContent = "Userscripts";
+            menuContainer.appendChild(title);
+            const menu = document.createElement("ul");
+            menu.className = "menu dropdown-menu";
+            menuContainer.appendChild(menu);
+            headerMenu.insertBefore(menuContainer, searchItem);
+          }
+          const menu = menuContainer.querySelector("ul.menu");
+          if (menu) {
+            let li = menu.querySelector("#ao3-blocker-menu-item");
+            if (!li) {
+              li = document.createElement("li");
+              li.id = "ao3-blocker-menu-item";
+              const a = document.createElement("a");
+              a.href = "#";
+              a.textContent = "Advanced Blocker";
+              a.addEventListener("click", function (e) {
+                e.preventDefault();
+                try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
+              });
+              li.appendChild(a);
+              menu.appendChild(li);
             }
           }
-          if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", safeInit);
-          } else {
-            safeInit();
-          }
-        })();
+          return true;
+        }
+
+        // Register menu after DOMContentLoaded (robust, idempotent)
+        function initBlockerMenu() {
+          registerBlockerMenu();
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initBlockerMenu);
+        } else {
+          initBlockerMenu();
+        }
 
         addStyle();
         setTimeout(() => {
@@ -356,68 +413,52 @@
 
   // addMenu() - Add a custom menu to the AO3 menu bar to control our configuration options
 
-// --- NON-DESTRUCTIVE SHARED MENU ATTACH ---
-function addBlockerToSharedMenu() {
-  // 1) Try to find an existing "Userscripts" dropdown UL
-  let menuList =
-    document.querySelector("#ao3-userscript-menu ul.menu") ||
-    (function () {
-      const headerMenu = document.querySelector("ul.primary.navigation.actions");
-      if (!headerMenu) return null;
-      // Try to find a dropdown whose <a> text is "Userscripts"
-      const dropdowns = headerMenu.querySelectorAll("li.dropdown");
-      for (const li of dropdowns) {
-        const a = li.querySelector(":scope > a");
-        const ul = li.querySelector(":scope > ul.menu");
-        if (a && ul && a.textContent && a.textContent.trim().toLowerCase() === "userscripts") {
-          return ul;
-        }
-      }
-      return null;
-    })();
 
-  // 2) If no shared menu exists, create one (but do NOT clear or touch others)
-  if (!menuList) {
-    const headerMenu = document.querySelector("ul.primary.navigation.actions");
-    const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-    if (!headerMenu || !searchItem) {
-      // No AO3 header yet: bail; caller can retry later or fall back
-      return false;
-    }
-    const container = document.createElement("li");
-    container.className = "dropdown";
-    container.id = "ao3-userscript-menu";
+// --- SHARED MENU REGISTRATION ---
+function addBlockerToSharedMenu() {
+  if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === "function") {
+    window.AO3UserScriptMenu.register({
+      label: "Advanced Blocker",
+      onClick: showBlockerMenu
+    });
+    return true;
+  }
+  // Fallback: legacy direct DOM method
+  const headerMenu = document.querySelector("ul.primary.navigation.actions");
+  const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
+  if (!headerMenu || !searchItem) {
+    return false;
+  }
+  let menuContainer = document.getElementById('ao3-userscript-menu');
+  if (!menuContainer) {
+    menuContainer = document.createElement("li");
+    menuContainer.className = "dropdown";
+    menuContainer.id = "ao3-userscript-menu";
     const title = document.createElement("a");
     title.href = "#";
     title.textContent = "Userscripts";
-    const ul = document.createElement("ul");
-    ul.className = "menu dropdown-menu";
-    container.appendChild(title);
-    container.appendChild(ul);
-    headerMenu.insertBefore(container, searchItem);
-    menuList = ul;
+    menuContainer.appendChild(title);
+    const menu = document.createElement("ul");
+    menu.className = "menu dropdown-menu";
+    menuContainer.appendChild(menu);
+    headerMenu.insertBefore(menuContainer, searchItem);
   }
-
-  // 3) Add (or refresh) ONLY our own menu item — do not rebuild the whole list
-  const ITEM_ID = "ao3-blocker-menu-item";
-  let li = menuList.querySelector("#" + ITEM_ID);
-  if (!li) {
-    li = document.createElement("li");
-    li.id = ITEM_ID;
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = "Advanced Blocker";
-    a.addEventListener("click", function (e) {
-      e.preventDefault();
-      try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
-    });
-    li.appendChild(a);
-    menuList.appendChild(li);
-  } else {
-    // If it already exists, make sure the click still works (in case of SPA nav)
-    const a = li.querySelector("a");
-    if (a) {
-      a.onclick = function (e) { e.preventDefault(); try { showBlockerMenu(); } catch (err) { console.error(err); } };
+  const menu = menuContainer.querySelector("ul.menu");
+  if (menu) {
+    // Only add if not already present
+    let li = menu.querySelector("#ao3-blocker-menu-item");
+    if (!li) {
+      li = document.createElement("li");
+      li.id = "ao3-blocker-menu-item";
+      const a = document.createElement("a");
+      a.href = "#";
+      a.textContent = "Advanced Blocker";
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
+      });
+      li.appendChild(a);
+      menu.appendChild(li);
     }
   }
   return true;
@@ -483,34 +524,23 @@ function addBlockerToSharedMenu() {
       boxSizing: 'border-box'
     });
 
-    // --- Help text toggle state ---
-  let showHelp = window.ao3Blocker.showHelp;
-  // Default to true if not set (checked by default)
-  if (typeof showHelp === 'undefined') showHelp = true;
-
     // --- Build the menu content ---
     dialog.html(`
       <h3 style="text-align: center; margin-top: 0; color: inherit;">🛡️ Advanced Blocker Settings 🛡️</h3>
-      <div style="text-align:right;margin-bottom:8px;">
-        <label style="font-size:0.95em;cursor:pointer;">
-          <input type="checkbox" id="ao3-blocker-help-toggle" ${showHelp ? 'checked' : ''}>
-          Show help text
-        </label>
-      </div>
 
       <!-- 1. Tag Filtering -->
       <div class="settings-section">
         <h4 class="section-title">Tag Filtering 🔖</h4>
         <div class="setting-group">
           <label class="setting-label" for="tag-blacklist-input">Blacklist Tags</label>
-          <span class="setting-description ao3-blocker-inline-help" style="display:${showHelp ? 'block' : 'none'};">
+          <span class="setting-description ao3-blocker-inline-help" style="display:block;">
             Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms.
           </span>
           <textarea id="tag-blacklist-input" placeholder="Explicit, Major Character Death, Abandoned, Time Travel" title="Blocks if any tag matches. * is a wildcard.">${GM_config.get("tagBlacklist")}</textarea>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="tag-whitelist-input">Whitelist Tags</label>
-          <span class="setting-description ao3-blocker-inline-help" style="display:${showHelp ? 'block' : 'none'};">
+          <span class="setting-description ao3-blocker-inline-help" style="display:block;">
             Always shows the work even if it matches the blacklist.
           </span>
           <textarea id="tag-whitelist-input" placeholder="Happy Ending, Angst with a Happy Ending, Comedy" title="Always shows the work, even if blacklisted.">${GM_config.get("tagWhitelist")}</textarea>
@@ -632,11 +662,12 @@ function addBlockerToSharedMenu() {
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="alert-on-visit-checkbox" ${GM_config.get("alertOnVisit") ? "checked" : ""}>
-                Warn on Open
-                <span class="symbol question" title="Popup if you open a blocked work."><span>?</span></span>
+                <input type="checkbox" id="debug-mode-checkbox" ${GM_config.get("debugMode") ? "checked" : ""}>
+                Debug Mode
+                <span class="symbol question" title="Log details to the console."><span>?</span></span>
               </label>
             </div>
+            <!-- Removed: Warn on Open setting -->
           </div>
           <div>
             <div class="setting-group">
@@ -653,13 +684,7 @@ function addBlockerToSharedMenu() {
                 <span class="symbol question" title="If checked, works will not be blocked on collections pages. Highlighting still works."><span>?</span></span>
               </label>
             </div>
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="debug-mode-checkbox" ${GM_config.get("debugMode") ? "checked" : ""}>
-                Debug Mode
-                <span class="symbol question" title="Log details to the console."><span>?</span></span>
-              </label>
-            </div>
+            <!-- Debug Mode moved above -->
           </div>
         </div>
       </div>
@@ -749,12 +774,6 @@ function addBlockerToSharedMenu() {
       };
       reader.readAsText(file);
     });
-    // --- Help toggle logic ---
-    dialog.find('#ao3-blocker-help-toggle').on('change', function() {
-      const show = $(this).is(':checked');
-      window.ao3Blocker.showHelp = show;
-      dialog.find('.ao3-blocker-inline-help').css('display', show ? 'block' : 'none');
-    });
 
     $("body").append(dialog);
 
@@ -769,7 +788,7 @@ function addBlockerToSharedMenu() {
   GM_config.set("summaryBlacklist", dialog.find("#summary-blacklist-input").val());
   GM_config.set("showReasons", dialog.find("#show-reasons-checkbox").is(":checked"));
   GM_config.set("showPlaceholders", dialog.find("#show-placeholders-checkbox").is(":checked"));
-  GM_config.set("alertOnVisit", dialog.find("#alert-on-visit-checkbox").is(":checked"));
+  // Removed: alertOnVisit
   GM_config.set("debugMode", dialog.find("#debug-mode-checkbox").is(":checked"));
   GM_config.set("highlightColor", dialog.find("#highlight-color-input").val());
   GM_config.set("allowedLanguages", dialog.find("#allowed-languages-input").val());
@@ -807,7 +826,7 @@ function addBlockerToSharedMenu() {
         // Display Options checkboxes: set Show Block Reason and Show Work Placeholder checked, others unchecked
         dialog.find("#show-reasons-checkbox").prop("checked", true);
         dialog.find("#show-placeholders-checkbox").prop("checked", true);
-        dialog.find("#alert-on-visit-checkbox").prop("checked", false);
+  // Removed: alertOnVisit
         dialog.find("#debug-mode-checkbox").prop("checked", false);
         dialog.find("#disable-on-bookmarks-checkbox").prop("checked", false);
         dialog.find("#disable-on-collections-checkbox").prop("checked", false);
@@ -1133,8 +1152,6 @@ function addBlockerToSharedMenu() {
       return [{ crossovers: fandomCount }];
     }
 
-  // (removed duplicate declaration)
-
     // Check for blocked tags (collect all matching tags)
     const blockedTags = [];
     tags.forEach((tag) => {
@@ -1321,10 +1338,10 @@ function addBlockerToSharedMenu() {
       let blockables = selectFromBlurb(blurb);
       if (debugMode && isWorkOrBookmark) {
         // Log parsed completion status and config for each work
-        console.log(`[AO3 Blocker][DEBUG] Work ID: ${blurb.attr("id") || "(no id)"}`);
-        console.log(`[AO3 Blocker][DEBUG] Parsed completionStatus:`, blockables.completionStatus);
-        console.log(`[AO3 Blocker][DEBUG] blockComplete:`, config.blockComplete, `blockOngoing:`, config.blockOngoing);
-        console.log(`[AO3 Blocker][DEBUG] All blockables:`, blockables);
+        console.log(`[Advanced Blocker][DEBUG] Work ID: ${blurb.attr("id") || "(no id)"}`);
+        console.log(`[Advanced Blocker][DEBUG] Parsed completionStatus:`, blockables.completionStatus);
+        console.log(`[Advanced Blocker][DEBUG] blockComplete:`, config.blockComplete, `blockOngoing:`, config.blockOngoing);
+        console.log(`[Advanced Blocker][DEBUG] All blockables:`, blockables);
       }
       // Only block if not on bookmarks/collections page or disabling is off
       if (isWorkOrBookmark && !((isBookmarksPage && disableOnBookmarks) || (isCollectionsPage && disableOnCollections))) {
@@ -1370,17 +1387,7 @@ function addBlockerToSharedMenu() {
       });
     });
 
-    // If this is a work page, the work was navigated to from another site (i.e. an external link), and the user had block alerts enabled, show a warning.
-    if (config.alertOnVisit && workContainer && document.referrer.indexOf("//archiveofourown.org") === -1) {
-
-      const blockables = selectFromWork(workContainer);
-      const reason = getBlockReason(blockables, config);
-
-      if (reason) {
-        blocked++;
-        blockWork(workContainer, reason, config);
-      }
-    }
+    // Removed: Warn on Open feature
 
     if (debugMode) {
       console.log(`Blocked ${blocked} out of ${total} works`);

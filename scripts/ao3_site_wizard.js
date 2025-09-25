@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
 // @version      1.1.1
-// @description  Adds some useful features to format the works pages.
+// @description  Change fonts across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        http://archiveofourown.org/*
 // @match        https://archiveofourown.org/*
+// @license      MIT
 // @grant        none
+// @run-at        document-start
 // ==/UserScript==
 
 (function () {
@@ -71,7 +73,7 @@
       style.id = styleId;
       document.head.appendChild(style);
     }
-    style.textContent = `#workskin p { max-width: ${percent}% !important; margin-left: auto !important; margin-right: auto !important; font-size: ${fontSize}% !important; text-align: ${textAlign} !important;${fontFamily ? ` font-family: ${fontFamily} !important;` : ""} margin-top: 0 !important; margin-bottom: ${gap}em !important; }`;
+  style.textContent = `#workskin p { max-width: ${percent}% !important; margin-left: auto !important; margin-right: auto !important; font-size: ${fontSize}% !important; text-align: ${textAlign} !important;${fontFamily ? ` font-family: ${fontFamily} !important;` : ""} margin-top: 0 !important; margin-bottom: ${gap}em !important; }`;
 
     // --- SITE-WIDE STYLES ---
     const siteStyleId = "ao3-sitewide-style";
@@ -92,32 +94,26 @@
     siteStyle.textContent = `
       html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
       ${generalSelectors} {
-        ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
-        ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight} !important;` : ""}
+        ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
+        ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight};` : ""}
       }
       ${headerSelectors} {
-        ${FORMATTER_CONFIG.headerFontFamily ? `font-family: ${FORMATTER_CONFIG.headerFontFamily} !important;` :
-          FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
-        ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight} !important;` : ""}
+        ${FORMATTER_CONFIG.headerFontFamily ? `font-family: ${FORMATTER_CONFIG.headerFontFamily};` :
+          FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
+        ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight};` : ""}
       }
       ${codeSelectors} {
-        ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily} !important;` : ""}
-        ${FORMATTER_CONFIG.codeFontStyle ? `font-style: ${FORMATTER_CONFIG.codeFontStyle} !important;` : ""}
-        ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize} !important;` : ""}
+        ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily};` : ""}
+        ${FORMATTER_CONFIG.codeFontStyle ? `font-style: ${FORMATTER_CONFIG.codeFontStyle};` : ""}
+        ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize};` : ""}
       }
     `;
-
-    // Add !important to all applicable settings for maximum override
+    // Ensure all font-related properties are always !important
     siteStyle.textContent = siteStyle.textContent
-      .replace(/(font-family:[^;]+;)/g, "$1 !important;")
-      .replace(/(font-weight:[^;]+;)/g, "$1 !important;")
-      .replace(/(font-size:[^;]+;)/g, "$1 !important;")
-      .replace(/(font-style:[^;]+;)/g, "$1 !important;");
-
-    // Fix paragraph spacing if enabled
-    if (FORMATTER_CONFIG.fixParagraphSpacing) {
-      fixParagraphSpacing();
-    }
+      .replace(/(font-family:[^;]+)(;)/g, '$1 !important$2')
+      .replace(/(font-weight:[^;]+)(;)/g, '$1 !important$2')
+      .replace(/(font-size:[^;]+)(;)/g, '$1 !important$2')
+      .replace(/(font-style:[^;]+)(;)/g, '$1 !important$2');
   }
 
   // --- PARAGRAPH SPACING FIX ---
@@ -265,7 +261,7 @@
         text-align: center;
         font-weight: bold;
         color: inherit;
-        opacity: 0.8;
+        opacity: 0.6;
       }
 
       .ao3-formatter-menu-dialog .button-group {
@@ -292,7 +288,7 @@
     document.head.appendChild(style);
 
     dialog.innerHTML = `
-      <h3 style="text-align: center; margin-top: 0; color: inherit;">🪄 AO3 Wizard Settings 🪄</h3>
+      <h3 style="text-align: center; margin-top: 0; color: inherit;">🪄 Site Wizard Settings 🪄</h3>
 
       <div class="settings-section">
         <h4 class="section-title">📱 Site-Wide Display</h4>
@@ -541,7 +537,7 @@
 
     // Register this script's menu item
     window.AO3UserScriptMenu.register({
-      label: "AO3 Wizard Settings",
+      label: "Site Wizard Settings",
       onClick: showFormatterMenu
     });
   }
@@ -562,6 +558,54 @@
     });
 
     observer.observe(document.documentElement, { childList: true });
+  }
+
+  // Run fixParagraphSpacing independently on page load if enabled
+  function runParagraphSpacingFixIfEnabled() {
+    if (FORMATTER_CONFIG.fixParagraphSpacing) {
+      fixParagraphSpacing();
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runParagraphSpacingFixIfEnabled);
+  } else {
+    runParagraphSpacingFixIfEnabled();
+  }
+
+  // MutationObserver to process new .userstuff elements, only after document.body exists
+  function setupUserstuffObserver() {
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', setupUserstuffObserver);
+      return;
+    }
+    const userstuffObserver = new MutationObserver((mutations) => {
+      if (!FORMATTER_CONFIG.fixParagraphSpacing) return;
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) {
+            if (node.classList.contains('userstuff')) {
+              // Only process if not already fixed
+              if (!node.getAttribute('data-formatter-spacing-fixed')) {
+                fixParagraphSpacing();
+              }
+            } else {
+              // Check descendants
+              node.querySelectorAll && node.querySelectorAll('.userstuff').forEach((el) => {
+                if (!el.getAttribute('data-formatter-spacing-fixed')) {
+                  fixParagraphSpacing();
+                }
+              });
+            }
+          }
+        });
+      });
+    });
+    userstuffObserver.observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.body) {
+    setupUserstuffObserver();
+  } else {
+    document.addEventListener('DOMContentLoaded', setupUserstuffObserver);
   }
 
   // Initialize menu when DOM is ready

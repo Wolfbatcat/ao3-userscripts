@@ -5,19 +5,25 @@
 // @namespace     
 // @license       MIT
 // @match         http*://archiveofourown.org/*
-// @version       1
+// @version       1.1
 // @require       https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require       https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js
 // @grant         GM.getValue
 // @grant         GM.setValue
 // @run-at        document-end
+// @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
+// @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
 
 /* globals $, GM_config */
 
-(function () {
+;(function () {
   "use strict";
   window.ao3Blocker = {};
+    // Startup message
+    try {
+      console.log("[AO3: Advanced Blocker] loaded.");
+    } catch (e) {}
 
   // Define the CSS namespace. All CSS classes are prefixed with this.
   const CSS_NAMESPACE = "ao3-blocker";
@@ -65,6 +71,21 @@
   
   button.ao3-blocker-toggle {
     margin-left: auto;
+    min-width: inherit;
+    min-height: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2em;
+  }
+
+  .ao3-blocker-toggle span {
+    width: 1em !important;
+    height: 1em !important;
+    display: inline-block;
+    vertical-align: -0.15em;
+    margin-right: 0.2em;
+    background-color: currentColor;
   }
 
   /* Settings menu styles */
@@ -321,23 +342,63 @@
         }
 
         
-        // Try to join the shared "Userscripts" menu non-destructively; fallback to legacy menu
-        ;(function initBlockerMenu() {
-          function safeInit() {
-            try {
-              if (!addBlockerToSharedMenu()) {
-                try { if (!addBlockerToSharedMenu()) { try { addMenu(); } catch(_) {} } } catch (_) {}
-              }
-            } catch (e) {
-              try { if (!addBlockerToSharedMenu()) { try { addMenu(); } catch(_) {} } } catch (_) {}
+
+        // --- SHARED MENU REGISTRATION (MATCH ao3_chapter_shortcuts.js) ---
+        function registerBlockerMenu() {
+          if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === "function") {
+            window.AO3UserScriptMenu.register({
+              label: "Advanced Blocker",
+              onClick: showBlockerMenu
+            });
+            return true;
+          }
+          // Fallback: legacy direct DOM method (only if shared menu truly missing)
+          const headerMenu = document.querySelector("ul.primary.navigation.actions");
+          const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
+          if (!headerMenu || !searchItem) return false;
+          let menuContainer = document.getElementById('ao3-userscript-menu');
+          if (!menuContainer) {
+            menuContainer = document.createElement("li");
+            menuContainer.className = "dropdown";
+            menuContainer.id = "ao3-userscript-menu";
+            const title = document.createElement("a");
+            title.href = "#";
+            title.textContent = "Userscripts";
+            menuContainer.appendChild(title);
+            const menu = document.createElement("ul");
+            menu.className = "menu dropdown-menu";
+            menuContainer.appendChild(menu);
+            headerMenu.insertBefore(menuContainer, searchItem);
+          }
+          const menu = menuContainer.querySelector("ul.menu");
+          if (menu) {
+            let li = menu.querySelector("#ao3-blocker-menu-item");
+            if (!li) {
+              li = document.createElement("li");
+              li.id = "ao3-blocker-menu-item";
+              const a = document.createElement("a");
+              a.href = "#";
+              a.textContent = "Advanced Blocker";
+              a.addEventListener("click", function (e) {
+                e.preventDefault();
+                try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
+              });
+              li.appendChild(a);
+              menu.appendChild(li);
             }
           }
-          if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", safeInit);
-          } else {
-            safeInit();
-          }
-        })();
+          return true;
+        }
+
+        // Register menu after DOMContentLoaded (robust, idempotent)
+        function initBlockerMenu() {
+          registerBlockerMenu();
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initBlockerMenu);
+        } else {
+          initBlockerMenu();
+        }
 
         addStyle();
         setTimeout(() => {
@@ -352,68 +413,52 @@
 
   // addMenu() - Add a custom menu to the AO3 menu bar to control our configuration options
 
-// --- NON-DESTRUCTIVE SHARED MENU ATTACH ---
-function addBlockerToSharedMenu() {
-  // 1) Try to find an existing "Userscripts" dropdown UL
-  let menuList =
-    document.querySelector("#ao3-userscript-menu ul.menu") ||
-    (function () {
-      const headerMenu = document.querySelector("ul.primary.navigation.actions");
-      if (!headerMenu) return null;
-      // Try to find a dropdown whose <a> text is "Userscripts"
-      const dropdowns = headerMenu.querySelectorAll("li.dropdown");
-      for (const li of dropdowns) {
-        const a = li.querySelector(":scope > a");
-        const ul = li.querySelector(":scope > ul.menu");
-        if (a && ul && a.textContent && a.textContent.trim().toLowerCase() === "userscripts") {
-          return ul;
-        }
-      }
-      return null;
-    })();
 
-  // 2) If no shared menu exists, create one (but do NOT clear or touch others)
-  if (!menuList) {
-    const headerMenu = document.querySelector("ul.primary.navigation.actions");
-    const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-    if (!headerMenu || !searchItem) {
-      // No AO3 header yet: bail; caller can retry later or fall back
-      return false;
-    }
-    const container = document.createElement("li");
-    container.className = "dropdown";
-    container.id = "ao3-userscript-menu";
+// --- SHARED MENU REGISTRATION ---
+function addBlockerToSharedMenu() {
+  if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === "function") {
+    window.AO3UserScriptMenu.register({
+      label: "Advanced Blocker",
+      onClick: showBlockerMenu
+    });
+    return true;
+  }
+  // Fallback: legacy direct DOM method
+  const headerMenu = document.querySelector("ul.primary.navigation.actions");
+  const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
+  if (!headerMenu || !searchItem) {
+    return false;
+  }
+  let menuContainer = document.getElementById('ao3-userscript-menu');
+  if (!menuContainer) {
+    menuContainer = document.createElement("li");
+    menuContainer.className = "dropdown";
+    menuContainer.id = "ao3-userscript-menu";
     const title = document.createElement("a");
     title.href = "#";
     title.textContent = "Userscripts";
-    const ul = document.createElement("ul");
-    ul.className = "menu dropdown-menu";
-    container.appendChild(title);
-    container.appendChild(ul);
-    headerMenu.insertBefore(container, searchItem);
-    menuList = ul;
+    menuContainer.appendChild(title);
+    const menu = document.createElement("ul");
+    menu.className = "menu dropdown-menu";
+    menuContainer.appendChild(menu);
+    headerMenu.insertBefore(menuContainer, searchItem);
   }
-
-  // 3) Add (or refresh) ONLY our own menu item — do not rebuild the whole list
-  const ITEM_ID = "ao3-blocker-menu-item";
-  let li = menuList.querySelector("#" + ITEM_ID);
-  if (!li) {
-    li = document.createElement("li");
-    li.id = ITEM_ID;
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = "Advanced Blocker";
-    a.addEventListener("click", function (e) {
-      e.preventDefault();
-      try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
-    });
-    li.appendChild(a);
-    menuList.appendChild(li);
-  } else {
-    // If it already exists, make sure the click still works (in case of SPA nav)
-    const a = li.querySelector("a");
-    if (a) {
-      a.onclick = function (e) { e.preventDefault(); try { showBlockerMenu(); } catch (err) { console.error(err); } };
+  const menu = menuContainer.querySelector("ul.menu");
+  if (menu) {
+    // Only add if not already present
+    let li = menu.querySelector("#ao3-blocker-menu-item");
+    if (!li) {
+      li = document.createElement("li");
+      li.id = "ao3-blocker-menu-item";
+      const a = document.createElement("a");
+      a.href = "#";
+      a.textContent = "Advanced Blocker";
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
+      });
+      li.appendChild(a);
+      menu.appendChild(li);
     }
   }
   return true;
