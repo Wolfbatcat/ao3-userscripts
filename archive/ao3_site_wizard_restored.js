@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.1.6
+// @version      1.1.1
 // @description  Change fonts across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        http://archiveofourown.org/*
@@ -66,36 +66,15 @@
     const textAlign = FORMATTER_CONFIG.paragraphTextAlign;
     let fontFamily = FORMATTER_CONFIG.paragraphFontFamily;
     const gap = FORMATTER_CONFIG.paragraphGap;
-    const paraStyleId = "ao3-formatter-paragraph-style";
-    let paraStyle = document.getElementById(paraStyleId);
-    if (!paraStyle) {
-      paraStyle = document.createElement("style");
-      paraStyle.id = paraStyleId;
-      document.head.appendChild(paraStyle);
+    const styleId = "ao3-formatter-width-style";
+    let style = document.getElementById(styleId);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = styleId;
+      document.head.appendChild(style);
     }
-    // Always apply styles to #workskin if present
-    paraStyle.textContent = `
-      .userstuff {
-        text-align: ${textAlign || "left"} !important;
-      }
-      #workskin {
-        max-width: ${percent || 70}vw !important;
-        font-size: ${fontSize || 100}% !important;
-      }
-      #workskin p {
-        margin-bottom: ${gap || 1.286}em !important;
-        ${fontFamily ? `font-family: ${fontFamily} !important;` : ""}
-      }
-    `;
-    // If right alignment is selected, set dir="rtl" on #workskin
-    const workskin = document.getElementById('workskin');
-    if (workskin) {
-      if (textAlign === 'right') {
-        workskin.setAttribute('dir', 'rtl');
-      } else {
-        workskin.removeAttribute('dir');
-      }
-    }
+  style.textContent = `#workskin p { max-width: ${percent}% !important; margin-left: auto !important; margin-right: auto !important; font-size: ${fontSize}% !important; text-align: ${textAlign} !important;${fontFamily ? ` font-family: ${fontFamily} !important;` : ""} margin-top: 0 !important; margin-bottom: ${gap}em !important; }`;
+
     // --- SITE-WIDE STYLES ---
     const siteStyleId = "ao3-sitewide-style";
     let siteStyle = document.getElementById(siteStyleId);
@@ -104,9 +83,14 @@
       siteStyle.id = siteStyleId;
       document.head.appendChild(siteStyle);
     }
+
+    // General text selectors
     const generalSelectors = `body, input, .toggled form, .dynamic form, .secondary, .dropdown, blockquote, .prompt .blurb h6, .bookmark .user .meta, a.work, span.symbol, .heading .actions, .heading .action, .heading span.actions, button, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, select`;
+    // Header selectors
     const headerSelectors = `h1, h2, h3, h4, h5, h6, .heading`;
+    // Code selectors
     const codeSelectors = `kbd, tt, code, var, pre, samp, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea`;
+
     siteStyle.textContent = `
       html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
       ${generalSelectors} {
@@ -124,6 +108,8 @@
         ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize};` : ""}
       }
     `;
+    // Ensure all font-related properties are always !important
+    // Only add !important if not already present, to avoid duplicates (which can break CSS)
     siteStyle.textContent = siteStyle.textContent
       .replace(/(font-family:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
       .replace(/(font-weight:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
@@ -232,7 +218,6 @@
         font-weight: bold;
         color: inherit;
         opacity: 0.85;
-        font-family: inherit;
       }
 
       .ao3-formatter-menu-dialog .setting-group {
@@ -334,17 +319,17 @@
       </div>
 
       <div class="settings-section">
-        <h4 class="section-title">📝 Work Formatting</h4>
+        <h4 class="section-title">📝 Paragraph Formatting</h4>
 
         <div class="two-column">
           <div class="setting-group">
-            <label class="setting-label">Work Margin Width</label>
-            <span class="setting-description">Maximum width of work reader</span>
+            <label class="setting-label">Paragraph Width</label>
+            <span class="setting-description">Maximum width of text paragraphs</span>
             <div class="slider-with-value">
               <input type="range" id="paragraph-width-slider" min="10" max="100" step="5" value="${FORMATTER_CONFIG.paragraphWidthPercent}">
               <span class="value-display"><span id="paragraph-width-value">${FORMATTER_CONFIG.paragraphWidthPercent}</span>%</span>
             </div>
-          </div>  
+          </div>
 
           <div class="setting-group">
             <label class="setting-label">Font Size</label>
@@ -363,7 +348,6 @@
             <select id="paragraph-align-select">
               <option value="left" ${FORMATTER_CONFIG.paragraphTextAlign === "left" ? "selected" : ""}>Left Aligned</option>
               <option value="justify" ${FORMATTER_CONFIG.paragraphTextAlign === "justify" ? "selected" : ""}>Justified</option>
-              <option value="right" ${FORMATTER_CONFIG.paragraphTextAlign === "right" ? "selected" : ""}>Right Aligned</option>
             </select>
           </div>
 
@@ -375,8 +359,8 @@
         </div>
 
         <div class="setting-group">
-          <label class="setting-label" for="paragraph-fontfamily-input">Work Font</label>
-          <span class="setting-description">Font family for reader</span>
+          <label class="setting-label" for="paragraph-fontfamily-input">Paragraph Font</label>
+          <span class="setting-description">Font family for story paragraphs</span>
           <input type="text" id="paragraph-fontfamily-input" value="${FORMATTER_CONFIG.paragraphFontFamily}" placeholder="Figtree, sans-serif">
         </div>
 
@@ -561,6 +545,7 @@
 
   // --- INITIALIZATION ---
   loadFormatterConfig();
+
   // Apply styles immediately without waiting for DOMContentLoaded
   if (document.head) {
     applyParagraphWidth();
@@ -572,6 +557,7 @@
         applyParagraphWidth();
       }
     });
+
     observer.observe(document.documentElement, { childList: true });
   }
 

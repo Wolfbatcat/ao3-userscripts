@@ -2,7 +2,7 @@
 // @name         AO3: Comment Formatting and Preview
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
 // @version      1
-// @description  Adds compatibility with Userscript Menu, and a preview box to see how the comment will look. Configure which buttons you want to see in the button bar, and add your own custom buttons to insert HTML or text. Changes are saved in localStorage and persist across sessions. Only affects comment boxes on Archive of Our Own (AO3). Based on the original script by Blackbatcat, with permission.
+// @description  Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like. Utilizes shared menu with my other userscripts.
 // @author       Blackbatcat, escctrl
 // @license      MIT
 // @match        *://archiveofourown.org/*
@@ -30,28 +30,126 @@
     // if the background is dark, use the dark UI theme to match
     let dialogtheme = lightOrDark($('body').css('background-color')) == "dark" ? "ui-darkness" : "base";
 
-    // the config dialog container
-    let cfg = document.createElement('div');
-    cfg.id = 'cmtFmtDialog';
+            // the config dialog container
+            let cfg = document.createElement('div');
+            cfg.id = 'cmtFmtDialog';
 
-    // adding the jQuery stylesheet to style the dialog, and fixing the interferance of AO3's styling
-    $("head").append(`<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/${dialogtheme}/jquery-ui.css">`)
-    .prepend(`<script src="https://use.fontawesome.com/ed555db3cc.js" />`)
-    .append(`<style tyle="text/css">#${cfg.id}, .ui-dialog .ui-dialog-buttonpane button {font-size: revert; line-height: 1.286;}
-    #${cfg.id} form {box-shadow: revert; cursor:auto;}
-    #${cfg.id} #custombutton a {cursor:pointer;}
-    #${cfg.id} legend {font-size: inherit; height: auto; width: auto; opacity: inherit;}
-    #${cfg.id} fieldset {background: revert; box-shadow: revert;}
-    #${cfg.id} input[type='text'] { position: relative; top: 1px; padding: .4em; width: 3em; }
-    #${cfg.id} ul { padding-left: 2em; }
-    #${cfg.id} ul li { list-style: circle; }
-    #${cfg.id} #stdbutton label { font-family: FontAwesome, sans-serif; }
-    #${cfg.id} #custombutton div button { width: 0.5em; }
-    #${cfg.id} #custombutton div input:nth-of-type(1) { width: 2em; }
-    #${cfg.id} #custombutton div input:nth-of-type(2) { width: 6em; }
-    #${cfg.id} #custombutton div input:nth-of-type(3) { width: 10em; }
-    #${cfg.id} #custombutton div input:nth-of-type(4) { width: 10em; }
-    </style>`);
+            // Add style block for the dialog, but set font-family, font-size, color, and background dynamically from page
+            $("head").append(`<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/${dialogtheme}/jquery-ui.css">`)
+            .prepend(`<script src="https://use.fontawesome.com/ed555db3cc.js" />`)
+            .append(`<style type="text/css" id="cmtFmtDialogDynamicStyle"></style>`);
+
+            // Get computed styles from AO3 input field for best integration
+            let inputBg = "#fffaf5", inputFont = "inherit", inputSize = "inherit", inputColor = "inherit";
+            const testInput = document.createElement("input");
+            document.body.appendChild(testInput);
+            try {
+                const cs = window.getComputedStyle(testInput);
+                if (cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent") inputBg = cs.backgroundColor;
+                if (cs.fontFamily) inputFont = cs.fontFamily;
+                if (cs.fontSize) inputSize = cs.fontSize;
+                if (cs.color) inputColor = cs.color;
+            } catch (e) {}
+            testInput.remove();
+
+            // Set the style block with computed values, using only inherited and computed styles
+                    $("#cmtFmtDialogDynamicStyle").text(`
+                    #cmtFmtDialog {
+                        position: fixed;
+                        top: 50%; left: 50%; transform: translate(-50%, -50%);
+                        background: ${inputBg};
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+                        z-index: 10000;
+                        width: 90%;
+                        max-width: 900px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                        font-family: ${inputFont} !important;
+                        font-size: ${inputSize} !important;
+                        color: ${inputColor} !important;
+                        box-sizing: border-box;
+                    }
+                    #cmtFmtDialog .settings-section {
+                        background: rgba(0,0,0,0.03);
+                        border-radius: 6px;
+                        padding: 15px;
+                        margin-bottom: 20px;
+                        border-left: 4px solid currentColor;
+                    }
+                    #cmtFmtDialog .section-title {
+                        margin-top: 0;
+                        margin-bottom: 15px;
+                        font-size: 1.2em;
+                        font-weight: bold;
+                        color: inherit;
+                        opacity: 0.85;
+                        font-family: inherit;
+                    }
+                    #cmtFmtDialog .setting-group {
+                        margin-bottom: 15px;
+                    }
+                    #cmtFmtDialog .setting-label {
+                        display: block;
+                        margin-bottom: 6px;
+                        font-weight: bold;
+                        color: inherit;
+                        opacity: 0.9;
+                    }
+                    #cmtFmtDialog .setting-description {
+                        display: block;
+                        margin-bottom: 8px;
+                        font-size: 0.9em;
+                        color: inherit;
+                        opacity: 0.6;
+                        line-height: 1.4;
+                    }
+                    #cmtFmtDialog .two-column {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 15px;
+                    }
+                    #cmtFmtDialog .button-group {
+                        display: flex;
+                        justify-content: space-between;
+                        gap: 10px;
+                        margin-top: 20px;
+                    }
+                    #cmtFmtDialog .button-group button {
+                        flex: 1;
+                        padding: 10px;
+                        color: inherit;
+                        opacity: 0.9;
+                    }
+                    #cmtFmtDialog .reset-link {
+                        text-align: center;
+                        margin-top: 10px;
+                        color: inherit;
+                        opacity: 0.7;
+                        font-size: 0.95em;
+                    }
+                    #cmtFmtDialog .reset-link a {
+                        color: inherit;
+                        opacity: 0.8;
+                        text-decoration: underline;
+                        cursor: pointer;
+                        font-family: inherit;
+                        font-size: inherit;
+                        background: none;
+                        border: none;
+                        padding: 0;
+                    }
+                    #cmtFmtDialog input[type='text'] { position: relative; top: 1px; padding: .4em; width: 3em; font-family: inherit; font-size: inherit; color: inherit; }
+                    #cmtFmtDialog ul { padding-left: 2em; }
+                    #cmtFmtDialog ul li { list-style: circle; }
+                    #cmtFmtDialog #stdbutton label { font-family: FontAwesome, sans-serif; }
+                    #cmtFmtDialog #custombutton div button { width: 2em; }
+                    #cmtFmtDialog #custombutton div input:nth-of-type(1) { width: 2em; }
+                    #cmtFmtDialog #custombutton div input:nth-of-type(2) { width: 6em; }
+                    #cmtFmtDialog #custombutton div input:nth-of-type(3) { width: 10em; }
+                    #cmtFmtDialog #custombutton div input:nth-of-type(4) { width: 10em; }
+                    `);
 
     // the available standard buttons, display & insert stuff
     let config_std = new Map([
@@ -96,24 +194,42 @@
     let newcustombutton = `<div><button class="remove">-</button><input type="text" name="icon" placeholder="Icon"><input type="text" name="text" placeholder="Title">
         <input type="text" name="ins_pre" placeholder="Insert Before"><input type="text" name="ins_app" placeholder="Insert After"></div>`;
 
-    $(cfg).html(`<form>
-    <fieldset id='stdbutton'>
-        <legend>Standard text formatting</legend>
-        <p>Select the buttons you'd like to see as options on the button bar.</p>
-        ${standardbuttons}
-    </fieldset>
-    <fieldset id='custombutton'>
-        <legend>Custom HTML or text</legend>
-        <p>Define custom buttons, which will insert HTML and/or text.</p>
-        <ul><li>In the first field, choose <a href="https://fontawesome.com/v4/icons/">the Icon</a> you want on the button.<br />
-        Copy its 4-letter Unicode (for example "f004" for the heart) into this field.</li>
-        <li>If you leave the Icon field empty, the Title from the second field is shown on the button instead. The Title also appears as mouseover text.</li>
-        <li>Put the text you want inserted around the cursor position into the Insert Before and Insert After fields.</li></ul>
-        ${custombuttons}
-        <div><button class="add">+</button></div>
-    </fieldset>
-    <p>Any changes only apply after reloading the page.</p>
-    </form>`);
+        $(cfg).html(`
+            <h3 style="text-align: center; margin-top: 0; color: inherit;">📝 Comment Formatting & Preview Settings 📝</h3>
+            <form>
+                <div class="settings-section">
+                    <h4 class="section-title">🔘 Standard Buttons</h4>
+                    <div class="setting-group">
+                        <span class="setting-description">Select the buttons you'd like to see as options on the button bar.</span>
+                        <div id="stdbutton">${standardbuttons}</div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4 class="section-title">✨ Custom Buttons</h4>
+                    <div class="setting-group">
+                        <span class="setting-description">
+                            Define custom buttons, which will insert HTML and/or text.<br>
+                            <ul>
+                                <li>In the first field, choose <a href="https://fontawesome.com/v4/icons/" target="_blank">the Icon</a> you want on the button. Copy its 4-letter Unicode (e.g. "f004" for heart).</li>
+                                <li>If you leave the Icon field empty, the Title from the second field is shown on the button instead. The Title also appears as mouseover text.</li>
+                                <li>Put the text you want inserted around the cursor position into the Insert Before and Insert After fields.</li>
+                            </ul>
+                        </span>
+                        <div id="custombutton">
+                            ${custombuttons}
+                            <div><button class="add">+</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button type="submit" id="cmtFmtSave" class="button primary">Save</button>
+                    <button type="button" id="cmtFmtCancel" class="button">Cancel</button>
+                </div>
+                <div class="reset-link">
+                    <a id="cmtFmtResetLink">Reset to Default Settings</a><br>
+                </div>
+            </form>
+        `);
 
     // attach it to the DOM so that selections work (but only if #main exists, else it might be a Retry Later error page)
     if ($("#main").length == 1) $("body").append(cfg);
@@ -125,28 +241,36 @@
     let dialogwidth = parseInt($("body").css("width")); // parseInt ignores letters (px)
     dialogwidth = dialogwidth > 550 ? 550 : dialogwidth * 0.9;
 
-    // initialize the dialog (but don't open it)
-    $( "#cmtFmtDialog" ).dialog({
-        appendTo: "#main",
-        modal: true,
-        title: 'Comment Formatting & Preview',
-        draggable: true,
-        resizable: false,
-        autoOpen: false,
-        width: dialogwidth,
-        position: {my:"center", at: "center top"},
-        buttons: {
-            Reset: deleteConfig,
-            Save: storeConfig,
-            Cancel: function() { $( "#cmtFmtDialog" ).dialog( "close" ); }
-        }
-    });
+        // initialize the dialog (but don't open it)
+        $("#cmtFmtDialog").dialog({
+            appendTo: "body",
+            modal: true,
+            title: false,
+            draggable: true,
+            resizable: false,
+            autoOpen: false,
+            width: dialogwidth,
+            position: {my:"center", at: "center top"}
+        });
 
-    // event triggers if form is submitted with the <enter> key
-    $( "#cmtFmtDialog form" ).on("submit", (e) => {
-        e.preventDefault();
-        storeConfig();
-    });
+        // Button event handlers for Save/Cancel/Reset
+        $("#cmtFmtDialog #cmtFmtSave").on("click", function(e) {
+            e.preventDefault();
+            storeConfig();
+        });
+        $("#cmtFmtDialog #cmtFmtCancel").on("click", function(e) {
+            e.preventDefault();
+            $("#cmtFmtDialog").dialog("close");
+        });
+        $("#cmtFmtDialog #cmtFmtResetLink").on("click", function(e) {
+            e.preventDefault();
+            deleteConfig();
+        });
+        // event triggers if form is submitted with the <enter> key
+        $("#cmtFmtDialog form").on("submit", (e) => {
+            e.preventDefault();
+            storeConfig();
+        });
 
     // putting event triggers on buttons that will delete custom rows
     function evRemoveRow(el) {
