@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.1
+// @version     1.1.3
 // @include     http://archiveofourown.org/*
 // @include     https://archiveofourown.org/*
 // @license     MIT
@@ -724,19 +724,29 @@
     });
   }
 
-  // --- INITIALIZATION ---
-  loadUserSettings();
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      checkCountable();
-      initSharedMenu();
-      if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
-      if (CONFIG.alwaysCountQualityScore) setTimeout(countRatio, 1000);
-    });
-  } else {
+// --- INITIALIZATION ---
+loadUserSettings();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
     checkCountable();
     initSharedMenu();
     if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
-    if (CONFIG.alwaysCountQualityScore) setTimeout(countRatio, 1000);
+    if (CONFIG.alwaysCountQualityScore) {
+      setTimeout(() => {
+        countRatio();
+        if (CONFIG.alwaysSortQualityScore) sortByRatio();
+      }, 1000);
+    }
+  });
+} else {
+  checkCountable();
+  initSharedMenu();
+  if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
+  if (CONFIG.alwaysCountQualityScore) {
+    setTimeout(() => {
+      countRatio();
+      if (CONFIG.alwaysSortQualityScore) sortByRatio();
+    }, 1000);
   }
+}
 })();

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         AO3: Comment Formatting & Preview
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
-// @version      1
-// @description  Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like. Utilizes shared menu with my other userscripts.
+// @version      1.1.2
+// @description  Version of escctrl's comment formatting script that utilizes the shared menu of my other userscripts. Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like.
 // @author       Blackbatcat, escctrl
 // @license      MIT
 // @match        *://archiveofourown.org/*
@@ -143,7 +143,7 @@
                     #cmtFmtDialog input[type='text'] { position: relative; top: 1px; padding: .4em; width: 3em; font-family: inherit; font-size: inherit; color: inherit; }
                     #cmtFmtDialog ul { padding-left: 2em; }
                     #cmtFmtDialog ul li { list-style: circle; }
-                    #cmtFmtDialog #stdbutton label { font-family: FontAwesome, sans-serif; }
+                    #cmtFmtDialog #stdbutton label { font-family: FontAwesome, sans-serif !important; }
                     #cmtFmtDialog #custombutton div button { width: 2em; }
                     #cmtFmtDialog #custombutton div input:nth-of-type(1) { width: 2em; }
                     #cmtFmtDialog #custombutton div input:nth-of-type(2) { width: 6em; }

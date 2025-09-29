@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.1.2
+// @version      1.1.5
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        http://archiveofourown.org/*
@@ -134,14 +134,16 @@ function applyParagraphWidth() {
   // Build CSS with proper !important handling
   let siteStyleContent = `
     html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
-    ${generalSelectors}, ${headerSelectors} {
-      ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
-    }
     ${generalSelectors} {
+      ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
       ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight} !important;` : ""}
     }
+    ul.comment-format, ul.comment-format * {
+      font-family: FontAwesome !important;
+    }
     ${headerSelectors} {
-      ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight} !important;` : ""}
+      ${FORMATTER_CONFIG.headerFontFamily ? `font-family: ${FORMATTER_CONFIG.headerFontFamily} !important;` : FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
+      ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight} !important;` : FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight} !important;` : ""}
     }
     ${codeSelectors} {
       ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily} !important;` : ""}
