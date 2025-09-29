@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.1.6
-// @description  Change fonts across the site easily and fix paragraph spacing issues.
+// @version      1.1.1
+// @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        http://archiveofourown.org/*
 // @match        https://archiveofourown.org/*
