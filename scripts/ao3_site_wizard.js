@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.1.1
+// @version      1.1.2
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        http://archiveofourown.org/*
@@ -60,76 +60,98 @@
   }
 
   // --- APPLY STYLES ---
-  function applyParagraphWidth() {
-    const percent = FORMATTER_CONFIG.paragraphWidthPercent;
-    const fontSize = FORMATTER_CONFIG.paragraphFontSizePercent;
-    const textAlign = FORMATTER_CONFIG.paragraphTextAlign;
-    let fontFamily = FORMATTER_CONFIG.paragraphFontFamily;
-    const gap = FORMATTER_CONFIG.paragraphGap;
-    const paraStyleId = "ao3-formatter-paragraph-style";
-    let paraStyle = document.getElementById(paraStyleId);
-    if (!paraStyle) {
-      paraStyle = document.createElement("style");
-      paraStyle.id = paraStyleId;
-      document.head.appendChild(paraStyle);
-    }
-    // Always apply styles to #workskin if present
-    paraStyle.textContent = `
-      .userstuff {
-        text-align: ${textAlign || "left"} !important;
-      }
-      #workskin {
-        max-width: ${percent || 70}vw !important;
-        font-size: ${fontSize || 100}% !important;
-      }
-      #workskin p {
-        margin-bottom: ${gap || 1.286}em !important;
-        ${fontFamily ? `font-family: ${fontFamily} !important;` : ""}
-      }
-    `;
-    // If right alignment is selected, set dir="rtl" on #workskin
-    const workskin = document.getElementById('workskin');
-    if (workskin) {
-      if (textAlign === 'right') {
-        workskin.setAttribute('dir', 'rtl');
-      } else {
-        workskin.removeAttribute('dir');
-      }
-    }
-    // --- SITE-WIDE STYLES ---
-    const siteStyleId = "ao3-sitewide-style";
-    let siteStyle = document.getElementById(siteStyleId);
-    if (!siteStyle) {
-      siteStyle = document.createElement("style");
-      siteStyle.id = siteStyleId;
-      document.head.appendChild(siteStyle);
-    }
-    const generalSelectors = `body, input, .toggled form, .dynamic form, .secondary, .dropdown, blockquote, .prompt .blurb h6, .bookmark .user .meta, a.work, span.symbol, .heading .actions, .heading .action, .heading span.actions, button, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, select`;
-    const headerSelectors = `h1, h2, h3, h4, h5, h6, .heading`;
-    const codeSelectors = `kbd, tt, code, var, pre, samp, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea`;
-    siteStyle.textContent = `
-      html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
-      ${generalSelectors} {
-        ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
-        ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight};` : ""}
-      }
-      ${headerSelectors} {
-        ${FORMATTER_CONFIG.headerFontFamily ? `font-family: ${FORMATTER_CONFIG.headerFontFamily};` :
-          FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
-        ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight};` : ""}
-      }
-      ${codeSelectors} {
-        ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily};` : ""}
-        ${FORMATTER_CONFIG.codeFontStyle ? `font-style: ${FORMATTER_CONFIG.codeFontStyle};` : ""}
-        ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize};` : ""}
-      }
-    `;
-    siteStyle.textContent = siteStyle.textContent
-      .replace(/(font-family:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-weight:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-size:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-style:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2);
+function applyParagraphWidth() {
+  const percent = FORMATTER_CONFIG.paragraphWidthPercent;
+  const fontSize = FORMATTER_CONFIG.paragraphFontSizePercent;
+  const textAlign = FORMATTER_CONFIG.paragraphTextAlign;
+  let fontFamily = FORMATTER_CONFIG.paragraphFontFamily;
+  const gap = FORMATTER_CONFIG.paragraphGap;
+  const paraStyleId = "ao3-formatter-paragraph-style";
+  let paraStyle = document.getElementById(paraStyleId);
+  if (!paraStyle) {
+    paraStyle = document.createElement("style");
+    paraStyle.id = paraStyleId;
+    document.head.appendChild(paraStyle);
   }
+  
+  // Always apply styles to #workskin if present
+  paraStyle.textContent = `
+    .userstuff {
+      text-align: ${textAlign || "left"} !important;
+    }
+    #workskin {
+      max-width: ${percent || 70}vw !important;
+      font-size: ${fontSize || 100}% !important;
+    }
+    #workskin p {
+      margin-bottom: ${gap || 1.286}em !important;
+      ${fontFamily ? `font-family: ${fontFamily} !important;` : ""}
+    }
+  `;
+  
+  // If right alignment is selected, set dir="rtl" on #workskin
+  const workskin = document.getElementById('workskin');
+  if (workskin) {
+    if (textAlign === 'right') {
+      workskin.setAttribute('dir', 'rtl');
+    } else {
+      workskin.removeAttribute('dir');
+    }
+  }
+  
+  // --- SITE-WIDE STYLES ---
+  const siteStyleId = "ao3-sitewide-style";
+  let siteStyle = document.getElementById(siteStyleId);
+  if (!siteStyle) {
+    siteStyle = document.createElement("style");
+    siteStyle.id = siteStyleId;
+    document.head.appendChild(siteStyle);
+  }
+  
+  // Expanded selectors to cover more site elements
+  const generalSelectors = `
+    body, input, textarea, select, button,
+    .toggled form, .dynamic form, .secondary, .dropdown, 
+    blockquote, .prompt .blurb h6, .bookmark .user .meta, 
+    a.work, span.symbol, .heading .actions, .heading .action, 
+    .heading span.actions, button, span.unread, .replied, 
+    span.claimed, .actions span.defaulted, .splash .news .meta, 
+    .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a,
+    #dashboard, #header, #main, #footer,
+    .navigation, .menu, .dropdown-menu,
+    .blurb, .meta, .stats, .tags,
+    .module, .wrapper, .region,
+    li, span, div, a, p, label,
+    .user, .current, .action,
+    .notice, .comment, .thread,
+    .work, .bookmark, .series,
+    .pagination, .current
+  `;
+  
+  const headerSelectors = `h1, h2, h3, h4, h5, h6, .heading`;
+  const codeSelectors = `kbd, tt, code, var, pre, samp, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea`;
+  
+  // Build CSS with proper !important handling
+  let siteStyleContent = `
+    html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
+    ${generalSelectors}, ${headerSelectors} {
+      ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily} !important;` : ""}
+    }
+    ${generalSelectors} {
+      ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight} !important;` : ""}
+    }
+    ${headerSelectors} {
+      ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight} !important;` : ""}
+    }
+    ${codeSelectors} {
+      ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily} !important;` : ""}
+      ${FORMATTER_CONFIG.codeFontStyle ? `font-style: ${FORMATTER_CONFIG.codeFontStyle} !important;` : ""}
+      ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize} !important;` : ""}
+    }
+  `;
+  
+  siteStyle.textContent = siteStyleContent;
+}
 
   // --- PARAGRAPH SPACING FIX ---
   function fixParagraphSpacing() {
@@ -410,7 +432,7 @@
           <div class="setting-group">
             <label class="setting-label" for="code-fontfamily-input">Code/Monospace Font</label>
             <span class="setting-description">Font for code blocks and preformatted text</span>
-            <input type="text" id="code-fontfamily-input" value="${FORMATTER_CONFIG.codeFontFamily}" placeholder="'Courier New', monospace">
+            <input type="text" id="code-fontfamily-input" value="${FORMATTER_CONFIG.codeFontFamily}" placeholder="Victor Mono Medium, monospace">
           </div>
 
           <div class="setting-group">

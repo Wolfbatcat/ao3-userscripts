@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         AO3: Comment Formatting and Preview
+// @name         AO3: Comment Formatting & Preview
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
 // @version      1
 // @description  Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like. Utilizes shared menu with my other userscripts.
@@ -328,7 +328,7 @@
             function waitForMenu(attempts = 20, interval = 250) {
                 if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === 'function') {
                     window.AO3UserScriptMenu.register({
-                        label: 'Comment Formatting & Preview',
+                        label: 'Comment Formatting & Preview Settings',
                         onClick: function() {
                             window.dispatchEvent(new CustomEvent('ao3commentformatting-open'));
                         }
