@@ -5,12 +5,12 @@
 // @namespace
 // @license       MIT
 // @match         http*://archiveofourown.org/*
-// @version       1.3.1
+// @version       1.3.3
 // @require       https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require       https://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js
 // @grant         GM.getValue
 // @grant         GM.setValue
-// @run-at        document-end
+// @run-at        document-idle
 // @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
 // @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
@@ -27,6 +27,35 @@
 
   // Define the CSS namespace. All CSS classes are prefixed with this.
   const CSS_NAMESPACE = "ao3-blocker";
+
+  // Define default configuration values
+  const DEFAULTS = {
+    tagBlacklist: "",
+    tagWhitelist: "",
+    tagHighlights: "",
+    highlightColor: "#fff9b1",
+    minWords: "",
+    maxWords: "",
+    blockComplete: false,
+    blockOngoing: false,
+    authorBlacklist: "",
+    titleBlacklist: "",
+    summaryBlacklist: "",
+    showReasons: true,
+    showPlaceholders: true,
+    debugMode: false,
+    allowedLanguages: "",
+    maxCrossovers: "3",
+    disableOnBookmarks: true,
+    disableOnCollections: false,
+    primaryRelationships: "",
+    primaryCharacters: "",
+    primaryRelpad: "1",
+    primaryCharpad: "5"
+  };
+
+  // Storage key for single config object
+  const STORAGE_KEY = "ao3_advanced_blocker_config";
 
   // Define the custom styles for the script
   const STYLE = `
@@ -198,7 +227,32 @@
   }
 `;
 
-  // Initialize GM_config options
+  // Load configuration from single object storage
+  function loadConfig() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {...DEFAULTS, ...parsed};
+      }
+    } catch (e) {
+      console.error("[AO3 Advanced Blocker] Failed to load config:", e);
+    }
+    return {...DEFAULTS};
+  }
+
+  // Save configuration to single object storage
+  function saveConfig(config) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      return true;
+    } catch (e) {
+      console.error("[AO3 Advanced Blocker] Failed to save config:", e);
+      return false;
+    }
+  }
+
+  // Initialize GM_config with custom storage handlers
   GM_config.init({
     "id": "ao3Blocker",
     "title": "Advanced Blocker",
@@ -206,174 +260,196 @@
       "tagBlacklist": {
         "label": "Tag Blacklist",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.tagBlacklist
       },
       "tagWhitelist": {
         "label": "Tag Whitelist",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.tagWhitelist
       },
       "tagHighlights": {
         "label": "Highlighted Tags",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.tagHighlights
       },
       "highlightColor": {
         "label": "Highlight Color",
         "type": "text",
-        "default": "#fff9b1"
+        "default": DEFAULTS.highlightColor
       },
       "minWords": {
         "label": "Min Words",
         "title": "Hide works under this many words. Leave empty to ignore.",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.minWords
       },
       "maxWords": {
         "label": "Max Words",
         "title": "Hide works over this many words. Leave empty to ignore.",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.maxWords
       },
       "blockComplete": {
         "label": "Block Complete Works",
         "type": "checkbox",
-        "default": false
+        "default": DEFAULTS.blockComplete
       },
       "blockOngoing": {
         "label": "Block Ongoing Works",
         "type": "checkbox",
-        "default": false
+        "default": DEFAULTS.blockOngoing
       },
       "authorBlacklist": {
         "label": "Author Blacklist",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.authorBlacklist
       },
       "titleBlacklist": {
         "label": "Title Blacklist",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.titleBlacklist
       },
       "summaryBlacklist": {
         "label": "Summary Blacklist",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.summaryBlacklist
       },
       "showReasons": {
         "label": "Show Block Reason",
         "type": "checkbox",
-        "default": true
+        "default": DEFAULTS.showReasons
       },
       "showPlaceholders": {
         "label": "Show Work Placeholder",
         "type": "checkbox",
-        "default": true
+        "default": DEFAULTS.showPlaceholders
       },
       "debugMode": {
         "label": "Debug Mode",
         "type": "checkbox",
-        "default": false
+        "default": DEFAULTS.debugMode
       },
       "allowedLanguages": {
         "label": "Allowed Languages (show only these; empty = allow all)",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.allowedLanguages
       },
       "maxCrossovers": {
         "label": "Max Fandoms (crossovers)",
         "type": "text",
-        "default": "3"
+        "default": DEFAULTS.maxCrossovers
       },
       "disableOnBookmarks": {
         "label": "Disable Blocking on Bookmarks Pages",
         "type": "checkbox",
-        "default": true
+        "default": DEFAULTS.disableOnBookmarks
       },
       "disableOnCollections": {
         "label": "Disable Blocking on Collections Pages",
         "type": "checkbox",
-        "default": false
+        "default": DEFAULTS.disableOnCollections
       },
-      // Primary Pairing Settings
       "primaryRelationships": {
         "label": "Primary Relationships",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.primaryRelationships
       },
       "primaryCharacters": {
         "label": "Primary Characters",
         "type": "text",
-        "default": ""
+        "default": DEFAULTS.primaryCharacters
       },
       "primaryRelpad": {
         "label": "Relationship Tag Window",
         "type": "text",
-        "default": "1"
+        "default": DEFAULTS.primaryRelpad
       },
       "primaryCharpad": {
         "label": "Character Tag Window",
         "type": "text",
-        "default": "5"
+        "default": DEFAULTS.primaryCharpad
       }
     },
     "events": {
-      "save": () => {
-        window.ao3Blocker.updated = true;
-        alert("Your changes have been saved.");
+      "open": function() {
+        // Load settings from single object storage when GM_config opens
+        const config = loadConfig();
+        Object.keys(config).forEach(key => {
+          if (GM_config.fields[key]) {
+            GM_config.set(key, config[key]);
+          }
+        });
       },
-      "close": () => {
+      "save": function() {
+        // Save all settings to single object storage
+        const config = {};
+        Object.keys(GM_config.fields).forEach(key => {
+          config[key] = GM_config.get(key);
+        });
+
+        if (saveConfig(config)) {
+          window.ao3Blocker.updated = true;
+          // Remove the alert and reload automatically
+          // alert("Your changes have been saved.");
+          location.reload(); // Add this line to reload automatically
+        } else {
+          alert("Error saving settings.");
+        }
+      },
+      "close": function() {
         if (window.ao3Blocker.updated) location.reload();
       },
-      "init": () => {
+      "init": function() {
         // Config is now available
-        window.ao3Blocker.config = {
-          "showReasons": GM_config.get("showReasons"),
-          "showPlaceholders": GM_config.get("showPlaceholders"),
-          "authorBlacklist": GM_config.get("authorBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "titleBlacklist": GM_config.get("titleBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagBlacklist": GM_config.get("tagBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagWhitelist": GM_config.get("tagWhitelist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagHighlights": GM_config.get("tagHighlights").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "summaryBlacklist": GM_config.get("summaryBlacklist").toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+        const config = loadConfig();
 
-          "highlightColor": GM_config.get("highlightColor"),
-          "debugMode": GM_config.get("debugMode"),
-          "allowedLanguages": GM_config
-            .get("allowedLanguages")
+        // Process configuration for runtime use (ORIGINAL LOGIC PRESERVED)
+        window.ao3Blocker.config = {
+          "showReasons": config.showReasons,
+          "showPlaceholders": config.showPlaceholders,
+          "authorBlacklist": config.authorBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+          "titleBlacklist": config.titleBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+          "tagBlacklist": config.tagBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+          "tagWhitelist": config.tagWhitelist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+          "tagHighlights": config.tagHighlights.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+          "summaryBlacklist": config.summaryBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+
+          "highlightColor": config.highlightColor,
+          "debugMode": config.debugMode,
+          "allowedLanguages": config.allowedLanguages
             .toLowerCase()
             .split(/,(?:\s)?/g)
             .map(s => s.trim())
             .filter(Boolean),
           "maxCrossovers": (function() {
-            const val = GM_config.get("maxCrossovers");
+            const val = config.maxCrossovers;
             const parsed = parseInt(val, 10);
             return (val === undefined || val === null || val === "" || isNaN(parsed)) ? null : parsed;
           })(),
           "minWords": (function () {
-            const v = GM_config.get("minWords");
+            const v = config.minWords;
             const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
             return Number.isFinite(n) ? n : null;
           })(),
           "maxWords": (function () {
-            const v = GM_config.get("maxWords");
+            const v = config.maxWords;
             const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
             return Number.isFinite(n) ? n : null;
           })(),
-          "disableOnBookmarks": GM_config.get("disableOnBookmarks"),
-          "disableOnCollections": GM_config.get("disableOnCollections"),
-          "blockComplete": GM_config.get("blockComplete"),
-          "blockOngoing": GM_config.get("blockOngoing"),
+          "disableOnBookmarks": config.disableOnBookmarks,
+          "disableOnCollections": config.disableOnCollections,
+          "blockComplete": config.blockComplete,
+          "blockOngoing": config.blockOngoing,
           // Primary Pairing Config
-          "primaryRelationships": GM_config.get("primaryRelationships").split(",").map(s => s.trim()).filter(Boolean),
-          "primaryCharacters": GM_config.get("primaryCharacters").split(",").map(s => s.trim()).filter(Boolean),
+          "primaryRelationships": config.primaryRelationships.split(",").map(s => s.trim()).filter(Boolean),
+          "primaryCharacters": config.primaryCharacters.split(",").map(s => s.trim()).filter(Boolean),
           "primaryRelpad": (function() {
-            const val = GM_config.get("primaryRelpad");
+            const val = config.primaryRelpad;
             const parsed = parseInt(val, 10);
             return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 1 : Math.max(1, parsed);
           })(),
           "primaryCharpad": (function() {
-            const val = GM_config.get("primaryCharpad");
+            const val = config.primaryCharpad;
             const parsed = parseInt(val, 10);
             return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 5 : Math.max(1, parsed);
           })()
@@ -500,6 +576,9 @@
     } catch (e) {}
     testInput.remove();
 
+    // Load current config for the menu
+    const config = loadConfig();
+
     // Create the dialog
     const dialog = $(`<div class="${CSS_NAMESPACE}-menu-dialog"></div>`);
     dialog.css({
@@ -534,27 +613,27 @@
           <span class="setting-description ao3-blocker-inline-help" style="display:block;">
             Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms.
           </span>
-          <textarea id="tag-blacklist-input" placeholder="Reader-Insert, Abandoned" title="Blocks if any tag matches. * is a wildcard.">${GM_config.get("tagBlacklist")}</textarea>
+          <textarea id="tag-blacklist-input" placeholder="Reader-Insert, Abandoned" title="Blocks if any tag matches. * is a wildcard.">${config.tagBlacklist}</textarea>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="tag-whitelist-input">Whitelist Tags</label>
           <span class="setting-description ao3-blocker-inline-help" style="display:block;">
             Always shows the work even if it matches the blacklist.
           </span>
-          <textarea id="tag-whitelist-input" placeholder="Happy Ending, Angst with a Happy Ending" title="Always shows the work, even if blacklisted.">${GM_config.get("tagWhitelist")}</textarea>
+          <textarea id="tag-whitelist-input" placeholder="Happy Ending, Angst with a Happy Ending" title="Always shows the work, even if blacklisted.">${config.tagWhitelist}</textarea>
         </div>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="tag-highlights-input">Highlight Tags
               <span class="symbol question" title="Make these works stand out."><span>?</span></span>
             </label>
-            <textarea id="tag-highlights-input" placeholder="Hurt/Comfort, Found Family, Slow Burn" title="Keep and mark works with these tags.">${GM_config.get("tagHighlights")}</textarea>
+            <textarea id="tag-highlights-input" placeholder="Hurt/Comfort, Found Family, Slow Burn" title="Keep and mark works with these tags.">${config.tagHighlights}</textarea>
           </div>
           <div class="setting-group">
             <label class="setting-label" for="highlight-color-input">Highlight Color
               <span class="symbol question" title="Pick a background color for these works."><span>?</span></span>
             </label>
-            <input type="color" id="highlight-color-input" value="${GM_config.get("highlightColor") || "#fff9b1"}" title="Pick the highlight color.">
+            <input type="color" id="highlight-color-input" value="${config.highlightColor || "#fff9b1"}" title="Pick the highlight color.">
           </div>
         </div>
       </div>
@@ -566,26 +645,26 @@
           <label class="setting-label" for="primary-relationships-input">Primary Relationships
             <span class="symbol question" title="Only show works where these relationships are in the first few relationship tags."><span>?</span></span>
           </label>
-          <textarea id="primary-relationships-input" placeholder="Luo Binghe/Shen Yuan | Shen Qingqiu, Lan Zhan | Lan Wangji/Wei Ying | Wei Wuxian" title="Case-sensitive. Comma separated.">${GM_config.get("primaryRelationships")}</textarea>
+          <textarea id="primary-relationships-input" placeholder="Luo Binghe/Shen Yuan | Shen Qingqiu, Lan Zhan | Lan Wangji/Wei Ying | Wei Wuxian" title="Case-sensitive. Comma separated.">${config.primaryRelationships}</textarea>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="primary-characters-input">Primary Characters
             <span class="symbol question" title="Only show works where these characters are in the first few character tags."><span>?</span></span>
           </label>
-          <textarea id="primary-characters-input" placeholder="Shen Yuan | Shen Qingqiu, Luo Binghe" title="Case-sensitive. Comma separated.">${GM_config.get("primaryCharacters")}</textarea>
+          <textarea id="primary-characters-input" placeholder="Shen Yuan | Shen Qingqiu, Luo Binghe" title="Case-sensitive. Comma separated.">${config.primaryCharacters}</textarea>
         </div>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="primary-relpad-input">Relationship Tag Window
               <span class="symbol question" title="Check only the first X relationship tags."><span>?</span></span>
             </label>
-            <input type="number" id="primary-relpad-input" min="1" max="10" value="${GM_config.get("primaryRelpad") || 1}" title="Check only the first X relationship tags.">
+            <input type="number" id="primary-relpad-input" min="1" max="10" value="${config.primaryRelpad || 1}" title="Check only the first X relationship tags.">
           </div>
           <div class="setting-group">
             <label class="setting-label" for="primary-charpad-input">Character Tag Window
               <span class="symbol question" title="Check only the first X character tags."><span>?</span></span>
             </label>
-            <input type="number" id="primary-charpad-input" min="1" max="10" value="${GM_config.get("primaryCharpad") || 5}" title="Check only the first X character tags.">
+            <input type="number" id="primary-charpad-input" min="1" max="10" value="${config.primaryCharpad || 5}" title="Check only the first X character tags.">
           </div>
         </div>
       </div>
@@ -601,18 +680,18 @@
               </label>
               <input id="allowed-languages-input" type="text"
                      placeholder="english, Русский, 中文-普通话 國語"
-                     value="${GM_config.get("allowedLanguages") || ""}"
+                     value="${config.allowedLanguages || ""}"
                      title="Only show these languages. Leave empty for all.">
             </div>
             <div class="setting-group">
               <label class="setting-label" for="min-words-input">Min Words
                 <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
               </label>
-              <input id="min-words-input" type="text" style="width:100%;" placeholder="e.g. 1000" value="${GM_config.get("minWords") || ''}" title="Hide works under this many words.">
+              <input id="min-words-input" type="text" style="width:100%;" placeholder="e.g. 1000" value="${config.minWords || ''}" title="Hide works under this many words.">
             </div>
             <div class="setting-group">
               <label class="checkbox-label" for="block-ongoing-checkbox">
-                <input type="checkbox" id="block-ongoing-checkbox" ${GM_config.get("blockOngoing") ? "checked" : ""}>
+                <input type="checkbox" id="block-ongoing-checkbox" ${config.blockOngoing ? "checked" : ""}>
                 Block Ongoing Works
                 <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
               </label>
@@ -624,18 +703,18 @@
                 <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
               </label>
               <input id="max-crossovers-input" type="number" min="1" step="1"
-                     value="${GM_config.get("maxCrossovers") || ''}"
+                     value="${config.maxCrossovers || ''}"
                      title="Hide works with more than this many fandoms.">
             </div>
             <div class="setting-group">
               <label class="setting-label" for="max-words-input">Max Words
                 <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
               </label>
-              <input id="max-words-input" type="text" style="width:100%;" placeholder="e.g. 100000" value="${GM_config.get("maxWords") || ''}" title="Hide works over this many words.">
+              <input id="max-words-input" type="text" style="width:100%;" placeholder="e.g. 100000" value="${config.maxWords || ''}" title="Hide works over this many words.">
             </div>
             <div class="setting-group">
               <label class="checkbox-label" for="block-complete-checkbox">
-                <input type="checkbox" id="block-complete-checkbox" ${GM_config.get("blockComplete") ? "checked" : ""}>
+                <input type="checkbox" id="block-complete-checkbox" ${config.blockComplete ? "checked" : ""}>
                 Block Complete Works
                 <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
               </label>
@@ -652,20 +731,20 @@
             <label class="setting-label" for="author-blacklist-input">Blacklist Authors
               <span class="symbol question" title="Match the author name exactly. Commas or semicolons."><span>?</span></span>
             </label>
-            <textarea id="author-blacklist-input" placeholder="DetectiveMittens, BlackBatCat" title="Match the author name exactly. Commas or semicolons.">${GM_config.get("authorBlacklist")}</textarea>
+            <textarea id="author-blacklist-input" placeholder="DetectiveMittens, BlackBatCat" title="Match the author name exactly. Commas or semicolons.">${config.authorBlacklist}</textarea>
           </div>
           <div class="setting-group">
             <label class="setting-label" for="title-blacklist-input">Blacklist Titles
               <span class="symbol question" title="Blocks if the title contains your text. * works."><span>?</span></span>
             </label>
-            <textarea id="title-blacklist-input" placeholder="Week 2025" title="Blocks if the title contains your text. * works.">${GM_config.get("titleBlacklist")}</textarea>
+            <textarea id="title-blacklist-input" placeholder="Week 2025" title="Blocks if the title contains your text. * works.">${config.titleBlacklist}</textarea>
           </div>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="summary-blacklist-input">Blacklist Summary
             <span class="symbol question" title="Blocks if the summary has these words/phrases."><span>?</span></span>
           </label>
-          <textarea id="summary-blacklist-input" placeholder="collection of oneshots" title="Blocks if the summary has these words/phrases.">${GM_config.get("summaryBlacklist")}</textarea>
+          <textarea id="summary-blacklist-input" placeholder="collection of oneshots" title="Blocks if the summary has these words/phrases.">${config.summaryBlacklist}</textarea>
         </div>
       </div>
 
@@ -676,21 +755,21 @@
           <div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="show-reasons-checkbox" ${GM_config.get("showReasons") ? "checked" : ""}>
+                <input type="checkbox" id="show-reasons-checkbox" ${config.showReasons ? "checked" : ""}>
                 Show Block Reason
                 <span class="symbol question" title="List what triggered the block."><span>?</span></span>
               </label>
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="show-placeholders-checkbox" ${GM_config.get("showPlaceholders") ? "checked" : ""}>
+                <input type="checkbox" id="show-placeholders-checkbox" ${config.showPlaceholders ? "checked" : ""}>
                 Show Work Placeholder
                 <span class="symbol question" title="Leave a stub you can click to reveal."><span>?</span></span>
               </label>
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="debug-mode-checkbox" ${GM_config.get("debugMode") ? "checked" : ""}>
+                <input type="checkbox" id="debug-mode-checkbox" ${config.debugMode ? "checked" : ""}>
                 Debug Mode
                 <span class="symbol question" title="Log details to the console."><span>?</span></span>
               </label>
@@ -699,14 +778,14 @@
           <div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="disable-on-bookmarks-checkbox" ${GM_config.get("disableOnBookmarks") ? "checked" : ""}>
+                <input type="checkbox" id="disable-on-bookmarks-checkbox" ${config.disableOnBookmarks ? "checked" : ""}>
                 Disable Blocking on Bookmarks
                 <span class="symbol question" title="If checked, works will not be blocked on bookmarks pages. Highlighting still works."><span>?</span></span>
               </label>
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="disable-on-collections-checkbox" ${GM_config.get("disableOnCollections") ? "checked" : ""}>
+                <input type="checkbox" id="disable-on-collections-checkbox" ${config.disableOnCollections ? "checked" : ""}>
                 Disable Blocking on Collections
                 <span class="symbol question" title="If checked, works will not be blocked on collections pages. Highlighting still works."><span>?</span></span>
               </label>
@@ -735,15 +814,7 @@
     // --- Export Settings ---
     dialog.find("#ao3-export").on("click", function() {
       try {
-        const fields = GM_config.fields;
-        const data = {};
-        Object.keys(fields).forEach(key => {
-          let val = GM_config.get(key);
-          if (typeof val === 'undefined') {
-            val = fields[key].default;
-          }
-          data[key] = val;
-        });
+        const config = loadConfig();
         const now = new Date();
         const pad = n => n.toString().padStart(2, '0');
         const yyyy = now.getFullYear();
@@ -751,7 +822,7 @@
         const dd = pad(now.getDate());
         const dateStr = `${yyyy}-${mm}-${dd}`;
         const filename = `ao3_advanced_blocker_config_${dateStr}.json`;
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -778,20 +849,23 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         try {
-          const json = JSON.parse(evt.target.result);
-          if (typeof json !== "object" || !json) throw new Error("Invalid JSON");
-          const fields = GM_config.fields;
-          let applied = 0;
-          Object.keys(fields).forEach(key => {
-            if (json.hasOwnProperty(key)) {
-              GM_config.set(key, json[key]);
-              applied++;
+          const importedConfig = JSON.parse(evt.target.result);
+          if (typeof importedConfig !== "object" || !importedConfig) throw new Error("Invalid JSON");
+
+          // Validate and merge with defaults
+          const validConfig = {...DEFAULTS};
+          Object.keys(validConfig).forEach(key => {
+            if (importedConfig.hasOwnProperty(key)) {
+              validConfig[key] = importedConfig[key];
             }
           });
-          if (applied === 0) throw new Error("No valid settings found in file.");
-          GM_config.save();
-          alert("Settings imported! Reloading...");
-          location.reload();
+
+          if (saveConfig(validConfig)) {
+            alert("Settings imported! Reloading...");
+            location.reload();
+          } else {
+            throw new Error("Failed to save imported settings");
+          }
         } catch (err) {
           alert("Import failed: " + (err && err.message ? err.message : err));
         }
@@ -801,8 +875,9 @@
 
     $("body").append(dialog);
 
-    // Save button handler
+    // Save button handler - Use GM_config to save
     dialog.find("#blocker-save").on("click", () => {
+      // Set values in GM_config which will trigger the save event
       GM_config.set("tagBlacklist", dialog.find("#tag-blacklist-input").val());
       GM_config.set("tagWhitelist", dialog.find("#tag-whitelist-input").val());
       GM_config.set("tagHighlights", dialog.find("#tag-highlights-input").val());
@@ -828,7 +903,7 @@
       GM_config.set("primaryCharpad", dialog.find("#primary-charpad-input").val());
 
       window.ao3Blocker.showHelp = false;
-      GM_config.save();
+      GM_config.save(); // This will trigger our custom save event
       dialog.remove();
     });
 
@@ -841,19 +916,15 @@
     dialog.find("#resetBlockerSettingsLink").on("click", function (e) {
       e.preventDefault();
       if (confirm("Are you sure you want to reset all settings to default?")) {
-        dialog.find("#blocker-save, #blocker-cancel").prop("disabled", true);
-        GM_config.reset();
-        dialog.find("textarea, input[type='text'], input[type='number']").val("");
-        dialog.find("#highlight-color-input").val("#fff9b1");
-        dialog.find("#show-reasons-checkbox").prop("checked", true);
-        dialog.find("#show-placeholders-checkbox").prop("checked", true);
-        dialog.find("#debug-mode-checkbox").prop("checked", false);
-        dialog.find("#disable-on-bookmarks-checkbox").prop("checked", false);
-        dialog.find("#disable-on-collections-checkbox").prop("checked", false);
-        dialog.find("#blocker-save, #blocker-cancel").prop("disabled", false);
+        if (saveConfig(DEFAULTS)) {
+          alert("Settings reset! Reloading...");
+          location.reload();
+        }
       }
     });
   }
+
+  // === ORIGINAL BLOCKING LOGIC PRESERVED ===
 
   function getWordCount($work) {
   let txt = $work.find("dd.words").first().text().trim();

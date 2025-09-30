@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.1.3
+// @version     1.1.6
 // @include     http://archiveofourown.org/*
 // @include     https://archiveofourown.org/*
 // @license     MIT
@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  // DEFAULT CONFIGURATION
+  // DEFAULT CONFIGURATION - Single config object
   const DEFAULTS = {
     // Feature Toggles
     enableReadingTime: true,
@@ -50,36 +50,40 @@
   const $ = (selector, root = document) => root.querySelectorAll(selector);
   const $1 = (selector, root = document) => root.querySelector(selector);
 
-  // Load user settings from localStorage
+  // Load user settings from localStorage - single config object
   const loadUserSettings = () => {
     if (typeof Storage === "undefined") return;
-    for (const [key, defaultValue] of Object.entries(DEFAULTS)) {
-      const saved = localStorage.getItem(key + "Local");
-      if (saved !== null) {
-        if (typeof defaultValue === "boolean") {
-          CONFIG[key] = saved === "true";
-        } else if (typeof defaultValue === "number") {
-          CONFIG[key] = parseFloat(saved) || defaultValue;
-        } else {
-          CONFIG[key] = saved;
-        }
+
+    const savedConfig = localStorage.getItem("ao3_reading_quality_config");
+    if (savedConfig) {
+      try {
+        const parsedConfig = JSON.parse(savedConfig);
+        CONFIG = { ...DEFAULTS, ...parsedConfig };
+      } catch (e) {
+        console.error("Error loading saved config, using defaults:", e);
+        CONFIG = { ...DEFAULTS };
       }
     }
   };
 
-  // Save a setting to localStorage
+  // Save all settings to localStorage - single config object
+  const saveAllSettings = () => {
+    if (typeof Storage !== "undefined") {
+      localStorage.setItem("ao3_reading_quality_config", JSON.stringify(CONFIG));
+    }
+  };
+
+  // Save a specific setting (updates the single config object)
   const saveSetting = (key, value) => {
     CONFIG[key] = value;
-    if (typeof Storage !== "undefined") {
-      localStorage.setItem(key + "Local", value);
-    }
+    saveAllSettings();
   };
 
   // Reset all settings to defaults
   const resetAllSettings = () => {
     if (confirm("Reset all settings to defaults?")) {
-      for (const key of Object.keys(DEFAULTS)) {
-        localStorage.removeItem(key + "Local");
+      if (typeof Storage !== "undefined") {
+        localStorage.removeItem("ao3_reading_quality_config");
       }
       CONFIG = { ...DEFAULTS };
       countRatio();
@@ -579,50 +583,28 @@
         thresholdHighValue = (thresholdHighValue / 100) * userMaxScoreValue;
       }
 
-      // Save all settings
-      saveSetting(
-        "enableReadingTime",
-        form.querySelector("#enableReadingTime").checked
-      );
-      saveSetting(
-        "enableQualityScore",
-        form.querySelector("#enableQualityScore").checked
-      );
-      saveSetting(
-        "alwaysCountReadingTime",
-        form.querySelector("#alwaysCountReadingTime").checked
-      );
-      saveSetting("wpm", parseInt(form.querySelector("#wpm").value));
-      saveSetting(
-        "readingTimeLvl1",
-        parseInt(form.querySelector("#readingTimeLvl1").value)
-      );
-      saveSetting(
-        "readingTimeLvl2",
-        parseInt(form.querySelector("#readingTimeLvl2").value)
-      );
-      saveSetting(
-        "alwaysCountQualityScore",
-        form.querySelector("#alwaysCountQualityScore").checked
-      );
-      saveSetting(
-        "alwaysSortQualityScore",
-        form.querySelector("#alwaysSortQualityScore").checked
-      );
-      saveSetting("hideHitcount", form.querySelector("#hideHitcount").checked);
-      saveSetting(
-        "minKudosToShowScore",
-        parseInt(form.querySelector("#minKudosToShowScore").value)
-      );
-      saveSetting("useNormalization", isNormalizationEnabled);
-      saveSetting("userMaxScore", userMaxScoreValue);
-      // Save the potentially converted raw thresholds
-      saveSetting("colorThresholdLow", thresholdLowValue);
-      saveSetting("colorThresholdHigh", thresholdHighValue);
-      saveSetting("colorGreen", form.querySelector("#colorGreen").value);
-      saveSetting("colorYellow", form.querySelector("#colorYellow").value);
-      saveSetting("colorRed", form.querySelector("#colorRed").value);
-      saveSetting("colorText", form.querySelector("#colorText").value);
+      // Update config object with all settings
+      CONFIG.enableReadingTime = form.querySelector("#enableReadingTime").checked;
+      CONFIG.enableQualityScore = form.querySelector("#enableQualityScore").checked;
+      CONFIG.alwaysCountReadingTime = form.querySelector("#alwaysCountReadingTime").checked;
+      CONFIG.wpm = parseInt(form.querySelector("#wpm").value);
+      CONFIG.readingTimeLvl1 = parseInt(form.querySelector("#readingTimeLvl1").value);
+      CONFIG.readingTimeLvl2 = parseInt(form.querySelector("#readingTimeLvl2").value);
+      CONFIG.alwaysCountQualityScore = form.querySelector("#alwaysCountQualityScore").checked;
+      CONFIG.alwaysSortQualityScore = form.querySelector("#alwaysSortQualityScore").checked;
+      CONFIG.hideHitcount = form.querySelector("#hideHitcount").checked;
+      CONFIG.minKudosToShowScore = parseInt(form.querySelector("#minKudosToShowScore").value);
+      CONFIG.useNormalization = isNormalizationEnabled;
+      CONFIG.userMaxScore = userMaxScoreValue;
+      CONFIG.colorThresholdLow = thresholdLowValue;
+      CONFIG.colorThresholdHigh = thresholdHighValue;
+      CONFIG.colorGreen = form.querySelector("#colorGreen").value;
+      CONFIG.colorYellow = form.querySelector("#colorYellow").value;
+      CONFIG.colorRed = form.querySelector("#colorRed").value;
+      CONFIG.colorText = form.querySelector("#colorText").value;
+
+      // Save the entire config object
+      saveAllSettings();
 
       popup.remove();
       countRatio();
@@ -726,6 +708,7 @@
 
 // --- INITIALIZATION ---
 loadUserSettings();
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     checkCountable();
