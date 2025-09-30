@@ -32,10 +32,11 @@
     colorThresholdLow: 10,
     colorThresholdHigh: 20,
     // Shared Color Settings
-    colorGreen: "#3e8fb0",
-    colorYellow: "#f6c177",
-    colorRed: "#eb6f92",
-    colorText: "#ffffff",
+  colorGreen: "#3e8fb0",
+  colorYellow: "#f6c177",
+  colorRed: "#eb6f92",
+  colorText: "#ffffff",
+  enableBarColors: true,
   };
 
   // Current config, loaded from localStorage
@@ -142,19 +143,25 @@
       readtime_value.className = "readtime";
       readtime_value.textContent = minutes_print;
       // Apply styling
-      readtime_value.style.color = CONFIG.colorText;
       readtime_value.style.borderRadius = "4px";
       readtime_value.style.padding = "0 6px";
       readtime_value.style.fontWeight = "bold";
       readtime_value.style.display = "inline-block";
       readtime_value.style.verticalAlign = "middle";
-      // Apply color based on reading time
-      if (minutes < CONFIG.readingTimeLvl1) {
-        readtime_value.style.backgroundColor = CONFIG.colorGreen;
-      } else if (minutes < CONFIG.readingTimeLvl2) {
-        readtime_value.style.backgroundColor = CONFIG.colorYellow;
+      if (CONFIG.enableBarColors) {
+        readtime_value.style.color = CONFIG.colorText;
+        readtime_value.style.fontWeight = "bold";
+        if (minutes < CONFIG.readingTimeLvl1) {
+          readtime_value.style.backgroundColor = CONFIG.colorGreen;
+        } else if (minutes < CONFIG.readingTimeLvl2) {
+          readtime_value.style.backgroundColor = CONFIG.colorYellow;
+        } else {
+          readtime_value.style.backgroundColor = CONFIG.colorRed;
+        }
       } else {
-        readtime_value.style.backgroundColor = CONFIG.colorRed;
+        readtime_value.style.backgroundColor = "";
+        readtime_value.style.color = "inherit";
+        readtime_value.style.fontWeight = "inherit";
       }
       // Inherit font size and line height from dl.stats
       const parentStats = readtime_value.closest("dl.stats");
@@ -225,19 +232,25 @@
         const ratioValue = document.createElement("dd");
         ratioValue.className = "kudoshits";
         ratioValue.textContent = displayScore;
-        ratioValue.style.color = CONFIG.colorText;
         ratioValue.style.borderRadius = "4px";
         ratioValue.style.padding = "0 6px";
         ratioValue.style.fontWeight = "bold";
         ratioValue.style.display = "inline-block";
         ratioValue.style.verticalAlign = "middle";
-        // Apply color based on score
-        if (displayScore >= thresholdHigh) {
-          ratioValue.style.backgroundColor = CONFIG.colorGreen;
-        } else if (displayScore >= thresholdLow) {
-          ratioValue.style.backgroundColor = CONFIG.colorYellow;
+        if (CONFIG.enableBarColors) {
+          ratioValue.style.color = CONFIG.colorText;
+          ratioValue.style.fontWeight = "bold";
+          if (displayScore >= thresholdHigh) {
+            ratioValue.style.backgroundColor = CONFIG.colorGreen;
+          } else if (displayScore >= thresholdLow) {
+            ratioValue.style.backgroundColor = CONFIG.colorYellow;
+          } else {
+            ratioValue.style.backgroundColor = CONFIG.colorRed;
+          }
         } else {
-          ratioValue.style.backgroundColor = CONFIG.colorRed;
+          ratioValue.style.backgroundColor = "";
+          ratioValue.style.color = "inherit";
+          ratioValue.style.fontWeight = "inherit";
         }
         // Inherit font size and line height from dl.stats
         const parentStats = ratioValue.closest("dl.stats");
@@ -446,31 +459,37 @@
                 <h4 style="margin-bottom: 10px; font-size: 1.1em; font-weight: bold; display: flex; align-items: center;">
                     <span>Color Settings 🎨</span>
                 </h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
-                    <div style="margin: 5px 0;">
-                        <label style="display: block; margin-bottom: 5px;">Green:</label>
-                        <input type="color" id="colorGreen" value="${
-                          CONFIG.colorGreen
-                        }" style="width: 100%;">
-                    </div>
-                    <div style="margin: 5px 0;">
-                        <label style="display: block; margin-bottom: 5px;">Yellow:</label>
-                        <input type="color" id="colorYellow" value="${
-                          CONFIG.colorYellow
-                        }" style="width: 100%;">
-                    </div>
-                    <div style="margin: 5px 0;">
-                        <label style="display: block; margin-bottom: 5px;">Red:</label>
-                        <input type="color" id="colorRed" value="${
-                          CONFIG.colorRed
-                        }" style="width: 100%;">
-                    </div>
-                    <div style="margin: 5px 0;">
-                        <label style="display: block; margin-bottom: 5px;">Text color:</label>
-                        <input type="color" id="colorText" value="${
-                          CONFIG.colorText
-                        }" style="width: 100%;">
-                    </div>
+                <label style="display: block; margin: 10px 0;">
+                  <input type="checkbox" id="enableBarColors" ${CONFIG.enableBarColors ? "checked" : ""}>
+                  Enable colored backgrounds for bars
+                </label>
+                <div id="barColorSettings" style="margin-left: 20px; ${CONFIG.enableBarColors ? '' : 'display: none;'}">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
+                      <div style="margin: 5px 0;">
+                          <label style="display: block; margin-bottom: 5px;">Green:</label>
+                          <input type="color" id="colorGreen" value="${
+                            CONFIG.colorGreen
+                          }" style="width: 100%;">
+                      </div>
+                      <div style="margin: 5px 0;">
+                          <label style="display: block; margin-bottom: 5px;">Yellow:</label>
+                          <input type="color" id="colorYellow" value="${
+                            CONFIG.colorYellow
+                          }" style="width: 100%;">
+                      </div>
+                      <div style="margin: 5px 0;">
+                          <label style="display: block; margin-bottom: 5px;">Red:</label>
+                          <input type="color" id="colorRed" value="${
+                            CONFIG.colorRed
+                          }" style="width: 100%;">
+                      </div>
+                      <div style="margin: 5px 0;">
+                          <label style="display: block; margin-bottom: 5px;">Text color:</label>
+                          <input type="color" id="colorText" value="${
+                            CONFIG.colorText
+                          }" style="width: 100%;">
+                      </div>
+                  </div>
                 </div>
             </div>
 
@@ -482,6 +501,13 @@
                 <a href="#" id="resetSettingsLink" style="font-size: 0.9em; color: #666; text-decoration: none;">Reset to Default Settings</a>
             </div>
         `;
+    // Toggle bar color settings
+    const enableBarColorsCheckbox = form.querySelector("#enableBarColors");
+    const barColorSettingsDiv = form.querySelector("#barColorSettings");
+    const toggleBarColorSettings = () => {
+      barColorSettingsDiv.style.display = enableBarColorsCheckbox.checked ? "block" : "none";
+    };
+    enableBarColorsCheckbox.addEventListener("change", toggleBarColorSettings);
 
     // Toggle reading time settings
     const readingTimeCheckbox = form.querySelector("#enableReadingTime");
@@ -598,10 +624,11 @@
       CONFIG.userMaxScore = userMaxScoreValue;
       CONFIG.colorThresholdLow = thresholdLowValue;
       CONFIG.colorThresholdHigh = thresholdHighValue;
-      CONFIG.colorGreen = form.querySelector("#colorGreen").value;
-      CONFIG.colorYellow = form.querySelector("#colorYellow").value;
-      CONFIG.colorRed = form.querySelector("#colorRed").value;
-      CONFIG.colorText = form.querySelector("#colorText").value;
+  CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
+  CONFIG.colorGreen = form.querySelector("#colorGreen").value;
+  CONFIG.colorYellow = form.querySelector("#colorYellow").value;
+  CONFIG.colorRed = form.querySelector("#colorRed").value;
+  CONFIG.colorText = form.querySelector("#colorText").value;
 
       // Save the entire config object
       saveAllSettings();

@@ -5,7 +5,7 @@
 // @namespace
 // @license       MIT
 // @match         http*://archiveofourown.org/*
-// @version       1.4.0
+// @version       1.4.1
 // @require       https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require       https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @grant         GM.getValue
@@ -33,7 +33,7 @@
     tagBlacklist: "",
     tagWhitelist: "",
     tagHighlights: "",
-    highlightColor: "#fff9b1",
+    highlightColor: "#f6e3ca",
     minWords: "",
     maxWords: "",
     blockComplete: false,
@@ -640,7 +640,7 @@
         addStyle();
         setTimeout(() => {
           // Set the highlight color CSS variable globally
-          document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#fff9b1');
+          document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#f6e3ca');
           checkWorks();
         }, 10);
       }
@@ -743,7 +743,7 @@
             <label class="setting-label" for="highlight-color-input">Highlight Color
               <span class="symbol question" title="Pick a background color for these works."><span>?</span></span>
             </label>
-            <input type="color" id="highlight-color-input" value="${config.highlightColor || "#f4ede8"}" title="Pick the highlight color.">
+            <input type="color" id="highlight-color-input" value="${config.highlightColor || "#f6e3ca"}" title="Pick the highlight color.">
           </div>
         </div>
       </div>
@@ -789,7 +789,7 @@
                 <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
               </label>
               <input id="allowed-languages-input" type="text"
-                     placeholder="english, Русский, 中文-普通话 國語"
+                     placeholder="English, Русский, 中文-普通话 國語"
                      value="${config.allowedLanguages || ""}"
                      title="Only show these languages. Leave empty for all.">
             </div>
@@ -1453,25 +1453,39 @@ function getCut(work) {
   }
 
   // Check for blocked title
-  const blockedTitles = [];
+  const blockedTitles = new Set();
   titleBlacklist.forEach((blacklistedTitle) => {
     if (blacklistedTitle.trim() && matchTermsWithWildCard(title.toLowerCase(), blacklistedTitle.toLowerCase())) {
-      blockedTitles.push(blacklistedTitle);
+      blockedTitles.add(title);
     }
   });
-  if (blockedTitles.length > 0) {
-    reasons.push({ titles: blockedTitles });
+  if (blockedTitles.size > 0) {
+    reasons.push({ titles: Array.from(blockedTitles) });
   }
 
   // Check for blocked summary terms
   const blockedSummaryTerms = [];
   summaryBlacklist.forEach((summaryTerm) => {
     if (summaryTerm.trim() && matchTermsWithWildCard(summary, summaryTerm)) {
-      blockedSummaryTerms.push(summaryTerm);
+      // Remove wildcards for cleaner display but keep the base term
+      const displayTerm = summaryTerm.replace(/\*/g, '');
+      blockedSummaryTerms.push(displayTerm);
     }
   });
   if (blockedSummaryTerms.length > 0) {
     reasons.push({ summaryTerms: blockedSummaryTerms });
+  }
+
+  // Helper function to find the actual matching text
+  function findMatchingText(text, pattern) {
+    if (pattern.indexOf('*') === -1) {
+      // Exact match - return the pattern since it matches exactly
+      return pattern;
+    }
+    
+    // For wildcards, this is complex - we'd need regex matching
+    // For now, return the pattern as fallback
+    return pattern;
   }
 
   return reasons.length > 0 ? reasons : null;
@@ -1601,7 +1615,7 @@ function getCut(work) {
       allTags.forEach((tag) => {
         if (config.tagHighlights.includes(tag.toLowerCase())) {
           blurb.addClass("ao3-blocker-highlight");
-          const color = config.highlightColor || '#fff9b1';
+          const color = config.highlightColor || '#f6e3ca';
           blurb[0].setAttribute('style', (blurb[0].getAttribute('style') || '') + `;background-color:${color} !important;`);
           if (blurb[0].id && blurb[0].id.trim() !== "") {
             const styleId = 'ao3-blocker-style-' + blurb[0].id;
