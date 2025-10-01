@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name         AO3: Chapter Shortcuts
-// @version      1.1
+// @version      1.2
 // @description  Adds shortcuts for first and last chapters on AO3 works. Customizable!
 // @author       BlackBatCat
+// @license      MIT
 // @match        http://archiveofourown.org/*
 // @match        https://archiveofourown.org/*
 // @grant        none
-// @downloadURL  
-// @updateURL    
 // ==/UserScript==
 
 (function () {
@@ -242,65 +241,58 @@
 
   // --- SHARED MENU MANAGEMENT ---
   function initSharedMenu() {
-    // Create shared menu object if it doesn't exist
-    if (!window.AO3UserScriptMenu) {
-      window.AO3UserScriptMenu = {
-        items: [],
-        register: function(item) {
-          this.items.push(item);
-          this.renderMenu();
-        },
-        renderMenu: function() {
-          // Find or create menu container
-          let menuContainer = document.getElementById('ao3-userscript-menu');
-          if (!menuContainer) {
-            const headerMenu = document.querySelector("ul.primary.navigation.actions");
-            const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-            if (!headerMenu || !searchItem) return;
-            
-            menuContainer = document.createElement("li");
-            menuContainer.className = "dropdown";
-            menuContainer.id = "ao3-userscript-menu";
-            const title = document.createElement("a");
-            title.href = "#";
-            title.textContent = "Userscripts";
-            menuContainer.appendChild(title);
-            const menu = document.createElement("ul");
-            menu.className = "menu dropdown-menu";
-            menuContainer.appendChild(menu);
-            headerMenu.insertBefore(menuContainer, searchItem);
-          }
-          
-          // Render menu items
-          const menu = menuContainer.querySelector("ul.menu");
-          if (menu) {
-            menu.innerHTML = "";
-            this.items.forEach(item => {
-              const li = document.createElement("li");
-              const a = document.createElement("a");
-              a.href = "#";
-              a.textContent = item.label;
-              a.addEventListener("click", (e) => {
-                e.preventDefault();
-                item.onClick();
-              });
-              li.appendChild(a);
-              menu.appendChild(li);
-            });
-          }
-        }
-      };
+    // Check if menu container exists, create if not
+    const menuContainer = document.getElementById("scriptconfig");
+    if (!menuContainer) {
+      const headerMenu = document.querySelector(
+        "ul.primary.navigation.actions"
+      );
+      const searchItem = headerMenu
+        ? headerMenu.querySelector("li.search")
+        : null;
+      if (!headerMenu || !searchItem) return;
+
+      // Create menu container
+      const newMenuContainer = document.createElement("li");
+      newMenuContainer.className = "dropdown";
+      newMenuContainer.id = "scriptconfig";
+
+      const title = document.createElement("a");
+      title.className = "dropdown-toggle";
+      title.href = "/";
+      title.setAttribute("data-toggle", "dropdown");
+      title.setAttribute("data-target", "#");
+      title.textContent = "Userscripts";
+      newMenuContainer.appendChild(title);
+
+      const menu = document.createElement("ul");
+      menu.className = "menu dropdown-menu";
+      newMenuContainer.appendChild(menu);
+
+      // Insert before search item
+      headerMenu.insertBefore(newMenuContainer, searchItem);
     }
-    
-    // Register this script's menu item
-    window.AO3UserScriptMenu.register({
-      label: "Chapter Shortcuts Settings",
-      onClick: showChapterShortcutsMenu
-    });
+
+    // Add menu item
+    const menu = document.querySelector("#scriptconfig .dropdown-menu");
+    if (menu) {
+      const menuItem = document.createElement("li");
+      const menuLink = document.createElement("a");
+      menuLink.href = "javascript:void(0);";
+      menuLink.id = "opencfg_chapter_shortcuts";
+      menuLink.textContent = "Chapter Shortcuts";
+      menuLink.addEventListener("click", showChapterShortcutsMenu);
+      menuItem.appendChild(menuLink);
+      menu.appendChild(menuItem);
+    }
   }
 
   // --- INITIALIZATION ---
   loadChapterShortcutsConfig();
+
+  // Show startup message
+  console.log("[AO3: Chapter Shortcuts] loaded.");
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       addChapterButtons();

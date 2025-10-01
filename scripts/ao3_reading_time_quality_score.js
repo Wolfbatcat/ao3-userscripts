@@ -2,9 +2,14 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.1.6
-// @include     http://archiveofourown.org/*
-// @include     https://archiveofourown.org/*
+// @version     1.3
+// @match       *://archiveofourown.org/
+// @match       *://archiveofourown.org/tags/*/works*
+// @match       *://archiveofourown.org/works*
+// @match       *://archiveofourown.org/users/*
+// @match       *://archiveofourown.org/collections/*
+// @match       *://archiveofourown.org/bookmarks*
+// @match       *://archiveofourown.org/series/*
 // @license     MIT
 // @grant       none
 // ==/UserScript==
@@ -12,7 +17,7 @@
 (function () {
   "use strict";
 
-  // DEFAULT CONFIGURATION - Single config object
+  // DEFAULT CONFIGURATION
   const DEFAULTS = {
     // Feature Toggles
     enableReadingTime: true,
@@ -32,11 +37,11 @@
     colorThresholdLow: 10,
     colorThresholdHigh: 20,
     // Shared Color Settings
-  colorGreen: "#3e8fb0",
-  colorYellow: "#f6c177",
-  colorRed: "#eb6f92",
-  colorText: "#ffffff",
-  enableBarColors: true,
+    colorGreen: "#3e8fb0",
+    colorYellow: "#f6c177",
+    colorRed: "#eb6f92",
+    colorText: "#ffffff",
+    enableBarColors: true,
   };
 
   // Current config, loaded from localStorage
@@ -51,7 +56,7 @@
   const $ = (selector, root = document) => root.querySelectorAll(selector);
   const $1 = (selector, root = document) => root.querySelector(selector);
 
-  // Load user settings from localStorage - single config object
+  // Load user settings from localStorage
   const loadUserSettings = () => {
     if (typeof Storage === "undefined") return;
 
@@ -67,14 +72,17 @@
     }
   };
 
-  // Save all settings to localStorage - single config object
+  // Save all settings to localStorage
   const saveAllSettings = () => {
     if (typeof Storage !== "undefined") {
-      localStorage.setItem("ao3_reading_quality_config", JSON.stringify(CONFIG));
+      localStorage.setItem(
+        "ao3_reading_quality_config",
+        JSON.stringify(CONFIG)
+      );
     }
   };
 
-  // Save a specific setting (updates the single config object)
+  // Save a specific setting
   const saveSetting = (key, value) => {
     CONFIG[key] = value;
     saveAllSettings();
@@ -111,15 +119,25 @@
     const foundStats = $("dl.stats");
     if (foundStats.length === 0) return;
 
-    const firstStat = foundStats[0];
-    if (firstStat.closest("li")?.matches(".work, .bookmark")) {
-      countable = sortable = true;
-    } else if (firstStat.closest(".statistics")) {
-      countable = sortable = statsPage = true;
-    } else if (firstStat.closest("dl.work")) {
-      countable = true;
+    // Cache common parent selectors for efficiency
+    for (const stat of foundStats) {
+      const li = stat.closest("li.work, li.bookmark");
+      if (li) {
+        countable = true;
+        sortable = true;
+        return;
+      }
+      if (stat.closest(".statistics")) {
+        countable = true;
+        sortable = true;
+        statsPage = true;
+        return;
+      }
+      if (stat.closest("dl.work")) {
+        countable = true;
+        return;
+      }
     }
-    // Menu logic is now handled by initSharedMenu()
   };
 
   const calculateReadtime = () => {
@@ -135,22 +153,26 @@
       const hrs = Math.floor(minutes / 60);
       const mins = (minutes % 60).toFixed(0);
       const minutes_print = hrs > 0 ? hrs + "h" + mins + "m" : mins + "m";
-      // Create elements
+      // Create elements with optimized styling
       const readtime_label = document.createElement("dt");
       readtime_label.className = "readtime";
       readtime_label.textContent = "Readtime:";
+
       const readtime_value = document.createElement("dd");
       readtime_value.className = "readtime";
       readtime_value.textContent = minutes_print;
-      // Apply styling
-      readtime_value.style.borderRadius = "4px";
-      readtime_value.style.padding = "0 6px";
-      readtime_value.style.fontWeight = "bold";
-      readtime_value.style.display = "inline-block";
-      readtime_value.style.verticalAlign = "middle";
+
+      // Apply base styling
+      Object.assign(readtime_value.style, {
+        borderRadius: "4px",
+        padding: "0 6px",
+        fontWeight: "bold",
+        display: "inline-block",
+        verticalAlign: "middle",
+      });
+
       if (CONFIG.enableBarColors) {
         readtime_value.style.color = CONFIG.colorText;
-        readtime_value.style.fontWeight = "bold";
         if (minutes < CONFIG.readingTimeLvl1) {
           readtime_value.style.backgroundColor = CONFIG.colorGreen;
         } else if (minutes < CONFIG.readingTimeLvl2) {
@@ -158,10 +180,6 @@
         } else {
           readtime_value.style.backgroundColor = CONFIG.colorRed;
         }
-      } else {
-        readtime_value.style.backgroundColor = "";
-        readtime_value.style.color = "inherit";
-        readtime_value.style.fontWeight = "inherit";
       }
       // Inherit font size and line height from dl.stats
       const parentStats = readtime_value.closest("dl.stats");
@@ -325,13 +343,13 @@
             box-sizing: border-box;
         `;
     // Ensure headings inherit font family
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       #ao3-rtqs-popup h3, #ao3-rtqs-popup h4 {
         font-family: inherit !important;
       }
     `;
-    popup.id = 'ao3-rtqs-popup';
+    popup.id = "ao3-rtqs-popup";
     document.head.appendChild(style);
     const form = document.createElement("form");
 
@@ -432,7 +450,9 @@
                         Normalize scores to 100%
                         <span title="Scales the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable." style="margin-left: 4px; cursor: help;">❓</span>
                     </label>
-                    <div id="userMaxScoreContainer" style="margin: 10px 0;${CONFIG.useNormalization ? '' : ' display:none;'}">
+                    <div id="userMaxScoreContainer" style="margin: 10px 0;${
+                      CONFIG.useNormalization ? "" : " display:none;"
+                    }">
                         <label>Best Possible Raw Score <span id="normalizationLabel">${
                           CONFIG.useNormalization ? "(for 100%)" : ""
                         }</span>:</label>
@@ -460,10 +480,14 @@
                     <span>Color Settings 🎨</span>
                 </h4>
                 <label style="display: block; margin: 10px 0;">
-                  <input type="checkbox" id="enableBarColors" ${CONFIG.enableBarColors ? "checked" : ""}>
+                  <input type="checkbox" id="enableBarColors" ${
+                    CONFIG.enableBarColors ? "checked" : ""
+                  }>
                   Enable colored backgrounds for bars
                 </label>
-                <div id="barColorSettings" style="margin-left: 20px; ${CONFIG.enableBarColors ? '' : 'display: none;'}">
+                <div id="barColorSettings" style="margin-left: 20px; ${
+                  CONFIG.enableBarColors ? "" : "display: none;"
+                }">
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
                       <div style="margin: 5px 0;">
                           <label style="display: block; margin-bottom: 5px;">Green:</label>
@@ -505,7 +529,9 @@
     const enableBarColorsCheckbox = form.querySelector("#enableBarColors");
     const barColorSettingsDiv = form.querySelector("#barColorSettings");
     const toggleBarColorSettings = () => {
-      barColorSettingsDiv.style.display = enableBarColorsCheckbox.checked ? "block" : "none";
+      barColorSettingsDiv.style.display = enableBarColorsCheckbox.checked
+        ? "block"
+        : "none";
     };
     enableBarColorsCheckbox.addEventListener("change", toggleBarColorSettings);
 
@@ -603,53 +629,176 @@
       const isNormalizationEnabled =
         form.querySelector("#useNormalization").checked;
 
-      // CRITICAL FIX: If normalization is enabled, convert percentages back to raw scores before saving
+      // CRITICAL: If normalization is enabled, convert percentages back to raw scores before saving
       if (isNormalizationEnabled) {
         thresholdLowValue = (thresholdLowValue / 100) * userMaxScoreValue;
         thresholdHighValue = (thresholdHighValue / 100) * userMaxScoreValue;
       }
 
       // Update config object with all settings
-      CONFIG.enableReadingTime = form.querySelector("#enableReadingTime").checked;
-      CONFIG.enableQualityScore = form.querySelector("#enableQualityScore").checked;
-      CONFIG.alwaysCountReadingTime = form.querySelector("#alwaysCountReadingTime").checked;
+      CONFIG.enableReadingTime =
+        form.querySelector("#enableReadingTime").checked;
+      CONFIG.enableQualityScore = form.querySelector(
+        "#enableQualityScore"
+      ).checked;
+      CONFIG.alwaysCountReadingTime = form.querySelector(
+        "#alwaysCountReadingTime"
+      ).checked;
       CONFIG.wpm = parseInt(form.querySelector("#wpm").value);
-      CONFIG.readingTimeLvl1 = parseInt(form.querySelector("#readingTimeLvl1").value);
-      CONFIG.readingTimeLvl2 = parseInt(form.querySelector("#readingTimeLvl2").value);
-      CONFIG.alwaysCountQualityScore = form.querySelector("#alwaysCountQualityScore").checked;
-      CONFIG.alwaysSortQualityScore = form.querySelector("#alwaysSortQualityScore").checked;
+      CONFIG.readingTimeLvl1 = parseInt(
+        form.querySelector("#readingTimeLvl1").value
+      );
+      CONFIG.readingTimeLvl2 = parseInt(
+        form.querySelector("#readingTimeLvl2").value
+      );
+      CONFIG.alwaysCountQualityScore = form.querySelector(
+        "#alwaysCountQualityScore"
+      ).checked;
+      CONFIG.alwaysSortQualityScore = form.querySelector(
+        "#alwaysSortQualityScore"
+      ).checked;
       CONFIG.hideHitcount = form.querySelector("#hideHitcount").checked;
-      CONFIG.minKudosToShowScore = parseInt(form.querySelector("#minKudosToShowScore").value);
+      CONFIG.minKudosToShowScore = parseInt(
+        form.querySelector("#minKudosToShowScore").value
+      );
       CONFIG.useNormalization = isNormalizationEnabled;
       CONFIG.userMaxScore = userMaxScoreValue;
       CONFIG.colorThresholdLow = thresholdLowValue;
       CONFIG.colorThresholdHigh = thresholdHighValue;
-  CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
-  CONFIG.colorGreen = form.querySelector("#colorGreen").value;
-  CONFIG.colorYellow = form.querySelector("#colorYellow").value;
-  CONFIG.colorRed = form.querySelector("#colorRed").value;
-  CONFIG.colorText = form.querySelector("#colorText").value;
+      CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
+      CONFIG.colorGreen = form.querySelector("#colorGreen").value;
+      CONFIG.colorYellow = form.querySelector("#colorYellow").value;
+      CONFIG.colorRed = form.querySelector("#colorRed").value;
+      CONFIG.colorText = form.querySelector("#colorText").value;
 
       // Save the entire config object
+      CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
       saveAllSettings();
 
       popup.remove();
-      countRatio();
-      calculateReadtime();
+      location.reload();
     });
 
     popup.appendChild(form);
     document.body.appendChild(popup);
   };
 
-  // --- UI MENU ---
+  // --- SHARED MENU SYSTEM ---
+  function initSharedMenu() {
+    const menuContainer = document.getElementById("scriptconfig");
+    if (!menuContainer) {
+      const headerMenu = document.querySelector(
+        "ul.primary.navigation.actions"
+      );
+      const searchItem = headerMenu
+        ? headerMenu.querySelector("li.search")
+        : null;
+      if (!headerMenu || !searchItem) return;
+
+      // Create menu container
+      const newMenuContainer = document.createElement("li");
+      newMenuContainer.className = "dropdown";
+      newMenuContainer.id = "scriptconfig";
+
+      const title = document.createElement("a");
+      title.className = "dropdown-toggle";
+      title.href = "/";
+      title.setAttribute("data-toggle", "dropdown");
+      title.setAttribute("data-target", "#");
+      title.textContent = "Userscripts";
+      newMenuContainer.appendChild(title);
+
+      const menu = document.createElement("ul");
+      menu.className = "menu dropdown-menu";
+      newMenuContainer.appendChild(menu);
+
+      // Insert before search item
+      headerMenu.insertBefore(newMenuContainer, searchItem);
+    }
+
+    // Add menu items
+    const menu = document.querySelector("#scriptconfig .dropdown-menu");
+    if (menu) {
+      const showMenuOptions = isAllowedMenuPage();
+
+      // Always add settings menu item
+      const settingsItem = document.createElement("li");
+      const settingsLink = document.createElement("a");
+      settingsLink.href = "javascript:void(0);";
+      settingsLink.id = "opencfg_reading_quality";
+      settingsLink.textContent = "Reading Time & Quality Score";
+      settingsLink.addEventListener("click", showSettingsPopup);
+      settingsItem.appendChild(settingsLink);
+      menu.appendChild(settingsItem);
+
+      // Add separator if we have conditional items
+      if (CONFIG.enableReadingTime || CONFIG.enableQualityScore) {
+        const separator = document.createElement("li");
+        separator.innerHTML = "<hr style='margin: 5px 0;'>";
+        menu.appendChild(separator);
+      }
+
+      // Reading Time manual calculation only if 'Calculate automatically' is unchecked
+      if (CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime) {
+        const readingTimeItem = document.createElement("li");
+        const readingTimeLink = document.createElement("a");
+        readingTimeLink.href = "javascript:void(0);";
+        readingTimeLink.textContent = "Reading Time: Calculate Times";
+        readingTimeLink.addEventListener("click", calculateReadtime);
+        readingTimeItem.appendChild(readingTimeLink);
+        menu.appendChild(readingTimeItem);
+      }
+
+      // Quality Score manual calculation only if 'Calculate automatically' is unchecked
+      if (CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore) {
+        const qualityScoreItem = document.createElement("li");
+        const qualityScoreLink = document.createElement("a");
+        qualityScoreLink.href = "javascript:void(0);";
+        qualityScoreLink.textContent = "Quality Score: Calculate Scores";
+        qualityScoreLink.addEventListener("click", countRatio);
+        qualityScoreItem.appendChild(qualityScoreLink);
+        menu.appendChild(qualityScoreItem);
+      }
+
+      // Sort by Score only if 'Sort by score automatically' is unchecked AND not on actual works pages AND allowed by showMenuOptions
+      const isWorksPage = /^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/.test(
+        window.location.pathname
+      );
+      if (
+        showMenuOptions &&
+        CONFIG.enableQualityScore &&
+        !CONFIG.alwaysSortQualityScore &&
+        !isWorksPage
+      ) {
+        const sortScoreItem = document.createElement("li");
+        const sortScoreLink = document.createElement("a");
+        sortScoreLink.href = "javascript:void(0);";
+        sortScoreLink.textContent = "Quality Score: Sort by Score";
+        sortScoreLink.addEventListener("click", () => sortByRatio());
+        sortScoreItem.appendChild(sortScoreLink);
+        menu.appendChild(sortScoreItem);
+      }
+    }
+  }
+
   // Helper: check if current page is one of the allowed types for menu options
   function isAllowedMenuPage() {
     const path = window.location.pathname;
+    // Remove sort option from actual works pages (e.g., /works/ID or /works/ID/chapters/ID)
+    if (/^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/.test(path)) return false;
     // User bookmarks: /users/USERNAME/bookmarks or /bookmarks
-    if (/^\/users\/[^\/]+\/bookmarks(\/|$)/.test(path) || /^\/bookmarks(\/|$)/.test(path)) return true;
+    if (
+      /^\/users\/[^\/]+\/bookmarks(\/|$)/.test(path) ||
+      /^\/bookmarks(\/|$)/.test(path)
+    )
+      return true;
+    // User pseuds bookmarks: /users/USERNAME/pseuds/PSEUD/bookmarks
+    if (/^\/users\/[^\/]+\/pseuds\/[^\/]+\/bookmarks(\/|$)/.test(path))
+      return true;
     // User profile: /users/USERNAME (no trailing /works etc)
     if (/^\/users\/[^\/]+\/?$/.test(path)) return true;
+    // User pseuds works: /users/USERNAME/pseuds/PSEUD/works
+    if (/^\/users\/[^\/]+\/pseuds\/[^\/]+\/works(\/|$)/.test(path)) return true;
     // Tag works: /tags/ANYTHING/works
     if (/^\/tags\/[^\/]+\/works(\/|$)/.test(path)) return true;
     // Collections: /collections/ANYTHING
@@ -659,85 +808,25 @@
     return false;
   }
 
-  // --- SHARED MENU MANAGEMENT ---
-  function initSharedMenu() {
-    // Create shared menu object if it doesn't exist (copied from ao3_chapter_shortcuts.js)
-    if (!window.AO3UserScriptMenu) {
-      window.AO3UserScriptMenu = {
-        items: [],
-        register: function(item) {
-          this.items.push(item);
-          this.renderMenu();
-        },
-        renderMenu: function() {
-          // Find or create menu container
-          let menuContainer = document.getElementById('ao3-userscript-menu');
-          if (!menuContainer) {
-            const headerMenu = document.querySelector("ul.primary.navigation.actions");
-            const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-            if (!headerMenu || !searchItem) return;
-            menuContainer = document.createElement("li");
-            menuContainer.className = "dropdown";
-            menuContainer.id = "ao3-userscript-menu";
-            const title = document.createElement("a");
-            title.href = "#";
-            title.textContent = "Userscripts";
-            menuContainer.appendChild(title);
-            const menu = document.createElement("ul");
-            menu.className = "menu dropdown-menu";
-            menuContainer.appendChild(menu);
-            headerMenu.insertBefore(menuContainer, searchItem);
-          }
-          // Render menu items
-          const menu = menuContainer.querySelector("ul.menu");
-          if (menu) {
-            menu.innerHTML = "";
-            this.items.forEach(item => {
-              const li = document.createElement("li");
-              const a = document.createElement("a");
-              a.href = "#";
-              a.textContent = item.label;
-              a.addEventListener("click", (e) => {
-                e.preventDefault();
-                item.onClick();
-              });
-              li.appendChild(a);
-              menu.appendChild(li);
-            });
-          }
-        }
-      };
-    }
+  // --- INITIALIZATION ---
+  loadUserSettings();
 
-    // Register this script's menu items
-    const showMenuOptions = isAllowedMenuPage();
-    if (showMenuOptions && CONFIG.enableReadingTime) {
-      window.AO3UserScriptMenu.register({
-        label: "Reading Time: Calculate",
-        onClick: calculateReadtime,
-      });
-    }
-    if (showMenuOptions && CONFIG.enableQualityScore) {
-      window.AO3UserScriptMenu.register({
-        label: "Quality Score: Calculate Scores",
-        onClick: countRatio,
-      });
-      window.AO3UserScriptMenu.register({
-        label: "Quality Score: Sort by Score",
-        onClick: () => sortByRatio(),
-      });
-    }
-    window.AO3UserScriptMenu.register({
-      label: "Reading Time & Quality Score Settings",
-      onClick: showSettingsPopup,
+  // Show startup message
+  console.log("[AO3: Reading Time & Quality Score] loaded.");
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      checkCountable();
+      initSharedMenu();
+      if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
+      if (CONFIG.alwaysCountQualityScore) {
+        setTimeout(() => {
+          countRatio();
+          if (CONFIG.alwaysSortQualityScore) sortByRatio();
+        }, 1000);
+      }
     });
-  }
-
-// --- INITIALIZATION ---
-loadUserSettings();
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
+  } else {
     checkCountable();
     initSharedMenu();
     if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
@@ -747,16 +836,5 @@ if (document.readyState === "loading") {
         if (CONFIG.alwaysSortQualityScore) sortByRatio();
       }, 1000);
     }
-  });
-} else {
-  checkCountable();
-  initSharedMenu();
-  if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
-  if (CONFIG.alwaysCountQualityScore) {
-    setTimeout(() => {
-      countRatio();
-      if (CONFIG.alwaysSortQualityScore) sortByRatio();
-    }, 1000);
   }
-}
 })();

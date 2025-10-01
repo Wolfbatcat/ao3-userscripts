@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.1.8
+// @version      1.4
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
-// @match        http://archiveofourown.org/*
-// @match        https://archiveofourown.org/*
+// @match        *://archiveofourown.org/*
 // @license      MIT
 // @grant        none
-// @run-at        document-start
+// @run-at       document-start
+// @namespace https://greasyfork.org/users/1498004
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  // --- SETTINGS STORAGE ---
+  // --- CONSTANTS ---
   const FORMATTER_CONFIG_KEY = "ao3_wizard_config";
   const DEFAULT_FORMATTER_CONFIG = {
     paragraphWidthPercent: 70,
@@ -32,16 +32,35 @@
     codeFontSize: "",
   };
 
+  const WORKS_PAGE_REGEX = /^https:\/\/archiveofourown\.org\/works\//;
+
+  // --- STATE ---
   let FORMATTER_CONFIG = { ...DEFAULT_FORMATTER_CONFIG };
+  let cachedElements = {
+    paraStyle: null,
+    siteStyle: null,
+    workskin: null,
+  };
+
+  // Cache current page type
+  let isWorksPage = WORKS_PAGE_REGEX.test(window.location.href);
+
+  // --- UTILITIES ---
+  function getOrCreateStyle(id) {
+    let style = document.getElementById(id);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = id;
+      document.head.appendChild(style);
+    }
+    return style;
+  }
 
   function loadFormatterConfig() {
     try {
       const saved = localStorage.getItem(FORMATTER_CONFIG_KEY);
       if (saved) {
-        FORMATTER_CONFIG = {
-          ...DEFAULT_FORMATTER_CONFIG,
-          ...JSON.parse(saved),
-        };
+        FORMATTER_CONFIG = { ...DEFAULT_FORMATTER_CONFIG, ...JSON.parse(saved) };
       }
     } catch (e) {
       console.error("Error loading config:", e);
@@ -50,10 +69,7 @@
 
   function saveFormatterConfig() {
     try {
-      localStorage.setItem(
-        FORMATTER_CONFIG_KEY,
-        JSON.stringify(FORMATTER_CONFIG)
-      );
+      localStorage.setItem(FORMATTER_CONFIG_KEY, JSON.stringify(FORMATTER_CONFIG));
     } catch (e) {
       console.error("Error saving config:", e);
     }
@@ -61,116 +77,105 @@
 
   // --- APPLY STYLES ---
   function applyParagraphWidth() {
-    const percent = FORMATTER_CONFIG.paragraphWidthPercent;
-    const fontSize = FORMATTER_CONFIG.paragraphFontSizePercent;
-    const textAlign = FORMATTER_CONFIG.paragraphTextAlign;
-    let fontFamily = FORMATTER_CONFIG.paragraphFontFamily;
-    const gap = FORMATTER_CONFIG.paragraphGap;
-
-    const paraStyleId = "ao3-formatter-paragraph-style";
-    let paraStyle = document.getElementById(paraStyleId);
-    if (!paraStyle) {
-      paraStyle = document.createElement("style");
-      paraStyle.id = paraStyleId;
-      document.head.appendChild(paraStyle);
+    if (!cachedElements.paraStyle) {
+      cachedElements.paraStyle = getOrCreateStyle("ao3-formatter-paragraph-style");
     }
 
-    // Only apply styles on individual works pages
-    const worksPageRegex = /^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/;
-    if (worksPageRegex.test(window.location.pathname)) {
-      paraStyle.textContent = `
-        .userstuff {
-          text-align: ${textAlign || "left"} !important;
-        }
+    if (isWorksPage) {
+      const { paragraphWidthPercent, paragraphFontSizePercent, paragraphTextAlign, paragraphFontFamily, paragraphGap } = FORMATTER_CONFIG;
+      
+      cachedElements.paraStyle.textContent = `
+        .userstuff { text-align: ${paragraphTextAlign} !important; }
         #workskin {
-          max-width: ${percent || 70}vw !important;
-          font-size: ${fontSize || 100}% !important;
+          max-width: ${paragraphWidthPercent}vw !important;
+          font-size: ${paragraphFontSizePercent}% !important;
         }
-        #workskin p, .userstuff {
-          margin-bottom: ${gap || 1.286}em !important;
-          ${fontFamily ? `font-family: ${fontFamily} !important;` : ""}
+        #workskin p {
+          margin-bottom: ${paragraphGap}em !important;
+          ${paragraphFontFamily ? `font-family: ${paragraphFontFamily} !important;` : ""}
         }
       `;
+
+      // Cache workskin element
+      if (!cachedElements.workskin) {
+        cachedElements.workskin = document.getElementById("workskin");
+      }
+
+      if (cachedElements.workskin) {
+        if (paragraphTextAlign === "right") {
+          cachedElements.workskin.setAttribute("dir", "rtl");
+        } else {
+          cachedElements.workskin.removeAttribute("dir");
+        }
+      }
     } else {
-      paraStyle.textContent = '';
-    }
-
-    // If right alignment is selected, set dir="rtl" on #workskin
-    const workskin = document.getElementById('workskin');
-    if (workskin) {
-      if (textAlign === 'right') {
-        workskin.setAttribute('dir', 'rtl');
-      } else {
-        workskin.removeAttribute('dir');
+      cachedElements.paraStyle.textContent = "";
+      if (cachedElements.workskin) {
+        cachedElements.workskin.removeAttribute("dir");
       }
     }
 
-    // --- SITE-WIDE STYLES ---
-    const siteStyleId = "ao3-sitewide-style";
-    let siteStyle = document.getElementById(siteStyleId);
-    if (!siteStyle) {
-      siteStyle = document.createElement("style");
-      siteStyle.id = siteStyleId;
-      document.head.appendChild(siteStyle);
+    applySiteWideStyles();
+  }
+
+  function applySiteWideStyles() {
+    if (!cachedElements.siteStyle) {
+      cachedElements.siteStyle = getOrCreateStyle("ao3-sitewide-style");
     }
 
-    // Use simple selectors like the working version
-    const generalSelectors = `body, input, .toggled form, .dynamic form, .secondary, .dropdown, blockquote, .bookmark .user .meta, a.work, span.symbol, .heading .actions, .heading .action, .heading span.actions, button, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, dd.fandom.tags a, select, a.tag`;
-    const headerSelectors = `h1, h2, h3, h4, h5, h6, .heading, #header .heading a`;
-    const codeSelectors = `kbd, tt, code, var, pre, samp, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea`;
+    const { siteFontSizePercent, siteFontFamily, siteFontWeight, headerFontWeight, codeFontFamily, codeFontStyle, codeFontSize } = FORMATTER_CONFIG;
 
-    // Build CSS without !important first, then add via regex (like working version)
-    siteStyle.textContent = `
-      html { font-size: ${FORMATTER_CONFIG.siteFontSizePercent || 100}% !important; }
-      ${generalSelectors} {
-        ${FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
-        ${FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight};` : ""}
-      }
-      ul.comment-format, ul.comment-format * {
-        font-family: FontAwesome !important;
-      }
-      ${headerSelectors} {
-        ${FORMATTER_CONFIG.headerFontFamily ? `font-family: ${FORMATTER_CONFIG.headerFontFamily};` :
-          FORMATTER_CONFIG.siteFontFamily ? `font-family: ${FORMATTER_CONFIG.siteFontFamily};` : ""}
-        ${FORMATTER_CONFIG.headerFontWeight ? `font-weight: ${FORMATTER_CONFIG.headerFontWeight};` :
-          FORMATTER_CONFIG.siteFontWeight ? `font-weight: ${FORMATTER_CONFIG.siteFontWeight};` : ""}
-      }
-      ${codeSelectors} {
-        ${FORMATTER_CONFIG.codeFontFamily ? `font-family: ${FORMATTER_CONFIG.codeFontFamily};` : ""}
-        ${FORMATTER_CONFIG.codeFontStyle ? `font-style: ${FORMATTER_CONFIG.codeFontStyle};` : ""}
-        ${FORMATTER_CONFIG.codeFontSize ? `font-size: ${FORMATTER_CONFIG.codeFontSize};` : ""}
-      }
-    `;
+    // Build CSS more efficiently
+    const rules = [];
+    
+    rules.push(`html { font-size: ${siteFontSizePercent}% !important; }`);
 
-    // Add !important to all font properties via regex
-    siteStyle.textContent = siteStyle.textContent
-      .replace(/(font-family:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-weight:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-size:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2)
-      .replace(/(font-style:[^;!]+)(;)/g, (m, p1, p2) => p1.trim().endsWith('!important') ? p1 + p2 : p1 + ' !important' + p2);
+    if (siteFontFamily) {
+      rules.push(`body, input, textarea, select, button, .toggled form, .dynamic form, .secondary, .dropdown, blockquote, .prompt .blurb h6, .bookmark .user .meta, a.work, span.symbol, .heading .actions, .heading .action, .heading span.actions, button, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li, span, div, a, p, label, .user, .current, .action, .notice, .comment, .thread, .work, .bookmark, .series, .pagination, .current, h1, h2, h3, h4, h5, h6, .heading { font-family: ${siteFontFamily} !important; }`);
+    }
+
+    if (siteFontWeight) {
+      rules.push(`body, input, textarea, select, button, .toggled form, .dynamic form, .secondary, .dropdown, blockquote, .prompt .blurb h6, .bookmark .user .meta, a.work, span.symbol, .heading .actions, .heading .action, .heading span.actions, button, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li, span, div, a, p, label, .user, .current, .action, .notice, .comment, .thread, .work, .bookmark, .series, .pagination, .current { font-weight: ${siteFontWeight} !important; }`);
+    }
+
+    if (headerFontWeight) {
+      rules.push(`h1, h2, h3, h4, h5, h6, .heading { font-weight: ${headerFontWeight} !important; }`);
+    }
+
+    if (codeFontFamily || codeFontStyle || codeFontSize) {
+      const codeRules = [];
+      if (codeFontFamily) codeRules.push(`font-family: ${codeFontFamily} !important`);
+      if (codeFontStyle) codeRules.push(`font-style: ${codeFontStyle} !important`);
+      if (codeFontSize) codeRules.push(`font-size: ${codeFontSize} !important`);
+      rules.push(`kbd, tt, code, var, pre, samp, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea { ${codeRules.join('; ')}; }`);
+    }
+
+    cachedElements.siteStyle.textContent = rules.join('\n');
   }
 
   // --- PARAGRAPH SPACING FIX ---
-  function fixParagraphSpacing() {
-    // Helper functions
+  const fixParagraphSpacing = (() => {
+    // Create closure with helper functions
     function stripBrs(el, leading = true, trailing = true) {
       if (leading) {
-        while (el.firstChild && el.firstChild.tagName === "BR") {
+        while (el.firstChild?.tagName === "BR") {
           el.firstChild.remove();
         }
       }
       if (trailing) {
-        while (el.lastChild && el.lastChild.tagName === "BR") {
+        while (el.lastChild?.tagName === "BR") {
           el.lastChild.remove();
         }
       }
     }
+
     function removeEmptyElement(el) {
-      const content = el.textContent && el.textContent.replace(/\u00A0/g, "").trim();
+      const content = el.textContent?.replace(/\u00A0/g, "").trim();
       if (!content && el.tagName !== "BR" && el.tagName !== "HR" && !el.querySelector("img, embed, iframe, video")) {
         el.remove();
       }
     }
+
     function reduceBrs(userstuff) {
       let el = userstuff.querySelector("br + br + br");
       while (el) {
@@ -179,24 +184,28 @@
       }
     }
 
-    document.querySelectorAll(".userstuff").forEach((userstuff) => {
-      // Only run once per userstuff
-      if (userstuff.getAttribute("data-formatter-spacing-fixed")) return;
-      userstuff.setAttribute("data-formatter-spacing-fixed", "true");
+    const ALLOWED_TAGS = ["p", "div", "span", "blockquote", "pre", "li", "ul", "ol", "table", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6"];
 
-      // Clean up allowed tags
-      ["p", "div", "span", "blockquote", "pre", "li", "ul", "ol", "table", "tr", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6"].forEach((tag) => {
-        userstuff.querySelectorAll(tag).forEach((child) => {
-          stripBrs(child);
-          removeEmptyElement(child);
+    return function() {
+      if (!isWorksPage) return;
+
+      document.querySelectorAll(".userstuff:not([data-formatter-spacing-fixed])").forEach((userstuff) => {
+        userstuff.setAttribute("data-formatter-spacing-fixed", "true");
+
+        ALLOWED_TAGS.forEach((tag) => {
+          userstuff.querySelectorAll(tag).forEach((child) => {
+            stripBrs(child);
+            removeEmptyElement(child);
+          });
         });
+        reduceBrs(userstuff);
       });
-      reduceBrs(userstuff);
-    });
-  }
+    };
+  })();
 
   // --- SETTINGS MENU ---
   function showFormatterMenu() {
+    // Remove existing dialogs
     document.querySelectorAll(".ao3-formatter-menu-dialog").forEach((d) => d.remove());
 
     // Get AO3 input field background color
@@ -213,121 +222,19 @@
 
     const dialog = document.createElement("div");
     dialog.className = "ao3-formatter-menu-dialog";
-    dialog.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: ${inputBg};
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
-      z-index: 10000;
-      width: 90%;
-      max-width: 900px;
-      max-height: 80vh;
-      overflow-y: auto;
-      font-family: inherit;
-      font-size: inherit;
-      color: inherit;
-      box-sizing: border-box;
-    `;
+    dialog.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${inputBg}; padding: 20px; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.2); z-index: 10000; width: 90%; max-width: 900px; max-height: 80vh; overflow-y: auto; font-family: inherit; font-size: inherit; color: inherit; box-sizing: border-box;`;
 
-    // Add CSS for the improved layout
+    // Add CSS for the layout
     const style = document.createElement("style");
-    style.textContent = `
-      .ao3-formatter-menu-dialog .settings-section {
-        background: rgba(0,0,0,0.03);
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-left: 4px solid currentColor;
-      }
-
-      .ao3-formatter-menu-dialog .section-title {
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-size: 1.2em;
-        font-weight: bold;
-        color: inherit;
-        opacity: 0.85;
-        font-family: inherit;
-      }
-
-      .ao3-formatter-menu-dialog .setting-group {
-        margin-bottom: 15px;
-      }
-
-      .ao3-formatter-menu-dialog .setting-label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: bold;
-        color: inherit;
-        opacity: 0.9;
-      }
-
-      .ao3-formatter-menu-dialog .setting-description {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 0.9em;
-        color: inherit;
-        opacity: 0.6;
-        line-height: 1.4;
-      }
-
-      .ao3-formatter-menu-dialog .two-column {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-      }
-
-      .ao3-formatter-menu-dialog .slider-with-value {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .ao3-formatter-menu-dialog .slider-with-value input[type="range"] {
-        flex-grow: 1;
-      }
-
-      .ao3-formatter-menu-dialog .value-display {
-        min-width: 40px;
-        text-align: center;
-        font-weight: bold;
-        color: inherit;
-        opacity: 0.6;
-      }
-
-      .ao3-formatter-menu-dialog .button-group {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 20px;
-      }
-
-      .ao3-formatter-menu-dialog .button-group button {
-        flex: 1;
-        padding: 10px;
-        color: inherit;
-        opacity: 0.9;
-      }
-
-      .ao3-formatter-menu-dialog .reset-link {
-        text-align: center;
-        margin-top: 10px;
-        color: inherit;
-        opacity: 0.7;
-      }
-    `;
+    style.textContent = `.ao3-formatter-menu-dialog .settings-section { background: rgba(0,0,0,0.03); border-radius: 6px; padding: 15px; margin-bottom: 20px; border-left: 4px solid currentColor; } .ao3-formatter-menu-dialog .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; color: inherit; opacity: 0.85; font-family: inherit; } .ao3-formatter-menu-dialog .setting-group { margin-bottom: 15px; } .ao3-formatter-menu-dialog .setting-label { display: block; margin-bottom: 6px; font-weight: bold; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .setting-description { display: block; margin-bottom: 8px; font-size: 0.9em; color: inherit; opacity: 0.6; line-height: 1.4; } .ao3-formatter-menu-dialog .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } .ao3-formatter-menu-dialog .slider-with-value { display: flex; align-items: center; gap: 10px; } .ao3-formatter-menu-dialog .slider-with-value input[type="range"] { flex-grow: 1; } .ao3-formatter-menu-dialog .value-display { min-width: 40px; text-align: center; font-weight: bold; color: inherit; opacity: 0.6; } .ao3-formatter-menu-dialog .button-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; } .ao3-formatter-menu-dialog .button-group button { flex: 1; padding: 10px; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .reset-link { text-align: center; margin-top: 10px; color: inherit; opacity: 0.7; }`;
     document.head.appendChild(style);
 
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
     dialog.innerHTML = `
-      <h3 style="text-align: center; margin-top: 0; color: inherit;">Site Wizard Settings</h3>
-
+      <h3 style="text-align: center; margin-top: 0; color: inherit;">⚙️ Site Wizard Settings ⚙️</h3>
       <div class="settings-section">
-        <h4 class="section-title">Site-Wide Display</h4>
-
+        <h4 class="section-title">📱 Site-Wide Display</h4>
         <div class="setting-group">
           <label class="setting-label">Base Font Size</label>
           <span class="setting-description">Adjust the overall text size for the entire site (percentage of browser default)</span>
@@ -336,14 +243,12 @@
             <span class="value-display"><span id="site-fontsize-value">${FORMATTER_CONFIG.siteFontSizePercent}</span>%</span>
           </div>
         </div>
-
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="site-fontfamily-input">General Text Font</label>
             <span class="setting-description">Font for most site text</span>
             <input type="text" id="site-fontfamily-input" value="${FORMATTER_CONFIG.siteFontFamily}" placeholder="Figtree, sans-serif">
           </div>
-
           <div class="setting-group">
             <label class="setting-label" for="site-fontweight-input">Font Weight</label>
             <span class="setting-description">Boldness of general text</span>
@@ -351,10 +256,8 @@
           </div>
         </div>
       </div>
-
       <div class="settings-section">
-        <h4 class="section-title">Work Formatting</h4>
-
+        <h4 class="section-title">📖 Work Formatting</h4>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label">Work Margin Width</label>
@@ -364,7 +267,6 @@
               <span class="value-display"><span id="paragraph-width-value">${FORMATTER_CONFIG.paragraphWidthPercent}</span>%</span>
             </div>
           </div>
-
           <div class="setting-group">
             <label class="setting-label">Font Size</label>
             <span class="setting-description">Size relative to site base size</span>
@@ -374,7 +276,6 @@
             </div>
           </div>
         </div>
-
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="paragraph-align-select">Text Alignment</label>
@@ -385,20 +286,17 @@
               <option value="right" ${FORMATTER_CONFIG.paragraphTextAlign === "right" ? "selected" : ""}>Right Aligned</option>
             </select>
           </div>
-
           <div class="setting-group">
             <label class="setting-label" for="paragraph-gap-input">Line Spacing</label>
             <span class="setting-description">Vertical space between paragraphs (multiplier)</span>
             <input type="number" id="paragraph-gap-input" min="0" step="0.1" value="${FORMATTER_CONFIG.paragraphGap}">
           </div>
         </div>
-
         <div class="setting-group">
           <label class="setting-label" for="paragraph-fontfamily-input">Work Font</label>
           <span class="setting-description">Font family for reader</span>
           <input type="text" id="paragraph-fontfamily-input" value="${FORMATTER_CONFIG.paragraphFontFamily}" placeholder="Figtree, sans-serif">
         </div>
-
         <div class="setting-group">
           <label class="checkbox-label">
             <input type="checkbox" id="fix-paragraph-spacing-checkbox" ${FORMATTER_CONFIG.fixParagraphSpacing ? "checked" : ""}>
@@ -407,31 +305,26 @@
           <span class="setting-description">Remove unnecessary blank space between paragraphs</span>
         </div>
       </div>
-
       <div class="settings-section">
-        <h4 class="section-title">Element-Specific Fonts</h4>
-
+        <h4 class="section-title">🎯 Element-Specific Fonts</h4>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="header-fontfamily-input">Header Font</label>
             <span class="setting-description">Font for headings (H1-H6)</span>
             <input type="text" id="header-fontfamily-input" value="${FORMATTER_CONFIG.headerFontFamily}" placeholder="Figtree, sans-serif">
           </div>
-
           <div class="setting-group">
             <label class="setting-label" for="header-fontweight-input">Header Weight</label>
             <span class="setting-description">Boldness of header text</span>
             <input type="text" id="header-fontweight-input" value="${FORMATTER_CONFIG.headerFontWeight}" placeholder="700, bold">
           </div>
         </div>
-
         <div class="two-column">
           <div class="setting-group">
-            <label class="setting-label" for="code-fontfamily-input">Code/Monospace Font</label>
-            <span class="setting-description">Font for code blocks and preformatted text</span>
-            <input type="text" id="code-fontfamily-input" value="${FORMATTER_CONFIG.codeFontFamily}" placeholder="Victor Mono Medium, monospace">
+            <label class="setting-label" for="code-fontsize-input">Code Font Size</label>
+            <span class="setting-description">Size relative to surrounding text</span>
+            <input type="text" id="code-fontsize-input" value="${FORMATTER_CONFIG.codeFontSize}" placeholder="0.9em, 14px">
           </div>
-
           <div class="setting-group">
             <label class="setting-label" for="code-fontstyle-select">Code Font Style</label>
             <span class="setting-description">Style for code text</span>
@@ -441,19 +334,16 @@
             </select>
           </div>
         </div>
-
         <div class="setting-group">
-          <label class="setting-label" for="code-fontsize-input">Code Font Size</label>
-          <span class="setting-description">Size relative to surrounding text</span>
-          <input type="text" id="code-fontsize-input" value="${FORMATTER_CONFIG.codeFontSize}" placeholder="0.9em, 14px">
+          <label class="setting-label" for="code-fontfamily-input">Code/Monospace Font</label>
+          <span class="setting-description">Font for code blocks and preformatted text</span>
+          <input type="text" id="code-fontfamily-input" value="${FORMATTER_CONFIG.codeFontFamily}" placeholder="Victor Mono Medium, monospace">
         </div>
       </div>
-
       <div class="button-group">
         <button id="formatter-save">Apply Settings</button>
         <button id="formatter-cancel">Cancel</button>
       </div>
-
       <div class="reset-link">
         <a href="#" id="resetFormatterSettingsLink">Reset to Default Settings</a>
       </div>
@@ -461,56 +351,49 @@
 
     document.body.appendChild(dialog);
 
-    // Add event listeners for sliders to update values in real-time
-    const sliders = [
-      { slider: "site-fontsize-input", value: "site-fontsize-value" },
-      { slider: "paragraph-width-slider", value: "paragraph-width-value" },
-      { slider: "paragraph-fontsize-slider", value: "paragraph-fontsize-value" },
-    ];
-
-    sliders.forEach(({ slider, value }) => {
-      const sliderEl = dialog.querySelector(`#${slider}`);
-      const valueEl = dialog.querySelector(`#${value}`);
-      if (sliderEl && valueEl) {
-        sliderEl.addEventListener("input", () => {
-          valueEl.textContent = sliderEl.value;
-        });
+    // Event delegation for sliders
+    dialog.addEventListener('input', (e) => {
+      const target = e.target;
+      if (target.type === 'range') {
+        const valueId = target.id.replace('-input', '-value').replace('-slider', '-value');
+        const valueEl = dialog.querySelector(`#${valueId}`);
+        if (valueEl) valueEl.textContent = target.value;
       }
     });
 
     // Save button handler
     dialog.querySelector("#formatter-save").addEventListener("click", () => {
-      // Get all values
-      FORMATTER_CONFIG.siteFontSizePercent = parseInt(dialog.querySelector("#site-fontsize-input").value, 10) || DEFAULT_FORMATTER_CONFIG.siteFontSizePercent;
-      FORMATTER_CONFIG.siteFontFamily = dialog.querySelector("#site-fontfamily-input").value.trim();
-      FORMATTER_CONFIG.siteFontWeight = dialog.querySelector("#site-fontweight-input").value.trim();
+      const getValue = (id) => dialog.querySelector(id)?.value?.trim() || "";
+      const getInt = (id, def) => parseInt(getValue(id), 10) || def;
+      const getFloat = (id, def) => parseFloat(getValue(id)) || def;
 
-      FORMATTER_CONFIG.paragraphWidthPercent = parseInt(dialog.querySelector("#paragraph-width-slider").value, 10) || DEFAULT_FORMATTER_CONFIG.paragraphWidthPercent;
-      FORMATTER_CONFIG.paragraphFontSizePercent = parseInt(dialog.querySelector("#paragraph-fontsize-slider").value, 10) || DEFAULT_FORMATTER_CONFIG.paragraphFontSizePercent;
-      FORMATTER_CONFIG.paragraphTextAlign = dialog.querySelector("#paragraph-align-select").value || DEFAULT_FORMATTER_CONFIG.paragraphTextAlign;
-      FORMATTER_CONFIG.paragraphFontFamily = dialog.querySelector("#paragraph-fontfamily-input").value.trim();
-
-      FORMATTER_CONFIG.paragraphGap = parseFloat(dialog.querySelector("#paragraph-gap-input").value) || DEFAULT_FORMATTER_CONFIG.paragraphGap;
+      FORMATTER_CONFIG.siteFontSizePercent = getInt("#site-fontsize-input", DEFAULT_FORMATTER_CONFIG.siteFontSizePercent);
+      FORMATTER_CONFIG.siteFontFamily = getValue("#site-fontfamily-input");
+      FORMATTER_CONFIG.siteFontWeight = getValue("#site-fontweight-input");
+      FORMATTER_CONFIG.paragraphWidthPercent = getInt("#paragraph-width-slider", DEFAULT_FORMATTER_CONFIG.paragraphWidthPercent);
+      FORMATTER_CONFIG.paragraphFontSizePercent = getInt("#paragraph-fontsize-slider", DEFAULT_FORMATTER_CONFIG.paragraphFontSizePercent);
+      FORMATTER_CONFIG.paragraphTextAlign = getValue("#paragraph-align-select") || DEFAULT_FORMATTER_CONFIG.paragraphTextAlign;
+      FORMATTER_CONFIG.paragraphFontFamily = getValue("#paragraph-fontfamily-input");
+      FORMATTER_CONFIG.paragraphGap = getFloat("#paragraph-gap-input", DEFAULT_FORMATTER_CONFIG.paragraphGap);
       FORMATTER_CONFIG.fixParagraphSpacing = dialog.querySelector("#fix-paragraph-spacing-checkbox").checked;
-
-      FORMATTER_CONFIG.headerFontFamily = dialog.querySelector("#header-fontfamily-input").value.trim();
-      FORMATTER_CONFIG.headerFontWeight = dialog.querySelector("#header-fontweight-input").value.trim();
-      FORMATTER_CONFIG.codeFontFamily = dialog.querySelector("#code-fontfamily-input").value.trim();
-      FORMATTER_CONFIG.codeFontStyle = dialog.querySelector("#code-fontstyle-select").value;
-      FORMATTER_CONFIG.codeFontSize = dialog.querySelector("#code-fontsize-input").value.trim();
+      FORMATTER_CONFIG.headerFontFamily = getValue("#header-fontfamily-input");
+      FORMATTER_CONFIG.headerFontWeight = getValue("#header-fontweight-input");
+      FORMATTER_CONFIG.codeFontFamily = getValue("#code-fontfamily-input");
+      FORMATTER_CONFIG.codeFontStyle = getValue("#code-fontstyle-select");
+      FORMATTER_CONFIG.codeFontSize = getValue("#code-fontsize-input");
 
       saveFormatterConfig();
       dialog.remove();
       applyParagraphWidth();
+      
+      if (FORMATTER_CONFIG.paragraphTextAlign === "right") {
+        location.reload();
+      }
     });
 
-    // Cancel button handler
-    dialog.querySelector("#formatter-cancel").addEventListener("click", () => {
-      dialog.remove();
-    });
+    dialog.querySelector("#formatter-cancel").addEventListener("click", () => dialog.remove());
 
-    // Reset link handler
-    dialog.querySelector("#resetFormatterSettingsLink").addEventListener("click", function (e) {
+    dialog.querySelector("#resetFormatterSettingsLink").addEventListener("click", (e) => {
       e.preventDefault();
       FORMATTER_CONFIG = { ...DEFAULT_FORMATTER_CONFIG };
       saveFormatterConfig();
@@ -521,131 +404,103 @@
 
   // --- SHARED MENU MANAGEMENT ---
   function initSharedMenu() {
-    // Create shared menu object if it doesn't exist
-    if (!window.AO3UserScriptMenu) {
-      window.AO3UserScriptMenu = {
-        items: [],
-        register: function(item) {
-          this.items.push(item);
-          this.renderMenu();
-        },
-        renderMenu: function() {
-          // Find or create menu container
-          let menuContainer = document.getElementById('ao3-userscript-menu');
-          if (!menuContainer) {
-            const headerMenu = document.querySelector("ul.primary.navigation.actions");
-            const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-            if (!headerMenu || !searchItem) return;
+    let menuContainer = document.getElementById("scriptconfig");
+    
+    if (!menuContainer) {
+      const headerMenu = document.querySelector("ul.primary.navigation.actions");
+      const searchItem = headerMenu?.querySelector("li.search");
+      if (!headerMenu || !searchItem) return;
 
-            menuContainer = document.createElement("li");
-            menuContainer.className = "dropdown";
-            menuContainer.id = "ao3-userscript-menu";
-            const title = document.createElement("a");
-            title.href = "#";
-            title.textContent = "Userscripts";
-            menuContainer.appendChild(title);
-            const menu = document.createElement("ul");
-            menu.className = "menu dropdown-menu";
-            menuContainer.appendChild(menu);
-            headerMenu.insertBefore(menuContainer, searchItem);
-          }
-
-          // Render menu items
-          const menu = menuContainer.querySelector("ul.menu");
-          if (menu) {
-            menu.innerHTML = "";
-            this.items.forEach(item => {
-              const li = document.createElement("li");
-              const a = document.createElement("a");
-              a.href = "#";
-              a.textContent = item.label;
-              a.addEventListener("click", (e) => {
-                e.preventDefault();
-                item.onClick();
-              });
-              li.appendChild(a);
-              menu.appendChild(li);
-            });
-          }
-        }
-      };
+      menuContainer = document.createElement("li");
+      menuContainer.className = "dropdown";
+      menuContainer.id = "scriptconfig";
+      menuContainer.innerHTML = `
+        <a class="dropdown-toggle" href="/" data-toggle="dropdown" data-target="#">Userscripts</a>
+        <ul class="menu dropdown-menu"></ul>
+      `;
+      headerMenu.insertBefore(menuContainer, searchItem);
     }
 
-    // Register this script's menu item
-    window.AO3UserScriptMenu.register({
-      label: "Site Wizard Settings",
-      onClick: showFormatterMenu
-    });
+    const menu = menuContainer.querySelector(".dropdown-menu");
+    if (menu && !menu.querySelector("#opencfg_site_wizard")) {
+      const menuItem = document.createElement("li");
+      menuItem.innerHTML = '<a href="javascript:void(0);" id="opencfg_site_wizard">Site Wizard</a>';
+      menuItem.querySelector("a").addEventListener("click", showFormatterMenu);
+      menu.appendChild(menuItem);
+    }
   }
 
   // --- INITIALIZATION ---
   loadFormatterConfig();
-  // Apply styles immediately without waiting for DOMContentLoaded
-  if (document.head) {
-    applyParagraphWidth();
-  } else {
-    // If head doesn't exist yet, wait for it
-    const observer = new MutationObserver(function(mutations) {
-      if (document.head) {
-        observer.disconnect();
-        applyParagraphWidth();
-      }
-    });
-    observer.observe(document.documentElement, { childList: true });
+  console.log("[AO3: Site Wizard] loaded.");
+
+  // Apply styles with proper sequencing
+  function initStyles() {
+    if (document.head) {
+      applyParagraphWidth();
+    } else {
+      const observer = new MutationObserver(() => {
+        if (document.head) {
+          observer.disconnect();
+          applyParagraphWidth();
+        }
+      });
+      observer.observe(document.documentElement, { childList: true });
+    }
   }
 
-  // Run fixParagraphSpacing independently on page load if enabled
+  // Run paragraph spacing fix
   function runParagraphSpacingFixIfEnabled() {
-    if (FORMATTER_CONFIG.fixParagraphSpacing) {
+    if (FORMATTER_CONFIG.fixParagraphSpacing && isWorksPage) {
       fixParagraphSpacing();
     }
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', runParagraphSpacingFixIfEnabled);
-  } else {
-    runParagraphSpacingFixIfEnabled();
-  }
 
-  // MutationObserver to process new .userstuff elements, only after document.body exists
+  // Setup mutation observer for new userstuff elements
   function setupUserstuffObserver() {
     if (!document.body) {
-      document.addEventListener('DOMContentLoaded', setupUserstuffObserver);
+      document.addEventListener("DOMContentLoaded", setupUserstuffObserver);
       return;
     }
+
+    if (!FORMATTER_CONFIG.fixParagraphSpacing || !isWorksPage) return;
+
     const userstuffObserver = new MutationObserver((mutations) => {
-      if (!FORMATTER_CONFIG.fixParagraphSpacing) return;
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1) {
-            if (node.classList.contains('userstuff')) {
-              // Only process if not already fixed
-              if (!node.getAttribute('data-formatter-spacing-fixed')) {
-                fixParagraphSpacing();
-              }
-            } else {
-              // Check descendants
-              node.querySelectorAll && node.querySelectorAll('.userstuff').forEach((el) => {
-                if (!el.getAttribute('data-formatter-spacing-fixed')) {
-                  fixParagraphSpacing();
-                }
-              });
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          
+          if (node.classList?.contains("userstuff") && !node.getAttribute("data-formatter-spacing-fixed")) {
+            fixParagraphSpacing();
+          } else if (node.querySelectorAll) {
+            const userstuffs = node.querySelectorAll(".userstuff:not([data-formatter-spacing-fixed])");
+            if (userstuffs.length > 0) {
+              fixParagraphSpacing();
             }
           }
-        });
-      });
+        }
+      }
     });
+
     userstuffObserver.observe(document.body, { childList: true, subtree: true });
   }
+
+  // Initialize everything
+  initStyles();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      runParagraphSpacingFixIfEnabled();
+      initSharedMenu();
+    });
+  } else {
+    runParagraphSpacingFixIfEnabled();
+    initSharedMenu();
+  }
+
   if (document.body) {
     setupUserstuffObserver();
   } else {
-    document.addEventListener('DOMContentLoaded', setupUserstuffObserver);
-  }
-
-  // Initialize menu when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSharedMenu);
-  } else {
-    initSharedMenu();
+    document.addEventListener("DOMContentLoaded", setupUserstuffObserver);
   }
 })();

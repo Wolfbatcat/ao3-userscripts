@@ -2,20 +2,20 @@
 // @name          AO3: Advanced Blocker
 // @description   Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @namespace
+// @version       1.6
 // @license       MIT
-// @match         http*://archiveofourown.org/*
-// @version       1.4.1
-// @require       https://openuserjs.org/src/libs/sizzle/GM_config.js
-// @require       https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
+// @match         *://archiveofourown.org/tags/*/works*
+// @match         *://archiveofourown.org/works
+// @match         *://archiveofourown.org/works?*
+// @match         *://archiveofourown.org/works/search*
+// @match         *://archiveofourown.org/users/*
+// @match         *://archiveofourown.org/collections/*
+// @match         *://archiveofourown.org/bookmarks*
+// @match         *://archiveofourown.org/series/*
 // @grant         GM.getValue
 // @grant         GM.setValue
 // @run-at        document-idle
-// @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
-// @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
-
-/* globals $, GM_config */
 
 ;(function () {
   "use strict";
@@ -25,10 +25,10 @@
       console.log("[AO3: Advanced Blocker] loaded.");
     } catch (e) {}
 
-  // Define the CSS namespace. All CSS classes are prefixed with this.
+  // CSS namespace for all classes
   const CSS_NAMESPACE = "ao3-blocker";
 
-  // Define default configuration values
+  // Default configuration values and option definitions
   const DEFAULTS = {
     tagBlacklist: "",
     tagWhitelist: "",
@@ -48,6 +48,7 @@
     maxCrossovers: "3",
     disableOnBookmarks: true,
     disableOnCollections: false,
+    disableOnDashboards: true,
     primaryRelationships: "",
     primaryCharacters: "",
     primaryRelpad: "1",
@@ -57,7 +58,7 @@
   // Storage key for single config object
   const STORAGE_KEY = "ao3_advanced_blocker_config";
 
-  // Define the custom styles for the script
+  // Custom styles for the script
   const STYLE = `
   html body .ao3-blocker-hidden {
     display: none;
@@ -260,10 +261,11 @@
   function loadConfig() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return {...DEFAULTS, ...parsed};
+      let config = stored ? {...DEFAULTS, ...JSON.parse(stored)} : {...DEFAULTS};
+      if (typeof config.disableOnDashboards === 'undefined') {
+        config.disableOnDashboards = DEFAULTS.disableOnDashboards;
       }
+      return config;
     } catch (e) {
       console.error("[AO3 Advanced Blocker] Failed to load config:", e);
     }
@@ -368,311 +370,150 @@
     ];
   }
 
-  // Initialize GM_config with custom storage handlers
-  GM_config.init({
-    "id": "ao3Blocker",
-    "title": "Advanced Blocker",
-    "fields": {
-      "tagBlacklist": {
-        "label": "Tag Blacklist",
-        "type": "text",
-        "default": DEFAULTS.tagBlacklist
-      },
-      "tagWhitelist": {
-        "label": "Tag Whitelist",
-        "type": "text",
-        "default": DEFAULTS.tagWhitelist
-      },
-      "tagHighlights": {
-        "label": "Highlighted Tags",
-        "type": "text",
-        "default": DEFAULTS.tagHighlights
-      },
-      "highlightColor": {
-        "label": "Highlight Color",
-        "type": "text",
-        "default": DEFAULTS.highlightColor
-      },
-      "minWords": {
-        "label": "Min Words",
-        "title": "Hide works under this many words. Leave empty to ignore.",
-        "type": "text",
-        "default": DEFAULTS.minWords
-      },
-      "maxWords": {
-        "label": "Max Words",
-        "title": "Hide works over this many words. Leave empty to ignore.",
-        "type": "text",
-        "default": DEFAULTS.maxWords
-      },
-      "blockComplete": {
-        "label": "Block Complete Works",
-        "type": "checkbox",
-        "default": DEFAULTS.blockComplete
-      },
-      "blockOngoing": {
-        "label": "Block Ongoing Works",
-        "type": "checkbox",
-        "default": DEFAULTS.blockOngoing
-      },
-      "authorBlacklist": {
-        "label": "Author Blacklist",
-        "type": "text",
-        "default": DEFAULTS.authorBlacklist
-      },
-      "titleBlacklist": {
-        "label": "Title Blacklist",
-        "type": "text",
-        "default": DEFAULTS.titleBlacklist
-      },
-      "summaryBlacklist": {
-        "label": "Summary Blacklist",
-        "type": "text",
-        "default": DEFAULTS.summaryBlacklist
-      },
-      "showReasons": {
-        "label": "Show Block Reason",
-        "type": "checkbox",
-        "default": DEFAULTS.showReasons
-      },
-      "showPlaceholders": {
-        "label": "Show Work Placeholder",
-        "type": "checkbox",
-        "default": DEFAULTS.showPlaceholders
-      },
-      "debugMode": {
-        "label": "Debug Mode",
-        "type": "checkbox",
-        "default": DEFAULTS.debugMode
-      },
-      "allowedLanguages": {
-        "label": "Allowed Languages (show only these; empty = allow all)",
-        "type": "text",
-        "default": DEFAULTS.allowedLanguages
-      },
-      "maxCrossovers": {
-        "label": "Max Fandoms (crossovers)",
-        "type": "text",
-        "default": DEFAULTS.maxCrossovers
-      },
-      "disableOnBookmarks": {
-        "label": "Disable Blocking on Bookmarks Pages",
-        "type": "checkbox",
-        "default": DEFAULTS.disableOnBookmarks
-      },
-      "disableOnCollections": {
-        "label": "Disable Blocking on Collections Pages",
-        "type": "checkbox",
-        "default": DEFAULTS.disableOnCollections
-      },
-      "primaryRelationships": {
-        "label": "Primary Relationships",
-        "type": "text",
-        "default": DEFAULTS.primaryRelationships
-      },
-      "primaryCharacters": {
-        "label": "Primary Characters",
-        "type": "text",
-        "default": DEFAULTS.primaryCharacters
-      },
-      "primaryRelpad": {
-        "label": "Relationship Tag Window",
-        "type": "text",
-        "default": DEFAULTS.primaryRelpad
-      },
-      "primaryCharpad": {
-        "label": "Character Tag Window",
-        "type": "text",
-        "default": DEFAULTS.primaryCharpad
+  // Initialize configuration processing directly
+  function initConfig() {
+    // Config is now available
+    const config = loadConfig();
+
+    // Process configuration for runtime use with simple regex pre-compilation
+    const compilePattern = (pattern) => {
+      if (pattern.includes('*')) {
+        const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+        return { text: pattern, regex: new RegExp(escaped, 'i'), hasWildcard: true };
       }
-    },
-    "events": {
-      "open": function() {
-        // Load current settings into the configuration dialog
-        const config = loadConfig();
-        Object.keys(config).forEach(key => {
-          if (GM_config.fields[key]) {
-            GM_config.set(key, config[key]);
-          }
-        });
-      },
-      "save": function() {
-        // Save settings and reload page to apply changes
-        const config = {};
-        Object.keys(GM_config.fields).forEach(key => {
-          config[key] = GM_config.get(key);
-        });
+      return { text: pattern, hasWildcard: false };
+    };
 
-        if (saveConfig(config)) {
-          // Force hard reload with cache busting
-          location.href = location.href + (location.search ? '&' : '?') + 't=' + Date.now();
-        } else {
-          alert("Error saving settings.");
-        }
-      },
-      "close": function() {
-        // Dialog closed without saving - no action needed
-      },
-      "init": function() {
-        // Config is now available
-        const config = loadConfig();
+    window.ao3Blocker.config = {
+      "showReasons": config.showReasons,
+      "showPlaceholders": config.showPlaceholders,
+      "authorBlacklist": config.authorBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean),
+      "titleBlacklist": config.titleBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagBlacklist": config.tagBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagWhitelist": config.tagWhitelist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagHighlights": config.tagHighlights.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean),
+      "summaryBlacklist": config.summaryBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
 
-        // Process configuration for runtime use
-        window.ao3Blocker.config = {
-          "showReasons": config.showReasons,
-          "showPlaceholders": config.showPlaceholders,
-          "authorBlacklist": config.authorBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "titleBlacklist": config.titleBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagBlacklist": config.tagBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagWhitelist": config.tagWhitelist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "tagHighlights": config.tagHighlights.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
-          "summaryBlacklist": config.summaryBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()),
+      "highlightColor": config.highlightColor,
+      "debugMode": config.debugMode,
+      "allowedLanguages": config.allowedLanguages
+        .toLowerCase()
+        .split(/,(?:\s)?/g)
+        .map(s => s.trim())
+        .filter(Boolean),
+      "maxCrossovers": (function() {
+        const val = config.maxCrossovers;
+        const parsed = parseInt(val, 10);
+        return (val === undefined || val === null || val === "" || isNaN(parsed)) ? null : parsed;
+      })(),
+      "minWords": (function () {
+        const v = config.minWords;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      "maxWords": (function () {
+        const v = config.maxWords;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) ? n : null;
+      })(),
+      "disableOnBookmarks": config.disableOnBookmarks,
+      "disableOnCollections": config.disableOnCollections,
+      "blockComplete": config.blockComplete,
+      "blockOngoing": config.blockOngoing,
+      // Primary Pairing Config
+      "primaryRelationships": config.primaryRelationships.split(",").map(s => s.trim()).filter(Boolean),
+      "primaryCharacters": config.primaryCharacters.split(",").map(s => s.trim()).filter(Boolean),
+      "primaryRelpad": (function() {
+        const val = config.primaryRelpad;
+        const parsed = parseInt(val, 10);
+        return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 1 : Math.max(1, parsed);
+      })(),
+      "primaryCharpad": (function() {
+        const val = config.primaryCharpad;
+        const parsed = parseInt(val, 10);
+        return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 5 : Math.max(1, parsed);
+      })(),
+      "disableOnDashboards": (typeof config.disableOnDashboards !== 'undefined' ? config.disableOnDashboards : DEFAULTS.disableOnDashboards)
+    }
 
-          "highlightColor": config.highlightColor,
-          "debugMode": config.debugMode,
-          "allowedLanguages": config.allowedLanguages
-            .toLowerCase()
-            .split(/,(?:\s)?/g)
-            .map(s => s.trim())
-            .filter(Boolean),
-          "maxCrossovers": (function() {
-            const val = config.maxCrossovers;
-            const parsed = parseInt(val, 10);
-            return (val === undefined || val === null || val === "" || isNaN(parsed)) ? null : parsed;
-          })(),
-          "minWords": (function () {
-            const v = config.minWords;
-            const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
-            return Number.isFinite(n) ? n : null;
-          })(),
-          "maxWords": (function () {
-            const v = config.maxWords;
-            const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
-            return Number.isFinite(n) ? n : null;
-          })(),
-          "disableOnBookmarks": config.disableOnBookmarks,
-          "disableOnCollections": config.disableOnCollections,
-          "blockComplete": config.blockComplete,
-          "blockOngoing": config.blockOngoing,
-          // Primary Pairing Config
-          "primaryRelationships": config.primaryRelationships.split(",").map(s => s.trim()).filter(Boolean),
-          "primaryCharacters": config.primaryCharacters.split(",").map(s => s.trim()).filter(Boolean),
-          "primaryRelpad": (function() {
-            const val = config.primaryRelpad;
-            const parsed = parseInt(val, 10);
-            return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 1 : Math.max(1, parsed);
-          })(),
-          "primaryCharpad": (function() {
-            const val = config.primaryCharpad;
-            const parsed = parseInt(val, 10);
-            return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 5 : Math.max(1, parsed);
-          })()
-        }
+    addStyle();
+    setTimeout(() => {
+      // Set the highlight color CSS variable globally
+      document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#f6e3ca');
+      checkWorks();
+    }, 10);
+  }
 
-        // --- Browser detection ---
-        function isFirefox() {
-          return typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
-        }
+  // Initialize when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initConfig);
+  } else {
+    initConfig();
+  }
 
-        // --- SHARED MENU REGISTRATION ---
-        function registerBlockerMenu() {
-          if (window.AO3UserScriptMenu && typeof window.AO3UserScriptMenu.register === "function") {
-            window.AO3UserScriptMenu.register({
-              label: "Advanced Blocker",
-              onClick: showBlockerMenu
-            });
-            return true;
-          }
-          // Fallback: legacy direct DOM method
+  // --- SHARED INITIALIZATION ---
+  function initBlockerMenu() {
+      const menuContainer = document.getElementById('scriptconfig');
+      if (!menuContainer) {
           const headerMenu = document.querySelector("ul.primary.navigation.actions");
           const searchItem = headerMenu ? headerMenu.querySelector("li.search") : null;
-          if (!headerMenu || !searchItem) return false;
-          let menuContainer = document.getElementById('ao3-userscript-menu');
-          if (!menuContainer) {
-            menuContainer = document.createElement("li");
-            menuContainer.className = "dropdown";
-            menuContainer.id = "ao3-userscript-menu";
-            const title = document.createElement("a");
-            title.href = "#";
-            title.textContent = "Userscripts";
-            menuContainer.appendChild(title);
-            const menu = document.createElement("ul");
-            menu.className = "menu dropdown-menu";
-            menuContainer.appendChild(menu);
-            headerMenu.insertBefore(menuContainer, searchItem);
-          }
-          const menu = menuContainer.querySelector("ul.menu");
-          if (menu) {
-            let li = menu.querySelector("#ao3-blocker-menu-item");
-            if (!li) {
-              li = document.createElement("li");
-              li.id = "ao3-blocker-menu-item";
-              const a = document.createElement("a");
-              a.href = "#";
-              a.textContent = "Advanced Blocker Settings";
-              a.addEventListener("click", function (e) {
-                e.preventDefault();
-                try { showBlockerMenu(); } catch (err) { console.error("[Advanced Blocker] showBlockerMenu error", err); }
-              });
-              li.appendChild(a);
-              menu.appendChild(li);
-            }
-          }
-          return true;
-        }
+          if (!headerMenu || !searchItem) return;
 
-        // Register menu after DOMContentLoaded
-        function initBlockerMenu() {
-          if (isFirefox()) {
-            if (!registerBlockerMenu()) {
-              addMenu();
-            }
-          } else {
-            addMenu();
-          }
-        }
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", initBlockerMenu);
-        } else {
-          initBlockerMenu();
-        }
+          // Create menu container
+          const newMenuContainer = document.createElement("li");
+          newMenuContainer.className = "dropdown";
+          newMenuContainer.id = "scriptconfig";
 
-        addStyle();
-        setTimeout(() => {
-          // Set the highlight color CSS variable globally
-          document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#f6e3ca');
-          checkWorks();
-        }, 10);
+          const title = document.createElement("a");
+          title.className = "dropdown-toggle";
+          title.href = "/";
+          title.setAttribute("data-toggle", "dropdown");
+          title.setAttribute("data-target", "#");
+          title.textContent = "Userscripts";
+          newMenuContainer.appendChild(title);
+
+          const menu = document.createElement("ul");
+          menu.className = "menu dropdown-menu";
+          newMenuContainer.appendChild(menu);
+
+          // Insert before search item
+          headerMenu.insertBefore(newMenuContainer, searchItem);
       }
-    },
-    "css": ".config_var {display: grid; grid-template-columns: repeat(2, 0.7fr);}"
-  });
 
-  // addMenu() - Add a custom menu to the AO3 menu bar to control our configuration options
-  function addMenu() {
-    // Define our custom menu and add it to the AO3 menu bar
-    const headerMenu = $("ul.primary.navigation.actions");
-    const blockerMenu = $("<li class=\"dropdown\"></li>").html("<a>Advanced Blocker</a>");
-    headerMenu.find("li.search").before(blockerMenu);
-    const dropMenu = $("<ul class=\"menu dropdown-menu\"></ul>");
-    blockerMenu.append(dropMenu);
+      // Add Advanced Blocker menu item
+      const menu = document.querySelector('#scriptconfig .dropdown-menu');
+      if (menu) {
+          const menuItem = document.createElement("li");
+          const menuLink = document.createElement("a");
+          menuLink.href = "javascript:void(0);";
+          menuLink.id = "opencfg_advanced_blocker";
+          menuLink.textContent = "Advanced Blocker";
+          menuLink.addEventListener("click", showBlockerMenu);
+          menuItem.appendChild(menuLink);
+          menu.appendChild(menuItem);
+      }
+  }
 
-    // Add an option to show the improved config dialog
-    const settingsButton = $("<li></li>").html("<a>Advanced Blocker Settings</a>");
-    settingsButton.on("click", () => { showBlockerMenu(); });
-    dropMenu.append(settingsButton);
+  // Initialize menu when DOM is ready
+  if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initBlockerMenu);
+  } else {
+      initBlockerMenu();
   }
 
   // addStyle() - Apply the custom stylesheet to AO3
   function addStyle() {
-    const style = $(`<style class="${CSS_NAMESPACE}"></style>`).html(STYLE);
-    $("head").append(style);
+    const style = document.createElement('style');
+    style.className = CSS_NAMESPACE;
+    style.textContent = STYLE;
+    document.head.appendChild(style);
   }
 
-  // showBlockerMenu() - Show the improved settings menu
+  // showBlockerMenu() - Show the settings menu
   function showBlockerMenu() {
-    // Remove any existing menu
-    $(`.${CSS_NAMESPACE}-menu-dialog`).remove();
+    // Remove any existing menu using direct DOM method to avoid jQuery issues
+    const existingMenus = document.querySelectorAll(`.${CSS_NAMESPACE}-menu-dialog`);
+    existingMenus.forEach(menu => menu.remove());
 
     // Get AO3 input field background color
     let inputBg = "#fffaf5";
@@ -689,9 +530,10 @@
     // Load current config for the menu
     const config = loadConfig();
 
-    // Create the dialog
-    const dialog = $(`<div class="${CSS_NAMESPACE}-menu-dialog"></div>`);
-    dialog.css({
+    // Create the dialog using vanilla DOM to avoid jQuery getElementById issues
+    const dialog = document.createElement('div');
+    dialog.className = `${CSS_NAMESPACE}-menu-dialog`;
+    Object.assign(dialog.style, {
       position: 'fixed',
       top: '50%',
       left: '50%',
@@ -712,7 +554,7 @@
     });
 
     // --- Build the menu content ---
-    dialog.html(`
+    dialog.innerHTML = `
       <h3 style="text-align: center; margin-top: 0; color: inherit;">🛡️ Advanced Blocker Settings 🛡️</h3>
 
       <!-- 1. Tag Filtering -->
@@ -847,14 +689,14 @@
             <label class="setting-label" for="title-blacklist-input">Blacklist Titles
               <span class="symbol question" title="Blocks if the title contains your text. * works."><span>?</span></span>
             </label>
-            <textarea id="title-blacklist-input" placeholder="Week 2025" title="Blocks if the title contains your text. * works.">${config.titleBlacklist}</textarea>
+            <textarea id="title-blacklist-input" placeholder="oneshot, prompt, 2025" title="Blocks if the title contains your text. * works.">${config.titleBlacklist}</textarea>
           </div>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="summary-blacklist-input">Blacklist Summary
             <span class="symbol question" title="Blocks if the summary has these words/phrases."><span>?</span></span>
           </label>
-          <textarea id="summary-blacklist-input" placeholder="collection of oneshots" title="Blocks if the summary has these words/phrases.">${config.summaryBlacklist}</textarea>
+          <textarea id="summary-blacklist-input" placeholder="oneshot, prompt, 2025" title="Blocks if the summary has these words/phrases.">${config.summaryBlacklist}</textarea>
         </div>
       </div>
 
@@ -874,7 +716,7 @@
               <label class="checkbox-label">
                 <input type="checkbox" id="show-placeholders-checkbox" ${config.showPlaceholders ? "checked" : ""}>
                 Show Work Placeholder
-                <span class="symbol question" title="Leave a stub you can click to reveal."><span>?</span></span>
+                <span class="symbol question" title="Leave a stub you can click to reveal. If disabled, hides the work completely."><span>?</span></span>
               </label>
             </div>
             <div class="setting-group">
@@ -890,14 +732,21 @@
               <label class="checkbox-label">
                 <input type="checkbox" id="disable-on-bookmarks-checkbox" ${config.disableOnBookmarks ? "checked" : ""}>
                 Disable Blocking on Bookmarks
-                <span class="symbol question" title="If checked, works will not be blocked on bookmarks pages. Highlighting still works."><span>?</span></span>
+                <span class="symbol question" title="Works will not be blocked on your bookmarks pages. Highlighting still works."><span>?</span></span>
               </label>
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
                 <input type="checkbox" id="disable-on-collections-checkbox" ${config.disableOnCollections ? "checked" : ""}>
                 Disable Blocking on Collections
-                <span class="symbol question" title="If checked, works will not be blocked on collections pages. Highlighting still works."><span>?</span></span>
+                <span class="symbol question" title="Works will not be blocked on collections pages. Highlighting still works."><span>?</span></span>
+              </label>
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="disable-on-dashboards-checkbox" ${config.disableOnDashboards ? "checked" : ""}>
+                Disable Blocking on User Dashboards
+                <span class="symbol question" title="Works will not be blocked on user dashboards. Highlighting still works."><span>?</span></span>
               </label>
             </div>
           </div>
@@ -919,10 +768,11 @@
         <input type="file" id="ao3-import" accept="application/json" style="display:none;">
         <button id="ao3-import-btn">Import Settings</button>
       </div>
-    `);
+    `;
 
     // --- Export Settings ---
-    dialog.find("#ao3-export").on("click", function() {
+    const exportButton = dialog.querySelector('#ao3-export');
+    exportButton.addEventListener('click', function() {
       try {
         const config = loadConfig();
         const now = new Date();
@@ -949,11 +799,13 @@
     });
 
     // --- Import Settings ---
-    dialog.find("#ao3-import-btn").on("click", function() {
-      dialog.find("#ao3-import").val("");
-      dialog.find("#ao3-import").trigger("click");
+    const importButton = dialog.querySelector('#ao3-import-btn');
+    const importInput = dialog.querySelector('#ao3-import');
+    importButton.addEventListener('click', function() {
+      importInput.value = "";
+      importInput.click();
     });
-    dialog.find("#ao3-import").on("change", function(e) {
+    importInput.addEventListener('change', function(e) {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -983,47 +835,58 @@
       reader.readAsText(file);
     });
 
-    $("body").append(dialog);
+    document.body.appendChild(dialog);
 
-    // Save button handler - Use GM_config to save
-    dialog.find("#blocker-save").on("click", () => {
-      // Set values in GM_config which will trigger the save event
-      GM_config.set("tagBlacklist", dialog.find("#tag-blacklist-input").val());
-      GM_config.set("tagWhitelist", dialog.find("#tag-whitelist-input").val());
-      GM_config.set("tagHighlights", dialog.find("#tag-highlights-input").val());
-      GM_config.set("authorBlacklist", dialog.find("#author-blacklist-input").val());
-      GM_config.set("titleBlacklist", dialog.find("#title-blacklist-input").val());
-      GM_config.set("summaryBlacklist", dialog.find("#summary-blacklist-input").val());
-      GM_config.set("showReasons", dialog.find("#show-reasons-checkbox").is(":checked"));
-      GM_config.set("showPlaceholders", dialog.find("#show-placeholders-checkbox").is(":checked"));
-      GM_config.set("debugMode", dialog.find("#debug-mode-checkbox").is(":checked"));
-      GM_config.set("highlightColor", dialog.find("#highlight-color-input").val());
-      GM_config.set("allowedLanguages", dialog.find("#allowed-languages-input").val());
-      GM_config.set("maxCrossovers", dialog.find("#max-crossovers-input").val());
-      GM_config.set("minWords", dialog.find("#min-words-input").val());
-      GM_config.set("maxWords", dialog.find("#max-words-input").val());
-      GM_config.set("blockComplete", dialog.find("#block-complete-checkbox").is(":checked"));
-      GM_config.set("blockOngoing", dialog.find("#block-ongoing-checkbox").is(":checked"));
-      GM_config.set("disableOnBookmarks", dialog.find("#disable-on-bookmarks-checkbox").is(":checked"));
-      GM_config.set("disableOnCollections", dialog.find("#disable-on-collections-checkbox").is(":checked"));
-      // Primary Pairing Settings
-      GM_config.set("primaryRelationships", dialog.find("#primary-relationships-input").val());
-      GM_config.set("primaryCharacters", dialog.find("#primary-characters-input").val());
-      GM_config.set("primaryRelpad", dialog.find("#primary-relpad-input").val());
-      GM_config.set("primaryCharpad", dialog.find("#primary-charpad-input").val());
+    // Save button handler - Use direct DOM access to avoid jQuery getElementById issues
+    const saveButton = dialog.querySelector('#blocker-save');
+    saveButton.addEventListener('click', () => {
+      // Collect values directly using DOM queries to avoid jQuery getElementById calls
+      const config = {
+        tagBlacklist: dialog.querySelector('#tag-blacklist-input').value || "",
+        tagWhitelist: dialog.querySelector('#tag-whitelist-input').value || "",
+        tagHighlights: dialog.querySelector('#tag-highlights-input').value || "",
+        authorBlacklist: dialog.querySelector('#author-blacklist-input').value || "",
+        titleBlacklist: dialog.querySelector('#title-blacklist-input').value || "",
+        summaryBlacklist: dialog.querySelector('#summary-blacklist-input').value || "",
+        showReasons: dialog.querySelector('#show-reasons-checkbox').checked,
+        showPlaceholders: dialog.querySelector('#show-placeholders-checkbox').checked,
+        debugMode: dialog.querySelector('#debug-mode-checkbox').checked,
+        highlightColor: dialog.querySelector('#highlight-color-input').value || DEFAULTS.highlightColor,
+        allowedLanguages: dialog.querySelector('#allowed-languages-input').value || "",
+        maxCrossovers: dialog.querySelector('#max-crossovers-input').value || "",
+        minWords: dialog.querySelector('#min-words-input').value || "",
+        maxWords: dialog.querySelector('#max-words-input').value || "",
+        blockComplete: dialog.querySelector('#block-complete-checkbox').checked,
+        blockOngoing: dialog.querySelector('#block-ongoing-checkbox').checked,
+        disableOnBookmarks: dialog.querySelector('#disable-on-bookmarks-checkbox').checked,
+        disableOnCollections: dialog.querySelector('#disable-on-collections-checkbox').checked,
+        disableOnDashboards: dialog.querySelector('#disable-on-dashboards-checkbox').checked,
+        primaryRelationships: dialog.querySelector('#primary-relationships-input').value || "",
+        primaryCharacters: dialog.querySelector('#primary-characters-input').value || "",
+        primaryRelpad: dialog.querySelector('#primary-relpad-input').value || DEFAULTS.primaryRelpad,
+        primaryCharpad: dialog.querySelector('#primary-charpad-input').value || DEFAULTS.primaryCharpad
+      };
 
-      window.ao3Blocker.showHelp = false;
-      GM_config.save(); // This will trigger our custom save event
+      // Save using our custom storage system
+      if (saveConfig(config)) {
+        // Force hard reload with cache busting
+        location.href = location.href + (location.search ? '&' : '?') + 't=' + Date.now();
+      } else {
+        alert("Error saving settings.");
+      }
+      
       dialog.remove();
     });
 
     // Cancel button handler
-    dialog.find("#blocker-cancel").on("click", () => {
+    const cancelButton = dialog.querySelector('#blocker-cancel');
+    cancelButton.addEventListener('click', () => {
       dialog.remove();
     });
 
     // Reset link handler
-    dialog.find("#resetBlockerSettingsLink").on("click", function (e) {
+    const resetLink = dialog.querySelector('#resetBlockerSettingsLink');
+    resetLink.addEventListener('click', function (e) {
       e.preventDefault();
       if (confirm("Are you sure you want to reset all settings to default?")) {
         if (saveConfig(DEFAULTS)) {
@@ -1034,14 +897,18 @@
     });
   }
 
-  // === UPDATED BLOCKING LOGIC WITH CSS CLASSES ===
+  // Blocking logic using CSS classes
 
-  function getWordCount($work) {
-  let txt = $work.find("dd.words").first().text().trim();
-  txt = txt.replace(/(?<=\d)[ ,](?=\d{3}(\D|$))/g, "");
-  txt = txt.replace(/[^\d]/g, "");
-  const n = parseInt(txt, 10);
-  return Number.isFinite(n) ? n : null;
+  function getWordCount(workElement) {
+    // Use vanilla DOM to avoid jQuery getElementById issues
+    const wordsElement = workElement.querySelector('dd.words');
+    if (!wordsElement) return null;
+    
+    let txt = wordsElement.textContent.trim();
+    txt = txt.replace(/(?<=\d)[ ,](?=\d{3}(\D|$))/g, "");
+    txt = txt.replace(/[^\d]/g, "");
+    const n = parseInt(txt, 10);
+    return Number.isFinite(n) ? n : null;
   }
 
   function violatesWordCount(cfg, count) {
@@ -1051,27 +918,34 @@
     return null;
   }
 
-function getCut(work) {
-  const cut = $(`<div class="${CSS_NAMESPACE}-cut"></div>`);
-  work.children().each(function () {
-    const $child = $(this);
-    if (
-      !$child.hasClass(`${CSS_NAMESPACE}-fold`) &&
-      !$child.hasClass(`${CSS_NAMESPACE}-cut`)
-    ) {
-      cut.append($child.detach());
+function getCut(workElement) {
+  const cut = document.createElement('div');
+  cut.className = `${CSS_NAMESPACE}-cut`;
+  
+  // Move all children that aren't fold or cut elements
+  const children = Array.from(workElement.children);
+  children.forEach(child => {
+    if (!child.classList.contains(`${CSS_NAMESPACE}-fold`) && 
+        !child.classList.contains(`${CSS_NAMESPACE}-cut`)) {
+      cut.appendChild(child);
     }
   });
+  
   return cut;
 }
 
   function getFold(reasons) {
-    const fold = $(`<div class="${CSS_NAMESPACE}-fold"></div>`);
-    const note = $(`<span class="${CSS_NAMESPACE}-note"></span>`);
+    const fold = document.createElement('div');
+    fold.className = `${CSS_NAMESPACE}-fold`;
+    
+    const note = document.createElement('span');
+    note.className = `${CSS_NAMESPACE}-note`;
+    
     let message = "";
     const config = window.ao3Blocker && window.ao3Blocker.config;
     const showReasons = config && config.showReasons !== false;
     let iconHtml = "";
+    
     if (showReasons && reasons && reasons.length > 0) {
       const parts = [];
       reasons.forEach((reason) => {
@@ -1108,35 +982,41 @@ function getCut(work) {
       const iconUrl = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
       iconHtml = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconUrl}') no-repeat center/contain;-webkit-mask:url('${iconUrl}') no-repeat center/contain;"></span>`;
     }
-    note.html(`${iconHtml}${message}`);
-    fold.html(note);
-    fold.append(getToggleButton());
+    
+    note.innerHTML = `${iconHtml}${message}`;
+    fold.appendChild(note);
+    fold.appendChild(getToggleButton());
+    
     return fold;
   }
 
   function getToggleButton() {
-  const iconHide = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
-  const iconEye = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-visible.svg";
-  const showIcon = `<span style=\"display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;\"></span>`;
-  const hideIcon = `<span style=\"display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;\"></span>`;
-  const button = $(`<button class="${CSS_NAMESPACE}-toggle"></button>`).html(showIcon + "Show");
+    const iconHide = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
+    const iconEye = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-visible.svg";
+    const showIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;"></span>`;
+    const hideIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;"></span>`;
+    
+    const button = document.createElement('button');
+    button.className = `${CSS_NAMESPACE}-toggle`;
+    button.innerHTML = showIcon + "Show";
+    
     const unhideClassFragment = `${CSS_NAMESPACE}-unhide`;
 
-    button.on("click", (event) => {
-      const work = $(event.target).closest(`.${CSS_NAMESPACE}-work`);
-      const note = work.find(`.${CSS_NAMESPACE}-note`);
-      let message = note.html();
+    button.addEventListener("click", (event) => {
+      const work = event.target.closest(`.${CSS_NAMESPACE}-work`);
+      const note = work.querySelector(`.${CSS_NAMESPACE}-note`);
+      let message = note.innerHTML;
       const iconRegex = new RegExp('<span[^>]*class=["\']' + CSS_NAMESPACE + '-icon["\'][^>]*><\\/span>\\s*', 'i');
       message = message.replace(iconRegex, "");
 
-      if (work.hasClass(unhideClassFragment)) {
-        work.removeClass(unhideClassFragment);
-        note.html(`<span class=\"${CSS_NAMESPACE}-icon\" style=\"display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;\"></span>${message}`);
-        $(event.target).html(showIcon + "Show");
+      if (work.classList.contains(unhideClassFragment)) {
+        work.classList.remove(unhideClassFragment);
+        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;"></span>${message}`;
+        event.target.innerHTML = showIcon + "Show";
       } else {
-        work.addClass(unhideClassFragment);
-        note.html(`<span class=\"${CSS_NAMESPACE}-icon\" style=\"display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;\"></span>${message}`);
-        $(event.target).html(hideIcon + "Hide");
+        work.classList.add(unhideClassFragment);
+        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;"></span>${message}`;
+        event.target.innerHTML = hideIcon + "Hide";
       }
     });
 
@@ -1144,7 +1024,8 @@ function getCut(work) {
   }
 
   function getReasonSpan(reasons) {
-    const span = $(`<span class="${CSS_NAMESPACE}-reason"></span>`);
+    const span = document.createElement('span');
+    span.className = `${CSS_NAMESPACE}-reason`;
 
     if (!reasons || reasons.length === 0) {
       return span;
@@ -1205,28 +1086,29 @@ function getCut(work) {
 
     if (reasonTexts.length > 0) {
       const reasonText = reasonTexts.join('; ');
-      span.html(`(Reason: ${reasonText}.)`);
+      span.innerHTML = `(Reason: ${reasonText}.)`;
     }
 
     return span;
   }
 
-  function blockWork(work, reasons, config) {
+  function blockWork(workElement, reasons, config) {
     if (!reasons) return;
 
     if (config.showPlaceholders) {
       const fold = getFold(reasons);
-      const cut = getCut(work);
+      const cut = getCut(workElement);
 
-      work.addClass(`${CSS_NAMESPACE}-work`);
-      work.html(fold);
-      work.append(cut);
+      workElement.classList.add(`${CSS_NAMESPACE}-work`);
+      workElement.innerHTML = '';
+      workElement.appendChild(fold);
+      workElement.appendChild(cut);
 
       if (!config.showReasons) {
-        work.addClass(`${CSS_NAMESPACE}-hide-reasons`);
+        workElement.classList.add(`${CSS_NAMESPACE}-hide-reasons`);
       }
     } else {
-      work.addClass(`${CSS_NAMESPACE}-hidden`);
+      workElement.classList.add(`${CSS_NAMESPACE}-hidden`);
     }
   }
 
@@ -1238,42 +1120,38 @@ function getCut(work) {
         .trim();
     }
 
-    // Match text with wildcard support and normalization
-    function matchTermsWithWildCard(term0, pattern0) {
-      const term = normalizeText(term0);
-      const pattern = normalizeText(pattern0);
-
-      // If no wildcard, do partial substring matching
-      if (pattern.indexOf("*") === -1) {
-        return term.includes(pattern);
+    // Fast pattern matching with pre-compiled regex for wildcards
+    function matchPattern(text, pattern, exactMatch = false) {
+      const normalizedText = normalizeText(text);
+      
+      // If it's a simple string pattern
+      if (typeof pattern === 'string') {
+        return exactMatch ? normalizedText === pattern : normalizedText.includes(pattern);
       }
-
-      // If wildcard present, use existing wildcard logic
-      const lastMatchedIndex = pattern.split("*").filter(Boolean).reduce((prevIndex, chunk) => {
-        const matchedIndex = term.indexOf(chunk);
-        return prevIndex >= 0 && prevIndex <= matchedIndex ? matchedIndex : -1;
-      }, 0);
-
-      return lastMatchedIndex >= 0;
+      
+      // If it's a compiled pattern object
+      if (!pattern.hasWildcard) {
+        return exactMatch ? normalizedText === pattern.text : normalizedText.includes(pattern.text);
+      }
+      
+      // Use pre-compiled regex for wildcards
+      if (exactMatch) {
+        // For exact matching with wildcards, the regex should match the entire string
+        const exactRegex = new RegExp('^' + pattern.regex.source + '$', 'i');
+        return exactRegex.test(normalizedText);
+      }
+      
+      return pattern.regex.test(normalizedText);
     }
 
   function isTagWhitelisted(tags, whitelist) {
     return tags.some((tag) => {
       const normalizedTag = tag.toLowerCase().trim();
-      
-      return whitelist.some((whitelistedTag) => {
-        if (!whitelistedTag.trim()) return false;
-        
-        const normalizedWhitelist = whitelistedTag.toLowerCase().trim();
-        
-        // If wildcard present, use wildcard logic; otherwise use exact matching
-        if (normalizedWhitelist.indexOf("*") !== -1) {
-          // Use the same wildcard matching as the blacklist
-          return matchTermsWithWildCard(normalizedTag, normalizedWhitelist);
-        } else {
-          // No wildcard - use exact matching
-          return normalizedTag === normalizedWhitelist;
-        }
+
+      return whitelist.some((pattern) => {
+        if ((typeof pattern === 'string' && !pattern.trim()) || (pattern && pattern.text && !pattern.text.trim())) return false;
+
+        return matchPattern(normalizedTag, pattern, true); // Use exact matching for tags
       });
     });
   }
@@ -1415,22 +1293,12 @@ function getCut(work) {
   // Check for blocked tags (collect all matching tags) - uses flat array
   const blockedTags = [];
   allTags.forEach((tag) => {
-    tagBlacklist.forEach((blacklistedTag) => {
-      if (blacklistedTag.trim()) {
+    tagBlacklist.forEach((pattern) => {
+      if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
         const normalizedTag = tag.toLowerCase().trim();
-        const normalizedBlacklist = blacklistedTag.toLowerCase().trim();
         
-        // If wildcard present, use wildcard logic; otherwise use exact matching
-        if (normalizedBlacklist.indexOf("*") !== -1) {
-          // Use wildcard matching
-          if (matchTermsWithWildCard(normalizedTag, normalizedBlacklist)) {
-            blockedTags.push(tag);  // Changed from blacklistedTag to tag
-          }
-        } else {
-          // No wildcard - use exact matching
-          if (normalizedTag === normalizedBlacklist) {
-            blockedTags.push(tag);  // Changed from blacklistedTag to tag
-          }
+        if (matchPattern(normalizedTag, pattern, true)) { // Use exact matching for tags
+          blockedTags.push(tag);
         }
       }
     });
@@ -1454,9 +1322,11 @@ function getCut(work) {
 
   // Check for blocked title
   const blockedTitles = new Set();
-  titleBlacklist.forEach((blacklistedTitle) => {
-    if (blacklistedTitle.trim() && matchTermsWithWildCard(title.toLowerCase(), blacklistedTitle.toLowerCase())) {
-      blockedTitles.add(title);
+  titleBlacklist.forEach((pattern) => {
+    if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
+      if (matchPattern(title, pattern, false)) { // Use substring matching for titles
+        blockedTitles.add(title);
+      }
     }
   });
   if (blockedTitles.size > 0) {
@@ -1465,11 +1335,13 @@ function getCut(work) {
 
   // Check for blocked summary terms
   const blockedSummaryTerms = [];
-  summaryBlacklist.forEach((summaryTerm) => {
-    if (summaryTerm.trim() && matchTermsWithWildCard(summary, summaryTerm)) {
-      // Remove wildcards for cleaner display but keep the base term
-      const displayTerm = summaryTerm.replace(/\*/g, '');
-      blockedSummaryTerms.push(displayTerm);
+  summaryBlacklist.forEach((pattern) => {
+    if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
+      if (matchPattern(summary, pattern, false)) { // Use substring matching for summaries
+        // Use the original pattern text for display
+        const displayTerm = (typeof pattern === 'string' ? pattern : pattern.text).replace(/\*/g, '');
+        blockedSummaryTerms.push(displayTerm);
+      }
     }
   });
   if (blockedSummaryTerms.length > 0) {
@@ -1482,7 +1354,7 @@ function getCut(work) {
       // Exact match - return the pattern since it matches exactly
       return pattern;
     }
-    
+
     // For wildcards, this is complex - we'd need regex matching
     // For now, return the pattern as fallback
     return pattern;
@@ -1494,26 +1366,27 @@ function getCut(work) {
   const _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
   function getText(element) {
-    return $(element).text().replace(/^\s*|\s*$/g, "");
+    return (element.textContent || element.innerText || '').trim();
   }
   function selectTextsIn(root, selector) {
-    return $.makeArray($(root).find(selector)).map(getText);
+    const elements = root.querySelectorAll(selector);
+    return Array.from(elements).map(getText);
   }
 
   // Extract work data from blurb elements
-  function selectFromBlurb(blurb) {
-    const fandoms = $(blurb).find('h5.fandoms.heading a.tag');
+  function selectFromBlurb(blurbElement) {
+    const fandoms = blurbElement.querySelectorAll('h5.fandoms.heading a.tag');
 
     // Get completion status using the same unified parsing
     let completionStatus = null;
-    const chaptersNode = $(blurb).find('dd.chapters').first();
-    if (chaptersNode.length) {
+    const chaptersNode = blurbElement.querySelector('dd.chapters');
+    if (chaptersNode) {
       let chaptersText = "";
-      const a = chaptersNode.find('a').first();
-      if (a.length) {
+      const a = chaptersNode.querySelector('a');
+      if (a) {
         // Blurb with link format
-        chaptersText = a.text().trim();
-        let raw = chaptersNode.html();
+        chaptersText = a.textContent.trim();
+        let raw = chaptersNode.innerHTML;
         raw = raw.replace(/<a[^>]*>.*?<\/a>/, '');
         raw = raw.replace(/&nbsp;/gi, ' ');
         const match = raw.match(/\/\s*([\d\?]+)/);
@@ -1522,28 +1395,38 @@ function getCut(work) {
         }
       } else {
         // Simple blurb format
-        chaptersText = chaptersNode.text().replace(/&nbsp;/gi, ' ').trim();
+        chaptersText = chaptersNode.textContent.replace(/&nbsp;/gi, ' ').trim();
       }
       completionStatus = parseChaptersStatus(chaptersText);
     }
 
     // Use CSS class-based tag categorization
-    const categorizedTags = getCategorizedTags(blurb);
+    const categorizedTags = getCategorizedTags(blurbElement);
 
     return {
-      authors: selectTextsIn(blurb, "a[rel=author]"),
+      authors: selectTextsIn(blurbElement, "a[rel=author]"),
       categorizedTags: categorizedTags,
       tags: getAllTagsFlat(categorizedTags),
-      title: selectTextsIn(blurb, ".header .heading a:first-child")[0],
-      summary: selectTextsIn(blurb, "blockquote.summary")[0],
-      language: selectTextsIn(blurb, "dd.language")[0],
+      title: selectTextsIn(blurbElement, ".header .heading a:first-child")[0],
+      summary: selectTextsIn(blurbElement, "blockquote.summary")[0],
+      language: selectTextsIn(blurbElement, "dd.language")[0],
       fandomCount: fandoms.length,
-      wordCount: getWordCount($(blurb)),
+      wordCount: getWordCount(blurbElement),
       completionStatus: completionStatus
     };
   }
 
   function checkWorks() {
+    // ...existing code...
+    let path = window.location.pathname;
+    let isUserDashboard = (
+      /^\/users\/[^\/]+\/?$/.test(path) && !/^\/users\/[^\/]+\/.+/.test(path)
+    ) || (
+      /^\/users\/[^\/]+\/pseuds\/[^\/]+\/?$/.test(path) && !/^\/users\/[^\/]+\/pseuds\/[^\/]+\/.+/.test(path)
+    );
+    if (window.ao3Blocker && window.ao3Blocker.config && window.ao3Blocker.config.debugMode) {
+      console.log('[AO3 Blocker] Dashboard detection:', path, 'isUserDashboard:', isUserDashboard, 'disableOnDashboards:', window.ao3Blocker.config.disableOnDashboards);
+    }
     const debugMode = window.ao3Blocker.config.debugMode;
     const config = window.ao3Blocker.config;
     let blocked = 0;
@@ -1557,18 +1440,13 @@ function getCut(work) {
       }
     }
 
-    // Exclude user dashboard and user works/drafts pages
-    const isUserDashboard = (
-      /^\/users\/[^\/]+\/?$/.test(window.location.pathname) ||
-      /^\/users\/[^\/]+\/pseuds\/[^\/]+\/?$/.test(window.location.pathname)
-    );
-    const isUserWorksOrDraftsPage = (
-      /^\/users\/[^\/]+\/works\/?$/.test(window.location.pathname) ||
-      /^\/users\/[^\/]+\/works\/drafts\/?$/.test(window.location.pathname)
-    );
-    if (isUserDashboard || isUserWorksOrDraftsPage) {
+    // Optionally exclude user dashboard only
+    // path and isUserDashboard already declared above
+  // Always read from config object
+  const disableOnDashboards = !!(window.ao3Blocker.config.disableOnDashboards !== undefined ? window.ao3Blocker.config.disableOnDashboards : false);
+    if (disableOnDashboards && isUserDashboard) {
       if (debugMode) {
-        console.info("Advanced Blocker: Skipping user dashboard, user works, or user drafts page.");
+        console.info("Advanced Blocker: Skipping user dashboard page.");
       }
       return;
     }
@@ -1578,14 +1456,22 @@ function getCut(work) {
     const disableOnBookmarks = !!config.disableOnBookmarks;
     const disableOnCollections = !!config.disableOnCollections;
 
-    $.makeArray($("li.blurb")).forEach((blurb) => {
-      blurb = $(blurb);
-      const isWorkOrBookmark = (blurb.hasClass("work") || blurb.hasClass("bookmark")) && !blurb.hasClass("picture");
+    // Skip all blocking/highlighting if dashboard option is enabled and page is dashboard
+    if (disableOnDashboards && isUserDashboard) {
+      if (debugMode) {
+        console.info("Advanced Blocker: Skipping all blocking/highlighting on user dashboard page.");
+      }
+      return;
+    }
+
+    const blurbs = document.querySelectorAll("li.blurb");
+    blurbs.forEach((blurbEl) => {
+      const isWorkOrBookmark = (blurbEl.classList.contains("work") || blurbEl.classList.contains("bookmark")) && !blurbEl.classList.contains("picture");
       let reason = null;
-      let blockables = selectFromBlurb(blurb);
+      let blockables = selectFromBlurb(blurbEl);
 
       if (debugMode && isWorkOrBookmark) {
-        console.log(`[Advanced Blocker][DEBUG] Work ID: ${blurb.attr("id") || "(no id)"}`);
+        console.log(`[Advanced Blocker][DEBUG] Work ID: ${blurbEl.id || "(no id)"}`);
         console.log(`[Advanced Blocker][DEBUG] Parsed completionStatus:`, blockables.completionStatus);
         console.log(`[Advanced Blocker][DEBUG] blockComplete:`, config.blockComplete, `blockOngoing:`, config.blockOngoing);
         console.log(`[Advanced Blocker][DEBUG] All blockables:`, blockables);
@@ -1597,38 +1483,40 @@ function getCut(work) {
       }
 
       if (reason) {
-        blockWork(blurb, reason, config);
+        blockWork(blurbEl, reason, config);
         blocked++;
         if (debugMode) {
-          console.groupCollapsed(`- blocked ${blurb.attr("id")}`);
-          console.log(blurb.html(), reason);
+          console.groupCollapsed(`- blocked ${blurbEl.id}`);
+          console.log(blurbEl.innerHTML, reason);
           console.groupEnd();
         }
       } else if (debugMode && isWorkOrBookmark) {
-        console.groupCollapsed(`  skipped ${blurb.attr("id")}`);
-        console.log(blurb.html());
+        console.groupCollapsed(`  skipped ${blurbEl.id}`);
+        console.log(blurbEl.innerHTML);
         console.groupEnd();
       }
 
-      // Highlighting is allowed for all blurbs - uses flat array (same behavior)
+      // Highlighting uses exact tag matching
       const allTags = blockables.tags || getAllTagsFlat(blockables.categorizedTags || {});
       allTags.forEach((tag) => {
-        if (config.tagHighlights.includes(tag.toLowerCase())) {
-          blurb.addClass("ao3-blocker-highlight");
+        // Use exact matching for tag highlights - compare normalized tag to normalized highlight patterns
+        const normalizedTag = tag.toLowerCase().trim();
+        if (config.tagHighlights.some(highlightPattern => normalizedTag === highlightPattern)) {
+          blurbEl.classList.add("ao3-blocker-highlight");
           const color = config.highlightColor || '#f6e3ca';
-          blurb[0].setAttribute('style', (blurb[0].getAttribute('style') || '') + `;background-color:${color} !important;`);
-          if (blurb[0].id && blurb[0].id.trim() !== "") {
-            const styleId = 'ao3-blocker-style-' + blurb[0].id;
+          blurbEl.style.cssText += `;background-color:${color} !important;`;
+          if (blurbEl.id && blurbEl.id.trim() !== "") {
+            const styleId = 'ao3-blocker-style-' + blurbEl.id;
             if (!document.getElementById(styleId)) {
               const style = document.createElement('style');
               style.id = styleId;
-              style.textContent = `#${blurb[0].id}.ao3-blocker-highlight { background-color: ${color} !important; }`;
+              style.textContent = `#${blurbEl.id}.ao3-blocker-highlight { background-color: ${color} !important; }`;
               document.head.appendChild(style);
             }
           }
           if (debugMode) {
-            console.groupCollapsed(`? highlighted ${blurb.attr("id")}`);
-            console.log(blurb.html());
+            console.groupCollapsed(`? highlighted ${blurbEl.id}`);
+            console.log(blurbEl.innerHTML);
             console.groupEnd();
           }
         }
@@ -1641,16 +1529,3 @@ function getCut(work) {
     }
   }
 }());
-
-function initBlockerMenu() {
-  if (typeof window.AO3UserScriptMenu !== "undefined" && typeof AO3UserScriptMenu.register === "function") {
-    AO3UserScriptMenu.register({
-      label: "Advanced Blocker Settings",
-      onClick: showBlockerMenu,
-    });
-  } else {
-    addMenu(); // fallback for Chrome/Safari
-  }
-}
-
-document.addEventListener("DOMContentLoaded", initBlockerMenu);
