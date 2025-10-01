@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.3
+// @version     1.4
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -335,20 +335,81 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
             z-index: 10000;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
             max-height: 80vh;
             overflow-y: auto;
             font-family: inherit;
-            font-size: 16px;
+            font-size: inherit;
             box-sizing: border-box;
         `;
-    // Ensure headings inherit font family
+    // Ensure headings inherit font family and add tooltip styles
     const style = document.createElement("style");
     style.textContent = `
-      #ao3-rtqs-popup h3, #ao3-rtqs-popup h4 {
-        font-family: inherit !important;
+      #ao3-rtqs-popup .settings-section {
+        background: rgba(0,0,0,0.03);
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-left: 4px solid currentColor;
+      }
+      #ao3-rtqs-popup .section-title {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 1.2em;
+        font-weight: bold;
+        color: inherit;
+        opacity: 0.85;
+        font-family: inherit;
+      }
+      #ao3-rtqs-popup .setting-group {
+        margin-bottom: 15px;
+      }
+      #ao3-rtqs-popup .setting-label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: bold;
+        color: inherit;
+        opacity: 0.9;
+      }
+      #ao3-rtqs-popup .checkbox-label {
+        display: block;
+        font-weight: normal;
+        color: inherit;
+      }
+      #ao3-rtqs-popup .subsettings {
+        padding-left: 20px;
+        margin-top: 10px;
+      }
+      #ao3-rtqs-popup .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+      #ao3-rtqs-popup .button-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      #ao3-rtqs-popup .button-group button {
+        flex: 1;
+        padding: 10px;
+        color: inherit;
+        opacity: 0.9;
+      }
+      #ao3-rtqs-popup .reset-link {
+        text-align: center;
+        margin-top: 10px;
+        color: inherit;
+        opacity: 0.7;
+      }
+      #ao3-rtqs-popup .symbol.question {
+        font-size: 0.5em;
+        vertical-align: middle;
       }
     `;
+    document.head.appendChild(style);
+
     popup.id = "ao3-rtqs-popup";
     document.head.appendChild(style);
     const form = document.createElement("form");
@@ -363,168 +424,188 @@
       : CONFIG.colorThresholdHigh;
 
     form.innerHTML = `
-            <h3 style="margin-top: 0; text-align: center; font-size: 1.2em;">⚙️ Reading Time & Quality Score Settings ⚙️</h3>
-            <hr style='margin: 16px 0; border: none; border-top: 1px solid #ccc;'>
+        <h3 style="text-align: center; margin-top: 0; color: inherit;">⏱️ Reading Time & Quality Score Settings ⭐</h3>
 
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px; font-size: 1.1em; font-weight: bold; display: flex; align-items: center;">
-                    <span>Reading Time 📚</span>
-                </h4>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="enableReadingTime" ${
-                      CONFIG.enableReadingTime ? "checked" : ""
-                    }>
-                    Enable Reading Time
-                </label>
-                <div id="readingTimeSettings" style="margin-left: 20px; ${
-                  CONFIG.enableReadingTime ? "" : "display: none;"
-                }">
-                    <label style="display: block; margin: 10px 0;">
-                        <input type="checkbox" id="alwaysCountReadingTime" ${
-                          CONFIG.alwaysCountReadingTime ? "checked" : ""
-                        }>
-                        Calculate automatically
-                    </label>
-                    <div style="margin: 10px 0;">
-                        <label>Words per minute:</label>
-                        <input type="number" id="wpm" value="${
-                          CONFIG.wpm
-                        }" min="100" max="1000" step="25">
-                    </div>
-                    <div style="margin: 10px 0;">
-                        <label>Yellow threshold (minutes):</label>
-                        <input type="number" id="readingTimeLvl1" value="${
-                          CONFIG.readingTimeLvl1
-                        }" min="5" max="240" step="5">
-                    </div>
-                    <div style="margin: 10px 0;">
-                        <label>Red threshold (minutes):</label>
-                        <input type="number" id="readingTimeLvl2" value="${
-                          CONFIG.readingTimeLvl2
-                        }" min="30" max="480" step="10">
-                    </div>
-                </div>
+        <div class="settings-section">
+          <h4 class="section-title">📚 Reading Time</h4>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableReadingTime" ${
+                CONFIG.enableReadingTime ? "checked" : ""
+              }>
+              Enable Reading Time
+            </label>
+          </div>
+          <div id="readingTimeSettings" class="subsettings" style="${
+            CONFIG.enableReadingTime ? "" : "display: none;"
+          }">
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="alwaysCountReadingTime" ${
+                  CONFIG.alwaysCountReadingTime ? "checked" : ""
+                }>
+                Calculate automatically
+              </label>
             </div>
+            <div class="setting-group">
+              <label class="setting-label">
+                Words per minute
+                <span class="symbol question" title="Average reading speed is 200-300 wpm. 375 is for faster readers."><span>?</span></span>
+              </label>
+              <input type="number" id="wpm" value="${
+                CONFIG.wpm
+              }" min="100" max="1000" step="25">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">
+                Yellow threshold (minutes)
+                <span class="symbol question" title="Works taking less than this many minutes will be colored green"><span>?</span></span>
+              </label>
+              <input type="number" id="readingTimeLvl1" value="${
+                CONFIG.readingTimeLvl1
+              }" min="5" max="240" step="5">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">
+                Red threshold (minutes)
+                <span class="symbol question" title="Works taking more than this many minutes will be colored red"><span>?</span></span>
+              </label>
+              <input type="number" id="readingTimeLvl2" value="${
+                CONFIG.readingTimeLvl2
+              }" min="30" max="480" step="10">
+            </div>
+          </div>
+        </div>
 
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px; font-size: 1.1em; font-weight: bold; display: flex; align-items: center;">
-                    <span>Quality Score 💖</span>
-                </h4>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="enableQualityScore" ${
-                      CONFIG.enableQualityScore ? "checked" : ""
-                    }>
-                    Enable Quality Score
-                </label>
-                <div id="qualityScoreSettings" style="margin-left: 20px; ${
-                  CONFIG.enableQualityScore ? "" : "display: none;"
-                }">
-                    <label style="display: block; margin: 10px 0;">
-                        <input type="checkbox" id="alwaysCountQualityScore" ${
-                          CONFIG.alwaysCountQualityScore ? "checked" : ""
-                        }>
-                        Calculate automatically
-                    </label>
-                    <label style="display: block; margin: 10px 0;">
-                        <input type="checkbox" id="alwaysSortQualityScore" ${
-                          CONFIG.alwaysSortQualityScore ? "checked" : ""
-                        }>
-                        Sort by score automatically
-                    </label>
-                    <label style="display: block; margin: 10px 0;">
-                        <input type="checkbox" id="hideHitcount" ${
-                          CONFIG.hideHitcount ? "checked" : ""
-                        }>
-                        Hide hit count
-                    </label>
-                    <div style="margin: 10px 0;">
-                        <label>Minimum kudos to show score:</label>
-                        <input type="number" id="minKudosToShowScore" value="${
-                          CONFIG.minKudosToShowScore
-                        }" min="0" max="10000" step="1">
-                    </div>
-                    <label style="display: block; margin: 10px 0;">
-                        <input type="checkbox" id="useNormalization" ${
-                          CONFIG.useNormalization ? "checked" : ""
-                        }>
-                        Normalize scores to 100%
-                        <span title="Scales the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable." style="margin-left: 4px; cursor: help;">❓</span>
-                    </label>
-                    <div id="userMaxScoreContainer" style="margin: 10px 0;${
-                      CONFIG.useNormalization ? "" : " display:none;"
-                    }">
-                        <label>Best Possible Raw Score <span id="normalizationLabel">${
-                          CONFIG.useNormalization ? "(for 100%)" : ""
-                        }</span>:</label>
-                        <input type="number" id="userMaxScore" value="${
-                          CONFIG.userMaxScore
-                        }" min="1" max="100" step="1">
-                    </div>
-                    <div style="margin: 10px 0;">
-                        <label>Good Score <span id="thresholdLowLabel">${
-                          CONFIG.useNormalization ? "(%)" : ""
-                        }</span>:</label>
-                        <input type="number" id="colorThresholdLow" value="${displayThresholdLow}" min="0.1" max="100" step="0.1">
-                    </div>
-                    <div style="margin: 10px 0;">
-                        <label>Excellent Score <span id="thresholdHighLabel">${
-                          CONFIG.useNormalization ? "(%)" : ""
-                        }</span>:</label>
-                        <input type="number" id="colorThresholdHigh" value="${displayThresholdHigh}" min="0.1" max="100" step="0.1">
-                    </div>
-                </div>
+        <div class="settings-section">
+          <h4 class="section-title">💖 Quality Score</h4>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableQualityScore" ${
+                CONFIG.enableQualityScore ? "checked" : ""
+              }>
+              Enable Quality Score
+            </label>
+          </div>
+          <div id="qualityScoreSettings" class="subsettings" style="${
+            CONFIG.enableQualityScore ? "" : "display: none;"
+          }">
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="alwaysCountQualityScore" ${
+                  CONFIG.alwaysCountQualityScore ? "checked" : ""
+                }>
+                Calculate automatically
+              </label>
             </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="alwaysSortQualityScore" ${
+                  CONFIG.alwaysSortQualityScore ? "checked" : ""
+                }>
+                Sort by score automatically
+              </label>
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="hideHitcount" ${
+                  CONFIG.hideHitcount ? "checked" : ""
+                }>
+                Hide hit count
+              </label>
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">Minimum kudos to show score</label>
+              <input type="number" id="minKudosToShowScore" value="${
+                CONFIG.minKudosToShowScore
+              }" min="0" max="10000" step="1">
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="useNormalization" ${
+                  CONFIG.useNormalization ? "checked" : ""
+                }>
+                Normalize scores to 100%
+                <span class="symbol question" title="Scales the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable."><span>?</span></span>
+              </label>
+            </div>
+            <div id="userMaxScoreContainer" class="setting-group" style="${
+              CONFIG.useNormalization ? "" : "display: none;"
+            }">
+              <label class="setting-label">
+                Best Possible Raw Score <span id="normalizationLabel">${
+                  CONFIG.useNormalization ? "(for 100%)" : ""
+                }</span>
+                <span class="symbol question" title="The highest score you've seen in your fandom. Used to scale other scores to percentages."><span>?</span></span>
+              </label>
+              <input type="number" id="userMaxScore" value="${
+                CONFIG.userMaxScore
+              }" min="1" max="100" step="1">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">
+                Good Score <span id="thresholdLowLabel">${
+                  CONFIG.useNormalization ? "(%)" : ""
+                }</span>
+                <span class="symbol question" title="Scores at or above this threshold will be colored yellow"><span>?</span></span>
+              </label>
+              <input type="number" id="colorThresholdLow" value="${displayThresholdLow}" min="0.1" max="100" step="0.1">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">
+                Excellent Score <span id="thresholdHighLabel">${
+                  CONFIG.useNormalization ? "(%)" : ""
+                }</span>
+                <span class="symbol question" title="Scores at or above this threshold will be colored green"><span>?</span></span>
+              </label>
+              <input type="number" id="colorThresholdHigh" value="${displayThresholdHigh}" min="0.1" max="100" step="0.1">
+            </div>
+          </div>
+        </div>
 
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px; font-size: 1.1em; font-weight: bold; display: flex; align-items: center;">
-                    <span>Color Settings 🎨</span>
-                </h4>
-                <label style="display: block; margin: 10px 0;">
-                  <input type="checkbox" id="enableBarColors" ${
-                    CONFIG.enableBarColors ? "checked" : ""
-                  }>
-                  Enable colored backgrounds for bars
-                </label>
-                <div id="barColorSettings" style="margin-left: 20px; ${
-                  CONFIG.enableBarColors ? "" : "display: none;"
-                }">
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%;">
-                      <div style="margin: 5px 0;">
-                          <label style="display: block; margin-bottom: 5px;">Green:</label>
-                          <input type="color" id="colorGreen" value="${
-                            CONFIG.colorGreen
-                          }" style="width: 100%;">
-                      </div>
-                      <div style="margin: 5px 0;">
-                          <label style="display: block; margin-bottom: 5px;">Yellow:</label>
-                          <input type="color" id="colorYellow" value="${
-                            CONFIG.colorYellow
-                          }" style="width: 100%;">
-                      </div>
-                      <div style="margin: 5px 0;">
-                          <label style="display: block; margin-bottom: 5px;">Red:</label>
-                          <input type="color" id="colorRed" value="${
-                            CONFIG.colorRed
-                          }" style="width: 100%;">
-                      </div>
-                      <div style="margin: 5px 0;">
-                          <label style="display: block; margin-bottom: 5px;">Text color:</label>
-                          <input type="color" id="colorText" value="${
-                            CONFIG.colorText
-                          }" style="width: 100%;">
-                      </div>
-                  </div>
-                </div>
+        <div class="settings-section">
+          <h4 class="section-title">🎨 Color Settings</h4>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="enableBarColors" ${
+                CONFIG.enableBarColors ? "checked" : ""
+              }>
+              Enable colored backgrounds for bars
+            </label>
+          </div>
+          <div id="barColorSettings" class="subsettings two-column" style="${
+            CONFIG.enableBarColors ? "" : "display: none;"
+          }">
+            <div class="setting-group">
+              <label class="setting-label">Green</label>
+              <input type="color" id="colorGreen" value="${CONFIG.colorGreen}">
             </div>
+            <div class="setting-group">
+              <label class="setting-label">Yellow</label>
+              <input type="color" id="colorYellow" value="${
+                CONFIG.colorYellow
+              }">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">Red</label>
+              <input type="color" id="colorRed" value="${CONFIG.colorRed}">
+            </div>
+            <div class="setting-group">
+              <label class="setting-label">Text color</label>
+              <input type="color" id="colorText" value="${CONFIG.colorText}">
+            </div>
+          </div>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;">
-                <button type="submit" style="flex: 1; padding: 10px; font-size: 1em;">Save</button>
-                <button type="button" id="closePopup" style="flex: 1; padding: 10px; font-size: 1em;">Close</button>
-            </div>
-            <div style="text-align: center; margin-top: 5px;">
-                <a href="#" id="resetSettingsLink" style="font-size: 0.9em; color: #666; text-decoration: none;">Reset to Default Settings</a>
-            </div>
-        `;
+        <div class="button-group">
+          <button type="submit">Save</button>
+          <button type="button" id="closePopup">Close</button>
+        </div>
+        <div class="reset-link">
+          <a href="#" id="resetSettingsLink">Reset to Default Settings</a>
+        </div>
+      `;
+
     // Toggle bar color settings
     const enableBarColorsCheckbox = form.querySelector("#enableBarColors");
     const barColorSettingsDiv = form.querySelector("#barColorSettings");
