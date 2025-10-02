@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      2
+// @version      2.1
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
@@ -33,7 +33,7 @@
     expandCodeFontUsage: false,
   };
 
-  const WORKS_PAGE_REGEX = /^https:\/\/archiveofourown\.org\/works\//;
+  const WORKS_PAGE_REGEX = /^https?:\/\/archiveofourown\.org\/(works|chapters)\//;
 
   // --- STATE ---
   let FORMATTER_CONFIG = { ...DEFAULT_FORMATTER_CONFIG };
@@ -369,7 +369,7 @@
       if (!isWorksPage) return;
 
       document
-        .querySelectorAll(".userstuff:not([data-formatter-spacing-fixed])")
+        .querySelectorAll("#workskin .userstuff:not([data-formatter-spacing-fixed])")
         .forEach((userstuff) => {
           userstuff.setAttribute("data-formatter-spacing-fixed", "true");
 
@@ -741,43 +741,6 @@
     }
   }
 
-  // Setup mutation observer for new userstuff elements
-  function setupUserstuffObserver() {
-    if (!document.body) {
-      document.addEventListener("DOMContentLoaded", setupUserstuffObserver);
-      return;
-    }
-
-    if (!FORMATTER_CONFIG.fixParagraphSpacing || !isWorksPage) return;
-
-    const userstuffObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType !== 1) continue;
-
-          if (
-            node.classList?.contains("userstuff") &&
-            !node.getAttribute("data-formatter-spacing-fixed")
-          ) {
-            fixParagraphSpacing();
-          } else if (node.querySelectorAll) {
-            const userstuffs = node.querySelectorAll(
-              ".userstuff:not([data-formatter-spacing-fixed])"
-            );
-            if (userstuffs.length > 0) {
-              fixParagraphSpacing();
-            }
-          }
-        }
-      }
-    });
-
-    userstuffObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
   // Initialize everything
   initStyles();
 
@@ -789,11 +752,5 @@
   } else {
     runParagraphSpacingFixIfEnabled();
     initSharedMenu();
-  }
-
-  if (document.body) {
-    setupUserstuffObserver();
-  } else {
-    document.addEventListener("DOMContentLoaded", setupUserstuffObserver);
   }
 })();

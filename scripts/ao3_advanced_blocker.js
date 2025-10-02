@@ -158,7 +158,7 @@
     box-shadow: 0 0 20px rgba(0,0,0,0.2);
     z-index: 10000;
     width: 90%;
-    max-width: 700px;
+    max-width: 800px;
     max-height: 80vh;
     overflow-y: auto;
     font-family: inherit;
@@ -553,7 +553,7 @@
       boxShadow: '0 0 20px rgba(0,0,0,0.2)',
       zIndex: '10000',
       width: '90%',
-      maxWidth: '700px',
+      maxWidth: '800px',
       maxHeight: '80vh',
       overflowY: 'auto',
       fontFamily: 'inherit',
