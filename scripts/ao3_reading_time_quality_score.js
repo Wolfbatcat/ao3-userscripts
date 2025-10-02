@@ -165,8 +165,6 @@
       // Apply base styling
       Object.assign(readtime_value.style, {
         borderRadius: "4px",
-        padding: "0 6px",
-        fontWeight: "bold",
         display: "inline-block",
         verticalAlign: "middle",
       });
@@ -251,13 +249,10 @@
         ratioValue.className = "kudoshits";
         ratioValue.textContent = displayScore;
         ratioValue.style.borderRadius = "4px";
-        ratioValue.style.padding = "0 6px";
-        ratioValue.style.fontWeight = "bold";
         ratioValue.style.display = "inline-block";
         ratioValue.style.verticalAlign = "middle";
         if (CONFIG.enableBarColors) {
           ratioValue.style.color = CONFIG.colorText;
-          ratioValue.style.fontWeight = "bold";
           if (displayScore >= thresholdHigh) {
             ratioValue.style.backgroundColor = CONFIG.colorGreen;
           } else if (displayScore >= thresholdLow) {
@@ -268,7 +263,6 @@
         } else {
           ratioValue.style.backgroundColor = "";
           ratioValue.style.color = "inherit";
-          ratioValue.style.fontWeight = "inherit";
         }
         // Inherit font size and line height from dl.stats
         const parentStats = ratioValue.closest("dl.stats");
