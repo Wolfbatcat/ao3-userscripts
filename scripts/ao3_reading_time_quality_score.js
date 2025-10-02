@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.4
+// @version     1.5
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -313,7 +313,8 @@
     const testInput = document.createElement("input");
     document.body.appendChild(testInput);
     try {
-      const computedBg = window.getComputedStyle(testInput).backgroundColor;
+      const computedStyle = window.getComputedStyle(testInput);
+      const computedBg = computedStyle.backgroundColor;
       if (
         computedBg &&
         computedBg !== "rgba(0, 0, 0, 0)" &&
@@ -407,11 +408,25 @@
         font-size: 0.5em;
         vertical-align: middle;
       }
+      #ao3-rtqs-popup input[type="text"],
+      #ao3-rtqs-popup input[type="number"],
+      #ao3-rtqs-popup input[type="color"],
+      #ao3-rtqs-popup select,
+      #ao3-rtqs-popup textarea {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      #ao3-rtqs-popup input[type="text"]:focus,
+      #ao3-rtqs-popup input[type="number"]:focus,
+      #ao3-rtqs-popup input[type="color"]:focus,
+      #ao3-rtqs-popup select:focus,
+      #ao3-rtqs-popup textarea:focus {
+        background: ${inputBg} !important;
+      }
     `;
     document.head.appendChild(style);
 
     popup.id = "ao3-rtqs-popup";
-    document.head.appendChild(style);
     const form = document.createElement("form");
 
     // Calculate values for display

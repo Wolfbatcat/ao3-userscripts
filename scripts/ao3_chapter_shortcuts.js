@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Chapter Shortcuts
-// @version      1.2
+// @version      1.3
 // @description  Adds shortcuts for first and last chapters on AO3 works. Customizable!
 // @author       BlackBatCat
 // @license      MIT
@@ -85,9 +85,15 @@
             color: inherit;
             box-sizing: border-box;
         `;
+
+    // Add CSS for proper link styling
+    const style = document.createElement("style");
+    style.textContent = `.ao3-chapter-shortcuts-menu-dialog .reset-link { text-align: center; margin-top: 10px; color: inherit; opacity: 0.7; } .ao3-chapter-shortcuts-menu-dialog .reset-link a { text-decoration: none; outline: none; } .ao3-chapter-shortcuts-menu-dialog .reset-link a:hover { opacity: 1; outline: none; }`;
+    document.head.appendChild(style);
+
     dialog.innerHTML = `
-            <h3 style="margin-top: 0; text-align: center; font-size: 1.2em; font-family: inherit; color: inherit;">⚙️ Chapter Shortcuts Settings ⚙️</h3>
-            <hr style='margin: 16px 0; border: none; border-top: 1px solid #ccc;'>
+            <h3 style="text-align: center; margin-top: 0; color: inherit;">🏃🏻 Chapter Shortcuts Settings 🏃🏻</h3>
+            <hr style='margin: 10px 0; border: none; border-top: 1px solid inherit;'>
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; font-family: inherit; color: inherit;">Choose a symbol for the Last Chapter button:</label>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
@@ -101,14 +107,14 @@
                     <button type="button" class="preset-symbol" data-symbol="ɞɞ" style="font-family: inherit; font-size: inherit; color: inherit;">ɞɞ</button>
                 </div>
                 <label style="display: block; margin-bottom: 5px; font-family: inherit; color: inherit;">Or enter your own:</label>
-                <input type="text" id="custom-symbol" value="${CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol}" maxlength="4" style="width: 100%; padding: 5px; font-size: inherit; font-family: inherit; color: inherit; background: ${inputBg}; border: 1px solid #ccc; box-sizing: border-box;">
+                <input type="text" id="custom-symbol" value="${CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol}" maxlength="4" style="width: 100%; padding: 5px; font-size: inherit; font-family: inherit; color: inherit; background: inherit; border: 1px solid inherit; box-sizing: border-box;">
             </div>
             <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 5px;">
                 <button id="chapter-shortcuts-save" style="flex: 1; padding: 10px; font-size: 1em; font-family: inherit; color: inherit;">Save</button>
                 <button id="chapter-shortcuts-cancel" style="flex: 1; padding: 10px; font-size: 1em; font-family: inherit; color: inherit;">Cancel</button>
             </div>
-            <div style="text-align: center; margin-top: 5px;">
-                <a href="#" id="resetShortcutsSettingsLink" style="font-size: 0.9em; color: #666; text-decoration: none; font-family: inherit;">Reset to Default</a>
+            <div class="reset-link">
+                <a href="#" id="resetShortcutsSettingsLink">Reset to Default Settings</a>
             </div>
         `;
     document.body.appendChild(dialog);

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      1.8
+// @version      2
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
@@ -100,7 +100,17 @@
       } = FORMATTER_CONFIG;
 
       cachedElements.paraStyle.textContent = `
-        .userstuff { text-align: ${paragraphTextAlign} !important; }
+        #workskin p { text-align: ${paragraphTextAlign} !important; }
+        ${
+          paragraphTextAlign === "justify" || paragraphTextAlign === "left"
+            ? `#workskin dd { text-align: ${paragraphTextAlign} !important; }`
+            : ""
+        }
+        ${
+          paragraphTextAlign === "justify" || paragraphTextAlign === "left"
+            ? `#workskin blockquote { text-align: ${paragraphTextAlign} !important; }`
+            : ""
+        }
         #workskin {
           max-width: ${paragraphWidthPercent}vw !important;
           font-size: ${paragraphFontSizePercent}% !important;
@@ -113,9 +123,43 @@
               : ""
           }
         }
-        /* Override inline align attributes */
-        .userstuff p[align] {
+        /* Override inline align attributes on paragraphs only */
+        #workskin p[align] {
           text-align: ${paragraphTextAlign} !important;
+        }
+        ${
+          paragraphTextAlign === "right"
+            ? `
+        /* RTL list styling */
+        #workskin ul, #workskin ol {
+          direction: rtl !important;
+          text-align: right !important;
+        }
+        #workskin li {
+          text-align: right !important;
+        }
+        /* RTL definition list styling */
+        #workskin dl {
+          direction: rtl !important;
+        }
+        #workskin dt, #workskin dd {
+          text-align: right !important;
+        }
+        /* RTL blockquote styling */
+        #workskin blockquote {
+          text-align: right !important;
+        }
+        /* RTL details/summary styling */
+        #workskin summary {
+          text-align: right !important;
+        }
+        /* RTL heading styling - only for headings within workskin */
+        #workskin h1, #workskin h2, #workskin h3, 
+        #workskin h4, #workskin h5, #workskin h6 {
+          text-align: right !important;
+        }
+        `
+            : ""
         }
       `;
 
@@ -150,6 +194,7 @@
       siteFontSizePercent,
       siteFontFamily,
       siteFontWeight,
+      headerFontFamily,
       headerFontWeight,
       codeFontFamily,
       codeFontStyle,
@@ -168,8 +213,15 @@
         ? ""
         : ", textarea:not(#skin_css):not(#floaty-textarea)";
 
+      // Exclude header elements from site-wide font if custom header font is specified
+      const headerExclusion = headerFontFamily
+        ? ":not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.heading)"
+        : "";
+
       rules.push(
-        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination, h1, h2, h3, h4, h5, h6, .heading { font-family: ${siteFontFamily} !important; }`
+        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination${headerExclusion}${
+          headerFontFamily ? "" : ", h1, h2, h3, h4, h5, h6, .heading"
+        } { font-family: ${siteFontFamily} !important; }`
       );
     }
 
@@ -178,8 +230,20 @@
         ? ""
         : ", textarea:not(#skin_css):not(#floaty-textarea)";
 
+      // Exclude header elements from site-wide weight if custom header weight is specified
+      const headerExclusion = headerFontWeight
+        ? ":not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.heading)"
+        : "";
+
       rules.push(
-        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination, .current { font-weight: ${siteFontWeight} !important; }`
+        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination, .current${headerExclusion} { font-weight: ${siteFontWeight} !important; }`
+      );
+    }
+
+    // Header font settings - these come after site-wide to ensure they override
+    if (headerFontFamily) {
+      rules.push(
+        `h1, h2, h3, h4, h5, h6, .heading { font-family: ${headerFontFamily} !important; }`
       );
     }
 
@@ -215,7 +279,30 @@
 
     // Preserve proper fonts for comment formatting - support both FontAwesome and emoji
     rules.push(
-      `ul.comment-format { font-family: "FontAwesome", sans-serif !important; font-weight: normal !important; }`
+      `ul.comment-format { font-family: "FontAwesome", sans-serif !important; font-weight: normal !important; }`,
+      `ul.actions.comment-format { text-align: left !important; }`
+    );
+
+    // Protect title and byline from alignment changes - always keep centered
+    // Use high specificity to override dir="rtl" inheritance
+    rules.push(
+      `#workskin .preface .title.heading,
+       #workskin .preface .byline.heading,
+       #workskin .preface .title,
+       #workskin .preface .byline,
+       #workskin .title.heading,
+       #workskin .byline.heading { 
+         text-align: center !important; 
+         direction: ltr !important; 
+       }`
+    );
+
+    // Protect code elements from alignment changes - always keep left-aligned and LTR
+    rules.push(
+      `#workskin pre {
+         text-align: left !important;
+         direction: ltr !important;
+       }`
     );
 
     cachedElements.siteStyle.textContent = rules.join("\n");
@@ -326,7 +413,7 @@
 
     // Add CSS for the layout
     const style = document.createElement("style");
-    style.textContent = `.ao3-formatter-menu-dialog .settings-section { background: rgba(0,0,0,0.03); border-radius: 6px; padding: 15px; margin-bottom: 20px; border-left: 4px solid currentColor; } .ao3-formatter-menu-dialog .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; color: inherit; opacity: 0.85; font-family: inherit; } .ao3-formatter-menu-dialog .setting-group { margin-bottom: 15px; } .ao3-formatter-menu-dialog .setting-label { display: block; margin-bottom: 6px; font-weight: bold; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .setting-description { display: block; margin-bottom: 8px; font-size: 0.9em; color: inherit; opacity: 0.6; line-height: 1.4; } .ao3-formatter-menu-dialog .checkbox-label { display: block; font-weight: normal; color: inherit; } .ao3-formatter-menu-dialog input[type="text"], .ao3-formatter-menu-dialog input[type="number"], .ao3-formatter-menu-dialog select { width: 100%; box-sizing: border-box; } .ao3-formatter-menu-dialog .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } .ao3-formatter-menu-dialog .slider-with-value { display: flex; align-items: center; gap: 10px; } .ao3-formatter-menu-dialog .slider-with-value input[type="range"] { flex-grow: 1; } .ao3-formatter-menu-dialog .value-display { min-width: 40px; text-align: center; font-weight: bold; color: inherit; opacity: 0.6; } .ao3-formatter-menu-dialog .button-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; } .ao3-formatter-menu-dialog .button-group button { flex: 1; padding: 10px; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .reset-link { text-align: center; margin-top: 10px; color: inherit; opacity: 0.7; } .ao3-formatter-menu-dialog .symbol.question { font-size: 0.5em; vertical-align: middle; }`;
+    style.textContent = `.ao3-formatter-menu-dialog .settings-section { background: rgba(0,0,0,0.03); border-radius: 6px; padding: 15px; margin-bottom: 20px; border-left: 4px solid currentColor; } .ao3-formatter-menu-dialog .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; color: inherit; opacity: 0.85; font-family: inherit; } .ao3-formatter-menu-dialog .setting-group { margin-bottom: 15px; } .ao3-formatter-menu-dialog .setting-label { display: block; margin-bottom: 6px; font-weight: bold; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .setting-description { display: block; margin-bottom: 8px; font-size: 0.9em; color: inherit; opacity: 0.6; line-height: 1.4; } .ao3-formatter-menu-dialog .checkbox-label { display: block; font-weight: normal; color: inherit; } .ao3-formatter-menu-dialog input[type="text"], .ao3-formatter-menu-dialog input[type="number"], .ao3-formatter-menu-dialog select { width: 100%; box-sizing: border-box; } .ao3-formatter-menu-dialog input[type="number"]:focus { background: ${inputBg} !important; } .ao3-formatter-menu-dialog .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } .ao3-formatter-menu-dialog .slider-with-value { display: flex; align-items: center; gap: 10px; } .ao3-formatter-menu-dialog .slider-with-value input[type="range"] { flex-grow: 1; } .ao3-formatter-menu-dialog .value-display { min-width: 40px; text-align: center; font-weight: bold; color: inherit; opacity: 0.6; } .ao3-formatter-menu-dialog .button-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; } .ao3-formatter-menu-dialog .button-group button { flex: 1; padding: 10px; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .reset-link { text-align: center; margin-top: 10px; color: inherit; opacity: 0.7; } .ao3-formatter-menu-dialog .symbol.question { font-size: 0.5em; vertical-align: middle; }`;
     document.head.appendChild(style);
 
     // Use DocumentFragment for better performance

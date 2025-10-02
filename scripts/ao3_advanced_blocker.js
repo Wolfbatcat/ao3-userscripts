@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       1.6
+// @version       1.7
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -153,7 +153,6 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #fffaf5;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0,0,0,0.2);
@@ -254,6 +253,16 @@
   .ao3-blocker-menu-dialog input::placeholder,
   .ao3-blocker-menu-dialog textarea::placeholder {
     opacity: 0.6 !important;
+  }
+  
+  /* Form elements use page background color when focused */
+  .ao3-blocker-menu-dialog input[type="text"],
+  .ao3-blocker-menu-dialog input[type="number"],
+  .ao3-blocker-menu-dialog input[type="color"],
+  .ao3-blocker-menu-dialog select,
+  .ao3-blocker-menu-dialog textarea {
+    width: 100%;
+    box-sizing: border-box;
   }
 `;
 
@@ -836,6 +845,19 @@
     });
 
     document.body.appendChild(dialog);
+
+    // Add focused input styling using detected page background
+    const focusStyle = document.createElement('style');
+    focusStyle.textContent = `
+      .ao3-blocker-menu-dialog input[type="text"]:focus,
+      .ao3-blocker-menu-dialog input[type="number"]:focus,
+      .ao3-blocker-menu-dialog input[type="color"]:focus,
+      .ao3-blocker-menu-dialog select:focus,
+      .ao3-blocker-menu-dialog textarea:focus {
+        background: ${inputBg} !important;
+      }
+    `;
+    document.head.appendChild(focusStyle);
 
     // Save button handler - Use direct DOM access to avoid jQuery getElementById issues
     const saveButton = dialog.querySelector('#blocker-save');
