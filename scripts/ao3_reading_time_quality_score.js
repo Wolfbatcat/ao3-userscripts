@@ -156,7 +156,7 @@
       // Create elements with optimized styling
       const readtime_label = document.createElement("dt");
       readtime_label.className = "readtime";
-      readtime_label.textContent = "Readtime:";
+      readtime_label.textContent = "Time:";
 
       const readtime_value = document.createElement("dd");
       readtime_value.className = "readtime";
