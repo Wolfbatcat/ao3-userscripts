@@ -2,10 +2,11 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     1.5
+// @version     2
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
+// @match       *://archiveofourown.org/chapters/*
 // @match       *://archiveofourown.org/users/*
 // @match       *://archiveofourown.org/collections/*
 // @match       *://archiveofourown.org/bookmarks*
@@ -37,11 +38,14 @@
     colorThresholdLow: 10,
     colorThresholdHigh: 20,
     // Shared Color Settings
+    colorStyle: "background", // "none", "background", or "text"
     colorGreen: "#3e8fb0",
     colorYellow: "#f6c177",
     colorRed: "#eb6f92",
     colorText: "#ffffff",
-    enableBarColors: true,
+    // Icon Settings
+    useIcons: false,
+    iconColor: "", // Empty = inherit from page, or set custom color
   };
 
   // Current config, loaded from localStorage
@@ -64,6 +68,16 @@
     if (savedConfig) {
       try {
         const parsedConfig = JSON.parse(savedConfig);
+        // Migrate old enableBarColors to new colorStyle
+        if (
+          parsedConfig.enableBarColors !== undefined &&
+          parsedConfig.colorStyle === undefined
+        ) {
+          parsedConfig.colorStyle = parsedConfig.enableBarColors
+            ? "background"
+            : "none";
+          delete parsedConfig.enableBarColors;
+        }
         CONFIG = { ...DEFAULTS, ...parsedConfig };
       } catch (e) {
         console.error("Error loading saved config, using defaults:", e);
@@ -106,12 +120,122 @@
     let text =
       element.getAttribute("data-ao3e-original") || element.textContent;
     if (text === null) return NaN;
-    let cleanText = text.replace(/[,\s  ]/g, "");
+    let cleanText = text.replace(/[,\sâ€‰â€¯]/g, "");
     if (element.matches("dd.chapters")) {
       cleanText = cleanText.split("/")[0];
     }
     const number = parseInt(cleanText, 10);
     return isNaN(number) ? NaN : number;
+  };
+
+  // Apply color styling based on colorStyle setting
+  const applyColorStyling = (element, color, isWrappedInIcon = false) => {
+    if (CONFIG.colorStyle === "background") {
+      element.style.backgroundColor = color;
+      element.style.color = CONFIG.colorText;
+      element.style.padding = "0 4px";
+    } else if (CONFIG.colorStyle === "text") {
+      element.style.color = color;
+      element.style.backgroundColor = "";
+      element.style.padding = "";
+    } else {
+      // colorStyle === "none"
+      element.style.backgroundColor = "";
+      element.style.color = "inherit";
+      element.style.padding = "";
+    }
+  };
+
+  // Add CSS to ensure icons work with skins that style stats
+  const addIconStyles = () => {
+    const style = document.createElement("style");
+    style.id = "ao3-userscript-icon-styles";
+
+    // If using icons, inject CSS for pseudo-element icons (to match skin styling)
+    if (CONFIG.useIcons) {
+      // Use mask-image for SVG coloring - inherit page color by default, or use custom color
+      const iconColor = CONFIG.iconColor || "currentColor";
+
+      style.textContent = `
+        /* Add icons using pseudo-elements to match skin styling */
+        .stats dd.readtime::before,
+        dl.statistics dt.readtime::before {
+          display: inline-block !important;
+          width: 1em !important;
+          height: 1em !important;
+          min-width: 1em !important;
+          min-height: 1em !important;
+          margin-right: 5px !important;
+          background-color: ${iconColor} !important;
+          ${CONFIG.iconColor ? 'filter: none !important;' : ''}
+          -webkit-mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_readingtime.svg") !important;
+          mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_readingtime.svg") !important;
+          -webkit-mask-size: contain !important;
+          mask-size: contain !important;
+          -webkit-mask-repeat: no-repeat !important;
+          mask-repeat: no-repeat !important;
+          -webkit-mask-position: center center !important;
+          mask-position: center center !important;
+          content: "" !important;
+          vertical-align: text-bottom !important;
+          transform: translateY(-0.1em) !important;
+        }
+        
+        .stats dd.kudoshits::before,
+        dl.statistics dt.kudoshits::before {
+          display: inline-block !important;
+          width: 1em !important;
+          height: 1em !important;
+          min-width: 1em !important;
+          min-height: 1em !important;
+          margin-right: 5px !important;
+          background-color: ${iconColor} !important;
+          ${CONFIG.iconColor ? 'filter: none !important;' : ''}
+          -webkit-mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_score-sparkles.svg") !important;
+          mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_score-sparkles.svg") !important;
+          -webkit-mask-size: contain !important;
+          mask-size: contain !important;
+          -webkit-mask-repeat: no-repeat !important;
+          mask-repeat: no-repeat !important;
+          -webkit-mask-position: center center !important;
+          mask-position: center center !important;
+          content: "" !important;
+          vertical-align: text-bottom !important;
+          transform: translateY(-0.1em) !important;
+        }
+        
+        /* Hide ALL dt content when using icons - both in stats and statistics contexts */
+        .stats dt.readtime,
+        .stats dt.kudoshits,
+        dl.statistics dt.readtime,
+        dl.statistics dt.kudoshits {
+          font-size: 0 !important;
+          line-height: 0 !important;
+        }
+        
+        /* But keep the ::before pseudo-elements visible on statistics pages */
+        dl.statistics dt.readtime::before,
+        dl.statistics dt.kudoshits::before {
+          font-size: 1rem !important;
+          line-height: normal !important;
+        }
+      `;
+    } else {
+      // Ensure no conflicts when icons are disabled
+      style.textContent = `
+        .stats dd.readtime::before,
+        .stats dd.kudoshits::before,
+        dt.readtime::before,
+        dt.kudoshits::before,
+        dl.statistics dt.readtime::before,
+        dl.statistics dt.kudoshits::before {
+          display: none !important;
+          content: none !important;
+        }
+      `;
+    }
+
+    document.head.appendChild(style);
   };
 
   // --- READING TIME FUNCTIONS ---
@@ -153,39 +277,53 @@
       const hrs = Math.floor(minutes / 60);
       const mins = (minutes % 60).toFixed(0);
       const minutes_print = hrs > 0 ? hrs + "h" + mins + "m" : mins + "m";
-      // Create elements with optimized styling
+
+      // Create label - leave empty if using icons (CSS will handle the icon)
       const readtime_label = document.createElement("dt");
       readtime_label.className = "readtime";
-      readtime_label.textContent = "Time:";
+
+      if (!CONFIG.useIcons) {
+        readtime_label.textContent = "Time:";
+      }
 
       const readtime_value = document.createElement("dd");
       readtime_value.className = "readtime";
-      readtime_value.textContent = minutes_print;
 
-      // Apply base styling
+      // Determine color once
+      let color;
+      if (minutes < CONFIG.readingTimeLvl1) {
+        color = CONFIG.colorGreen;
+      } else if (minutes < CONFIG.readingTimeLvl2) {
+        color = CONFIG.colorYellow;
+      } else {
+        color = CONFIG.colorRed;
+      }
+
+      // Common styles for dd element
       Object.assign(readtime_value.style, {
-        borderRadius: "4px",
+        fontSize: "1em",
+        lineHeight: "inherit",
         display: "inline-block",
-        verticalAlign: "middle",
+        verticalAlign: "baseline",
       });
 
-      if (CONFIG.enableBarColors) {
-        readtime_value.style.color = CONFIG.colorText;
-        if (minutes < CONFIG.readingTimeLvl1) {
-          readtime_value.style.backgroundColor = CONFIG.colorGreen;
-        } else if (minutes < CONFIG.readingTimeLvl2) {
-          readtime_value.style.backgroundColor = CONFIG.colorYellow;
-        } else {
-          readtime_value.style.backgroundColor = CONFIG.colorRed;
-        }
+      // If using icons, wrap text in span for background
+      if (CONFIG.useIcons) {
+        const textSpan = document.createElement("span");
+        textSpan.textContent = minutes_print;
+        textSpan.style.borderRadius = "4px";
+        textSpan.style.display = "inline-block";
+        textSpan.style.verticalAlign = "baseline";
+
+        applyColorStyling(textSpan, color, true);
+        readtime_value.appendChild(textSpan);
+      } else {
+        readtime_value.textContent = minutes_print;
+        readtime_value.style.borderRadius = "4px";
+
+        applyColorStyling(readtime_value, color, false);
       }
-      // Inherit font size and line height from dl.stats
-      const parentStats = readtime_value.closest("dl.stats");
-      if (parentStats) {
-        const computed = window.getComputedStyle(parentStats);
-        readtime_value.style.lineHeight = computed.lineHeight;
-        readtime_value.style.fontSize = computed.fontSize;
-      }
+
       // Insert after words_value
       wordsElement.insertAdjacentElement("afterend", readtime_label);
       readtime_label.insertAdjacentElement("afterend", readtime_value);
@@ -242,35 +380,51 @@
         } else {
           displayScore = Math.round(displayScore * 10) / 10;
         }
+        // Create label - leave empty if using icons (CSS will handle the icon)
         const ratioLabel = document.createElement("dt");
         ratioLabel.className = "kudoshits";
-        ratioLabel.textContent = "Score:";
+
+        if (!CONFIG.useIcons) {
+          ratioLabel.textContent = "Score:";
+        }
         const ratioValue = document.createElement("dd");
         ratioValue.className = "kudoshits";
-        ratioValue.textContent = displayScore;
-        ratioValue.style.borderRadius = "4px";
-        ratioValue.style.display = "inline-block";
-        ratioValue.style.verticalAlign = "middle";
-        if (CONFIG.enableBarColors) {
-          ratioValue.style.color = CONFIG.colorText;
-          if (displayScore >= thresholdHigh) {
-            ratioValue.style.backgroundColor = CONFIG.colorGreen;
-          } else if (displayScore >= thresholdLow) {
-            ratioValue.style.backgroundColor = CONFIG.colorYellow;
-          } else {
-            ratioValue.style.backgroundColor = CONFIG.colorRed;
-          }
+
+        // Determine color once
+        let color;
+        if (displayScore >= thresholdHigh) {
+          color = CONFIG.colorGreen;
+        } else if (displayScore >= thresholdLow) {
+          color = CONFIG.colorYellow;
         } else {
-          ratioValue.style.backgroundColor = "";
-          ratioValue.style.color = "inherit";
+          color = CONFIG.colorRed;
         }
-        // Inherit font size and line height from dl.stats
-        const parentStats = ratioValue.closest("dl.stats");
-        if (parentStats) {
-          const computed = window.getComputedStyle(parentStats);
-          ratioValue.style.lineHeight = computed.lineHeight;
-          ratioValue.style.fontSize = computed.fontSize;
+
+        // Common styles for dd element
+        Object.assign(ratioValue.style, {
+          fontSize: "1em",
+          lineHeight: "inherit",
+          display: "inline-block",
+          verticalAlign: "baseline",
+        });
+
+        // If using icons, wrap text in span for background
+        if (CONFIG.useIcons) {
+          const textSpan = document.createElement("span");
+          textSpan.textContent = displayScore;
+          textSpan.style.borderRadius = "4px";
+          textSpan.style.display = "inline-block";
+          textSpan.style.verticalAlign = "baseline";
+
+          applyColorStyling(textSpan, color, true);
+          ratioValue.appendChild(textSpan);
+        } else {
+          ratioValue.textContent = displayScore;
+          ratioValue.style.borderRadius = "4px";
+
+          applyColorStyling(ratioValue, color, false);
         }
+
         hitsElement.insertAdjacentElement("afterend", ratioValue);
         hitsElement.insertAdjacentElement("afterend", ratioLabel);
         if (CONFIG.hideHitcount && !statsPage && hitsElement) {
@@ -370,6 +524,14 @@
         display: block;
         font-weight: normal;
         color: inherit;
+        margin-bottom: 8px;
+      }
+      #ao3-rtqs-popup .radio-label {
+        display: block;
+        font-weight: normal;
+        color: inherit;
+        margin-left: 20px;
+        margin-bottom: 8px;
       }
       #ao3-rtqs-popup .subsettings {
         padding-left: 20px;
@@ -573,35 +735,89 @@
         </div>
 
         <div class="settings-section">
-          <h4 class="section-title">🎨 Color Settings</h4>
+          <h4 class="section-title">🎨 Visual Styling</h4>
+          
           <div class="setting-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="enableBarColors" ${
-                CONFIG.enableBarColors ? "checked" : ""
+            <label class="setting-label">Color Style:</label>
+            <label class="radio-label">
+              <input type="radio" name="colorStyle" value="none" ${
+                CONFIG.colorStyle === "none" ? "checked" : ""
               }>
-              Enable colored backgrounds for bars
+              Default text
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="colorStyle" value="text" ${
+                CONFIG.colorStyle === "text" ? "checked" : ""
+              }>
+              Colored text
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="colorStyle" value="background" ${
+                CONFIG.colorStyle === "background" ? "checked" : ""
+              }>
+              Colored backgrounds
             </label>
           </div>
-          <div id="barColorSettings" class="subsettings two-column" style="${
-            CONFIG.enableBarColors ? "" : "display: none;"
+
+          <div id="colorPickerSettings" class="subsettings" style="${
+            CONFIG.colorStyle !== "none" ? "" : "display: none;"
+          }">
+            <div class="two-column">
+              <div class="setting-group">
+                <label class="setting-label">Green</label>
+                <input type="color" id="colorGreen" value="${
+                  CONFIG.colorGreen
+                }">
+              </div>
+              <div class="setting-group">
+                <label class="setting-label">Yellow</label>
+                <input type="color" id="colorYellow" value="${
+                  CONFIG.colorYellow
+                }">
+              </div>
+              <div class="setting-group">
+                <label class="setting-label">Red</label>
+                <input type="color" id="colorRed" value="${CONFIG.colorRed}">
+              </div>
+              <div class="setting-group" id="textColorContainer" style="${
+                CONFIG.colorStyle === "background" ? "" : "display: none;"
+              }">
+                <label class="setting-label">Text color</label>
+                <input type="color" id="colorText" value="${CONFIG.colorText}">
+              </div>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label class="setting-label">Icons:</label>
+            <label class="checkbox-label" style="margin-left: 20px;">
+              <input type="checkbox" id="useIcons" ${
+                CONFIG.useIcons ? "checked" : ""
+              }>
+              Use icons instead of text labels
+              <span class="symbol question" title="Replace 'Time:' and 'Score:' labels with icons"><span>?</span></span>
+            </label>
+          </div>
+
+          <div id="iconColorSettings" class="subsettings" style="${
+            CONFIG.useIcons ? "" : "display: none;"
           }">
             <div class="setting-group">
-              <label class="setting-label">Green</label>
-              <input type="color" id="colorGreen" value="${CONFIG.colorGreen}">
+              <label class="checkbox-label">
+                <input type="checkbox" id="useCustomIconColor" ${
+                  CONFIG.iconColor ? "checked" : ""
+                }>
+                Use custom icon color
+                <span class="symbol question" title="When unchecked, icons will inherit color from your site skin. When checked, you can set a specific color."><span>?</span></span>
+              </label>
             </div>
-            <div class="setting-group">
-              <label class="setting-label">Yellow</label>
-              <input type="color" id="colorYellow" value="${
-                CONFIG.colorYellow
+            <div id="customIconColorPicker" class="setting-group" style="${
+              CONFIG.iconColor ? "" : "display: none;"
+            }">
+              <label class="setting-label">Icon color</label>
+              <input type="color" id="iconColor" value="${
+                CONFIG.iconColor || "#000000"
               }">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">Red</label>
-              <input type="color" id="colorRed" value="${CONFIG.colorRed}">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">Text color</label>
-              <input type="color" id="colorText" value="${CONFIG.colorText}">
             </div>
           </div>
         </div>
@@ -615,15 +831,44 @@
         </div>
       `;
 
-    // Toggle bar color settings
-    const enableBarColorsCheckbox = form.querySelector("#enableBarColors");
-    const barColorSettingsDiv = form.querySelector("#barColorSettings");
-    const toggleBarColorSettings = () => {
-      barColorSettingsDiv.style.display = enableBarColorsCheckbox.checked
+    // Toggle color picker settings and text color visibility
+    const colorStyleRadios = form.querySelectorAll('input[name="colorStyle"]');
+    const colorPickerSettingsDiv = form.querySelector("#colorPickerSettings");
+    const textColorContainer = form.querySelector("#textColorContainer");
+
+    const toggleColorSettings = () => {
+      const selectedStyle = form.querySelector(
+        'input[name="colorStyle"]:checked'
+      ).value;
+      colorPickerSettingsDiv.style.display =
+        selectedStyle !== "none" ? "block" : "none";
+      textColorContainer.style.display =
+        selectedStyle === "background" ? "block" : "none";
+    };
+
+    colorStyleRadios.forEach((radio) => {
+      radio.addEventListener("change", toggleColorSettings);
+    });
+
+    // Toggle icon settings
+    const useIconsCheckbox = form.querySelector("#useIcons");
+    const iconColorSettings = form.querySelector("#iconColorSettings");
+    const toggleIconSettings = () => {
+      iconColorSettings.style.display = useIconsCheckbox.checked
         ? "block"
         : "none";
     };
-    enableBarColorsCheckbox.addEventListener("change", toggleBarColorSettings);
+    useIconsCheckbox.addEventListener("change", toggleIconSettings);
+
+    // Toggle custom icon color picker
+    const useCustomIconColorCheckbox = form.querySelector("#useCustomIconColor");
+    const customIconColorPicker = form.querySelector("#customIconColorPicker");
+    const toggleCustomIconColor = () => {
+      customIconColorPicker.style.display = useCustomIconColorCheckbox.checked
+        ? "block"
+        : "none";
+    };
+    useCustomIconColorCheckbox.addEventListener("change", toggleCustomIconColor);
 
     // Toggle reading time settings
     const readingTimeCheckbox = form.querySelector("#enableReadingTime");
@@ -719,7 +964,7 @@
       const isNormalizationEnabled =
         form.querySelector("#useNormalization").checked;
 
-      // CRITICAL: If normalization is enabled, convert percentages back to raw scores before saving
+      // If normalization is enabled, convert percentages back to raw scores before saving
       if (isNormalizationEnabled) {
         thresholdLowValue = (thresholdLowValue / 100) * userMaxScoreValue;
         thresholdHighValue = (thresholdHighValue / 100) * userMaxScoreValue;
@@ -755,14 +1000,19 @@
       CONFIG.userMaxScore = userMaxScoreValue;
       CONFIG.colorThresholdLow = thresholdLowValue;
       CONFIG.colorThresholdHigh = thresholdHighValue;
-      CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
+      CONFIG.colorStyle = form.querySelector(
+        'input[name="colorStyle"]:checked'
+      ).value;
       CONFIG.colorGreen = form.querySelector("#colorGreen").value;
       CONFIG.colorYellow = form.querySelector("#colorYellow").value;
       CONFIG.colorRed = form.querySelector("#colorRed").value;
       CONFIG.colorText = form.querySelector("#colorText").value;
+      CONFIG.useIcons = form.querySelector("#useIcons").checked;
+      CONFIG.iconColor = form.querySelector("#useCustomIconColor").checked
+        ? form.querySelector("#iconColor").value
+        : "";
 
       // Save the entire config object
-      CONFIG.enableBarColors = form.querySelector("#enableBarColors").checked;
       saveAllSettings();
 
       popup.remove();
@@ -901,6 +1151,9 @@
   // --- INITIALIZATION ---
   loadUserSettings();
 
+  // Add icon styles
+  addIconStyles();
+
   // Show startup message
   console.log("[AO3: Reading Time & Quality Score] loaded.");
 
@@ -908,23 +1161,23 @@
     document.addEventListener("DOMContentLoaded", () => {
       checkCountable();
       initSharedMenu();
-      if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
+      if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 100);
       if (CONFIG.alwaysCountQualityScore) {
         setTimeout(() => {
           countRatio();
           if (CONFIG.alwaysSortQualityScore) sortByRatio();
-        }, 1000);
+        }, 100);
       }
     });
   } else {
     checkCountable();
     initSharedMenu();
-    if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 1000);
+    if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 100);
     if (CONFIG.alwaysCountQualityScore) {
       setTimeout(() => {
         countRatio();
         if (CONFIG.alwaysSortQualityScore) sortByRatio();
-      }, 1000);
+      }, 100);
     }
   }
 })();

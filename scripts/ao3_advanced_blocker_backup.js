@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       1.9
+// @version       1.7
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -14,7 +14,7 @@
 // @match         *://archiveofourown.org/series/*
 // @grant         GM.getValue
 // @grant         GM.setValue
-// @run-at        document-end
+// @run-at        document-idle
 // ==/UserScript==
 
 ; (function () {
@@ -46,9 +46,9 @@
     debugMode: false,
     allowedLanguages: "",
     maxCrossovers: "3",
-    disableOnMyContent: true,
-    enableHighlightingOnMyContent: false,
-    myUsername: "",
+    disableOnBookmarks: true,
+    disableOnCollections: false,
+    disableOnDashboards: true,
     primaryRelationships: "",
     primaryCharacters: "",
     primaryRelpad: "1",
@@ -240,22 +240,9 @@
     box-sizing: border-box;
   }
 
-  /* Highlighted works (left border using pseudo-element) */
+  /* Highlighted works (color set inline, but !important for override) */
   .ao3-blocker-highlight {
-    position: relative !important;
-    overflow: hidden !important;
-  }
-
-  .ao3-blocker-highlight::before {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    width: 4px !important;
-    background-color: var(--ao3-blocker-highlight-color, #eb6f92) !important;
-    z-index: 1 !important;
-    border-radius: inherit !important;
+    background-color: var(--ao3-blocker-highlight-color, rgba(255,255,0,0.1)) !important;
   }
   /* Tooltip icon style for settings menu (scoped) */
   .ao3-blocker-menu-dialog .symbol.question {
@@ -283,7 +270,11 @@
   function loadConfig() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : { ...DEFAULTS };
+      let config = stored ? { ...DEFAULTS, ...JSON.parse(stored) } : { ...DEFAULTS };
+      if (typeof config.disableOnDashboards === 'undefined') {
+        config.disableOnDashboards = DEFAULTS.disableOnDashboards;
+      }
+      return config;
     } catch (e) {
       console.error("[AO3 Advanced Blocker] Failed to load config:", e);
     }
@@ -299,17 +290,6 @@
       console.error("[AO3 Advanced Blocker] Failed to save config:", e);
       return false;
     }
-  }
-
-  // Build regex patterns for user's content pages (dashboard, bookmarks, works)
-  function buildUserRegexPatterns(username) {
-    if (!username || !username.trim()) return null;
-    const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return {
-      dashboard: new RegExp(`^/users/${escapedUsername}(/pseuds/[^/]+)?/?$`),
-      bookmarks: new RegExp(`^/users/${escapedUsername}(/pseuds/[^/]+)?/bookmarks(/|$)`),
-      works: new RegExp(`^/users/${escapedUsername}(/pseuds/[^/]+)?/works(/|$)`)
-    };
   }
 
   // Parse chapter status from text content
@@ -399,14 +379,6 @@
     ];
   }
 
-  // Normalize text by removing punctuation and standardizing whitespace
-  function normalizeText(text) {
-    return text.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')  // Replace punctuation with spaces
-      .replace(/\s+/g, ' ')      // Normalize multiple spaces
-      .trim();
-  }
-
   // Initialize configuration processing directly
   function initConfig() {
     // Config is now available
@@ -414,37 +386,22 @@
 
     // Process configuration for runtime use with simple regex pre-compilation
     const compilePattern = (pattern) => {
-      // Check for wildcards BEFORE normalization (since * gets removed by normalizeText)
-      const hasWildcard = pattern.includes('*');
-      
-      if (hasWildcard) {
-        // Split on *, normalize each part, then reconstruct regex
-        const parts = pattern.split('*').map(part => {
-          const normalized = normalizeText(part);
-          // Escape regex special characters in the normalized part
-          return normalized.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-        });
-        // Join parts with .* for wildcard matching
-        const regexPattern = parts.join('.*');
-        // Store original pattern for display and normalized for matching
-        const normalized = normalizeText(pattern.replace(/\*/g, ''));
-        return { originalText: pattern, text: normalized, regex: new RegExp(regexPattern, 'i'), hasWildcard: true };
+      if (pattern.includes('*')) {
+        const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+        return { text: pattern, regex: new RegExp(escaped, 'i'), hasWildcard: true };
       }
-      
-      // No wildcard - store both original and normalized
-      const normalized = normalizeText(pattern);
-      return { originalText: pattern, text: normalized, hasWildcard: false };
+      return { text: pattern, hasWildcard: false };
     };
 
     window.ao3Blocker.config = {
       "showReasons": config.showReasons,
       "showPlaceholders": config.showPlaceholders,
       "authorBlacklist": config.authorBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean),
-      "titleBlacklist": config.titleBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
-      "tagBlacklist": config.tagBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
-      "tagWhitelist": config.tagWhitelist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
-      "tagHighlights": config.tagHighlights.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(s => normalizeText(s)),
-      "summaryBlacklist": config.summaryBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "titleBlacklist": config.titleBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagBlacklist": config.tagBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagWhitelist": config.tagWhitelist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
+      "tagHighlights": config.tagHighlights.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean),
+      "summaryBlacklist": config.summaryBlacklist.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
 
       "highlightColor": config.highlightColor,
       "debugMode": config.debugMode,
@@ -468,11 +425,13 @@
         const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      "disableOnBookmarks": config.disableOnBookmarks,
+      "disableOnCollections": config.disableOnCollections,
       "blockComplete": config.blockComplete,
       "blockOngoing": config.blockOngoing,
-      // Primary Pairing Config - normalize for case/punctuation insensitive matching
-      "primaryRelationships": config.primaryRelationships.split(",").map(s => s.trim()).filter(Boolean).map(s => normalizeText(s)),
-      "primaryCharacters": config.primaryCharacters.split(",").map(s => s.trim()).filter(Boolean).map(s => normalizeText(s)),
+      // Primary Pairing Config
+      "primaryRelationships": config.primaryRelationships.split(",").map(s => s.trim()).filter(Boolean),
+      "primaryCharacters": config.primaryCharacters.split(",").map(s => s.trim()).filter(Boolean),
       "primaryRelpad": (function () {
         const val = config.primaryRelpad;
         const parsed = parseInt(val, 10);
@@ -483,15 +442,15 @@
         const parsed = parseInt(val, 10);
         return (val === undefined || val === null || val === "" || isNaN(parsed)) ? 5 : Math.max(1, parsed);
       })(),
-      "disableOnMyContent": !!config.disableOnMyContent,
-      "enableHighlightingOnMyContent": !!config.enableHighlightingOnMyContent,
-      "myUsername": (config.myUsername || "").trim()
+      "disableOnDashboards": (typeof config.disableOnDashboards !== 'undefined' ? config.disableOnDashboards : DEFAULTS.disableOnDashboards)
     }
 
     addStyle();
-    // Set the highlight color CSS variable globally
-    document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#f6e3ca');
-    checkWorks();
+    setTimeout(() => {
+      // Set the highlight color CSS variable globally
+      document.documentElement.style.setProperty('--ao3-blocker-highlight-color', window.ao3Blocker.config.highlightColor || '#f6e3ca');
+      checkWorks();
+    }, 10);
   }
 
   // Initialize when DOM is ready
@@ -561,7 +520,7 @@
 
   // showBlockerMenu() - Show the settings menu
   function showBlockerMenu() {
-    // Remove any existing menu dialogs
+    // Remove any existing menu using direct DOM method to avoid jQuery issues
     const existingMenus = document.querySelectorAll(`.${CSS_NAMESPACE}-menu-dialog`);
     existingMenus.forEach(menu => menu.remove());
 
@@ -580,7 +539,7 @@
     // Load current config for the menu
     const config = loadConfig();
 
-    // Create the settings dialog
+    // Create the dialog using vanilla DOM to avoid jQuery getElementById issues
     const dialog = document.createElement('div');
     dialog.className = `${CSS_NAMESPACE}-menu-dialog`;
     Object.assign(dialog.style, {
@@ -613,26 +572,27 @@
         <div class="setting-group">
           <label class="setting-label" for="tag-blacklist-input">Blacklist Tags</label>
           <span class="setting-description ao3-blocker-inline-help" style="display:block;">
-            Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms. * for wildcards.
+            Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms.
           </span>
-          <textarea id="tag-blacklist-input" placeholder="Abandoned*, Reader, Podfic, Genderswap" title="Blocks if any tag matches. * for wildcards.">${config.tagBlacklist}</textarea>
+          <textarea id="tag-blacklist-input" placeholder="Abandoned*, Reader, Podfic, Genderswap" title="Blocks if any tag matches. * is a wildcard.">${config.tagBlacklist}</textarea>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="tag-whitelist-input">Whitelist Tags</label>
           <span class="setting-description ao3-blocker-inline-help" style="display:block;">
-            Always shows the work even if it matches the blacklist. * for wildcards.
+            Always shows the work even if it matches the blacklist.
           </span>
-          <textarea id="tag-whitelist-input" placeholder="*Happy Ending*, Fluff" title="Always shows the work, even if blacklisted. * for wildcards.">${config.tagWhitelist}</textarea>
+          <textarea id="tag-whitelist-input" placeholder="Happy Ending, Fluff" title="Always shows the work, even if blacklisted.">${config.tagWhitelist}</textarea>
         </div>
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="tag-highlights-input">Highlight Tags
-              <span class="symbol question" title="Make these works stand out. * for wildcards."><span>?</span></span>
+              <span class="symbol question" title="Make these works stand out."><span>?</span></span>
             </label>
-            <textarea id="tag-highlights-input" placeholder="*Fix-It*, Enemies to Lovers" title="Makes these works standout. * for wildcards.">${config.tagHighlights}</textarea>
+            <textarea id="tag-highlights-input" placeholder="Fix-It*, Enemies to Lovers" title="Keep and mark works with these tags.">${config.tagHighlights}</textarea>
           </div>
           <div class="setting-group">
             <label class="setting-label" for="highlight-color-input">Highlight Color
+              <span class="symbol question" title="Pick a background color for these works."><span>?</span></span>
             </label>
             <input type="color" id="highlight-color-input" value="${config.highlightColor || "#f6e3ca"}" title="Pick the highlight color.">
           </div>
@@ -646,13 +606,13 @@
           <label class="setting-label" for="primary-relationships-input">Primary Relationships
             <span class="symbol question" title="Only show works where these relationships are in the first few relationship tags."><span>?</span></span>
           </label>
-          <textarea id="primary-relationships-input" placeholder="Luo Binghe/Shen Yuan | Shen Qingqiu, Lan Zhan | Lan Wangji/Wei Ying | Wei Wuxian" title="Case/punctuation insensitive.">${config.primaryRelationships}</textarea>
+          <textarea id="primary-relationships-input" placeholder="Luo Binghe/Shen Yuan | Shen Qingqiu, Lan Zhan | Lan Wangji/Wei Ying | Wei Wuxian" title="Case-sensitive. Comma separated.">${config.primaryRelationships}</textarea>
         </div>
         <div class="setting-group">
           <label class="setting-label" for="primary-characters-input">Primary Characters
             <span class="symbol question" title="Only show works where these characters are in the first few character tags."><span>?</span></span>
           </label>
-          <textarea id="primary-characters-input" placeholder="Shen Yuan | Shen Qingqiu, Luo Binghe" title="Case/punctuation insensitive.">${config.primaryCharacters}</textarea>
+          <textarea id="primary-characters-input" placeholder="Shen Yuan | Shen Qingqiu, Luo Binghe" title="Case-sensitive. Comma separated.">${config.primaryCharacters}</textarea>
         </div>
         <div class="two-column">
           <div class="setting-group">
@@ -730,9 +690,9 @@
         <div class="two-column">
           <div class="setting-group">
             <label class="setting-label" for="author-blacklist-input">Blacklist Authors
-              <span class="symbol question" title="Match the author name exactly."><span>?</span></span>
+              <span class="symbol question" title="Match the author name exactly. Commas or semicolons."><span>?</span></span>
             </label>
-            <textarea id="author-blacklist-input" placeholder="DetectiveMittens, BlackBatCat" title="Match the author name exactly.">${config.authorBlacklist}</textarea>
+            <textarea id="author-blacklist-input" placeholder="DetectiveMittens, BlackBatCat" title="Match the author name exactly. Commas or semicolons.">${config.authorBlacklist}</textarea>
           </div>
           <div class="setting-group">
             <label class="setting-label" for="title-blacklist-input">Blacklist Titles
@@ -743,9 +703,9 @@
         </div>
         <div class="setting-group">
           <label class="setting-label" for="summary-blacklist-input">Blacklist Summary
-            <span class="symbol question" title="Blocks if the summary has these words/phrases. * for wildcards."><span>?</span></span>
+            <span class="symbol question" title="Blocks if the summary has these words/phrases."><span>?</span></span>
           </label>
-          <textarea id="summary-blacklist-input" placeholder="oneshot, prompt, 2025" title="Blocks if the summary has these words/phrases. * for wildcards">${config.summaryBlacklist}</textarea>
+          <textarea id="summary-blacklist-input" placeholder="oneshot, prompt, 2025" title="Blocks if the summary has these words/phrases.">${config.summaryBlacklist}</textarea>
         </div>
       </div>
 
@@ -756,38 +716,46 @@
           <div>
             <div class="setting-group">
               <label class="checkbox-label">
+                <input type="checkbox" id="show-reasons-checkbox" ${config.showReasons ? "checked" : ""}>
+                Show Block Reason
+                <span class="symbol question" title="List what triggered the block."><span>?</span></span>
+              </label>
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
                 <input type="checkbox" id="show-placeholders-checkbox" ${config.showPlaceholders ? "checked" : ""}>
                 Show Work Placeholder
                 <span class="symbol question" title="Leave a stub you can click to reveal. If disabled, hides the work completely."><span>?</span></span>
               </label>
             </div>
-            <div class="setting-group" id="show-reasons-group" style="display: ${config.showPlaceholders ? 'block' : 'none'}; margin-left: 1.5em;">
+            <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="show-reasons-checkbox" ${config.showReasons ? "checked" : ""}>
-                Show Block Reason
-                <span class="symbol question" title="List what triggered the block."><span>?</span></span>
+                <input type="checkbox" id="debug-mode-checkbox" ${config.debugMode ? "checked" : ""}>
+                Debug Mode
+                <span class="symbol question" title="Log details to the console."><span>?</span></span>
               </label>
             </div>
           </div>
           <div>
             <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="disable-on-my-content-checkbox" ${config.disableOnMyContent ? "checked" : ""}>
-                Disable on My Content
-                <span class="symbol question" title="Don't block or highlight works on your dashboard, bookmarks, and works pages. Automatically includes all your pseuds."><span>?</span></span>
+                <input type="checkbox" id="disable-on-dashboards-checkbox" ${config.disableOnDashboards ? "checked" : ""}>
+                Disable Blocking on Dashboards
+                <span class="symbol question" title="Works will not be blocked on user dashboards. Highlighting still works."><span>?</span></span>
               </label>
             </div>
-            <div class="setting-group" id="my-username-group" style="display: ${config.disableOnMyContent ? 'block' : 'none'}; margin-left: 1.5em;">
-              <label class="setting-label" for="my-username-input">My Username
-                <span class="symbol question" title="Case-sensitive. Automatically includes pseuds."><span>?</span></span>
-              </label>
-              <input type="text" id="my-username-input" placeholder="MyUsername" value="${config.myUsername || ""}" title="Case-sensitive. Automatically includes pseuds.">
-            </div>
-            <div class="setting-group" id="enable-highlighting-group" style="display: ${config.disableOnMyContent ? 'block' : 'none'}; margin-left: 1.5em;">
+            <div class="setting-group">
               <label class="checkbox-label">
-                <input type="checkbox" id="enable-highlighting-on-my-content-checkbox" ${config.enableHighlightingOnMyContent ? "checked" : ""}>
-                Enable Highlighting
-                <span class="symbol question" title="Re-enable tag highlighting on your own pages."><span>?</span></span>
+                <input type="checkbox" id="disable-on-bookmarks-checkbox" ${config.disableOnBookmarks ? "checked" : ""}>
+                Disable Blocking on Bookmarks
+                <span class="symbol question" title="Works will not be blocked on your bookmarks pages. Highlighting still works."><span>?</span></span>
+              </label>
+            </div>
+            <div class="setting-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="disable-on-collections-checkbox" ${config.disableOnCollections ? "checked" : ""}>
+                Disable Blocking on Collections
+                <span class="symbol question" title="Works will not be blocked on collections pages. Highlighting still works."><span>?</span></span>
               </label>
             </div>
           </div>
@@ -891,28 +859,11 @@
     `;
     document.head.appendChild(focusStyle);
 
-    // Toggle username input and highlighting checkbox visibility based on checkbox
-    const disableOnMyContentCheckbox = dialog.querySelector('#disable-on-my-content-checkbox');
-    const myUsernameGroup = dialog.querySelector('#my-username-group');
-    const enableHighlightingGroup = dialog.querySelector('#enable-highlighting-group');
-    disableOnMyContentCheckbox.addEventListener('change', (e) => {
-      const isChecked = e.target.checked;
-      myUsernameGroup.style.display = isChecked ? 'block' : 'none';
-      enableHighlightingGroup.style.display = isChecked ? 'block' : 'none';
-    });
-
-    // Toggle show reasons visibility based on show placeholders checkbox
-    const showPlaceholdersCheckbox = dialog.querySelector('#show-placeholders-checkbox');
-    const showReasonsGroup = dialog.querySelector('#show-reasons-group');
-    showPlaceholdersCheckbox.addEventListener('change', (e) => {
-      showReasonsGroup.style.display = e.target.checked ? 'block' : 'none';
-    });
-
-    // Save button handler
+    // Save button handler - Use direct DOM access to avoid jQuery getElementById issues
     const saveButton = dialog.querySelector('#blocker-save');
     saveButton.addEventListener('click', () => {
-      // Collect values from form inputs
-      const updatedConfig = {
+      // Collect values directly using DOM queries to avoid jQuery getElementById calls
+      const config = {
         tagBlacklist: dialog.querySelector('#tag-blacklist-input').value || "",
         tagWhitelist: dialog.querySelector('#tag-whitelist-input').value || "",
         tagHighlights: dialog.querySelector('#tag-highlights-input').value || "",
@@ -921,7 +872,7 @@
         summaryBlacklist: dialog.querySelector('#summary-blacklist-input').value || "",
         showReasons: dialog.querySelector('#show-reasons-checkbox').checked,
         showPlaceholders: dialog.querySelector('#show-placeholders-checkbox').checked,
-        debugMode: config.debugMode, // Preserve existing debug mode setting (not in UI)
+        debugMode: dialog.querySelector('#debug-mode-checkbox').checked,
         highlightColor: dialog.querySelector('#highlight-color-input').value || DEFAULTS.highlightColor,
         allowedLanguages: dialog.querySelector('#allowed-languages-input').value || "",
         maxCrossovers: dialog.querySelector('#max-crossovers-input').value || "",
@@ -929,9 +880,9 @@
         maxWords: dialog.querySelector('#max-words-input').value || "",
         blockComplete: dialog.querySelector('#block-complete-checkbox').checked,
         blockOngoing: dialog.querySelector('#block-ongoing-checkbox').checked,
-        disableOnMyContent: dialog.querySelector('#disable-on-my-content-checkbox').checked,
-        enableHighlightingOnMyContent: dialog.querySelector('#enable-highlighting-on-my-content-checkbox').checked,
-        myUsername: dialog.querySelector('#my-username-input').value || "",
+        disableOnBookmarks: dialog.querySelector('#disable-on-bookmarks-checkbox').checked,
+        disableOnCollections: dialog.querySelector('#disable-on-collections-checkbox').checked,
+        disableOnDashboards: dialog.querySelector('#disable-on-dashboards-checkbox').checked,
         primaryRelationships: dialog.querySelector('#primary-relationships-input').value || "",
         primaryCharacters: dialog.querySelector('#primary-characters-input').value || "",
         primaryRelpad: dialog.querySelector('#primary-relpad-input').value || DEFAULTS.primaryRelpad,
@@ -939,7 +890,7 @@
       };
 
       // Save using our custom storage system
-      if (saveConfig(updatedConfig)) {
+      if (saveConfig(config)) {
         // Force hard reload with cache busting
         location.href = location.href + (location.search ? '&' : '?') + 't=' + Date.now();
       } else {
@@ -971,7 +922,7 @@
   // Blocking logic using CSS classes
 
   function getWordCount(workElement) {
-    // Extract word count from the work element
+    // Use vanilla DOM to avoid jQuery getElementById issues
     const wordsElement = workElement.querySelector('dd.words');
     if (!wordsElement) return null;
 
@@ -980,6 +931,13 @@
     txt = txt.replace(/[^\d]/g, "");
     const n = parseInt(txt, 10);
     return Number.isFinite(n) ? n : null;
+  }
+
+  function violatesWordCount(cfg, count) {
+    if (count == null) return null;
+    if (cfg.minWords != null && count < cfg.minWords) return { over: false, limit: cfg.minWords };
+    if (cfg.maxWords != null && count > cfg.maxWords) return { over: true, limit: cfg.maxWords };
+    return null;
   }
 
   function getCut(workElement) {
@@ -1045,11 +1003,6 @@
       message = parts.join('; ');
       const iconUrl = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
       iconHtml = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconUrl}') no-repeat center/contain;-webkit-mask:url('${iconUrl}') no-repeat center/contain;"></span>`;
-    } else if (reasons && reasons.length > 0) {
-      // Fallback message when showReasons is false but work is blocked
-      message = "<em>Hidden by filters.</em>";
-      const iconUrl = "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
-      iconHtml = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconUrl}') no-repeat center/contain;-webkit-mask:url('${iconUrl}') no-repeat center/contain;"></span>`;
     }
 
     note.innerHTML = `${iconHtml}${message}`;
@@ -1092,6 +1045,75 @@
     return button;
   }
 
+  function getReasonSpan(reasons) {
+    const span = document.createElement('span');
+    span.className = `${CSS_NAMESPACE}-reason`;
+
+    if (!reasons || reasons.length === 0) {
+      return span;
+    }
+
+    const reasonTexts = [];
+
+    reasons.forEach((reason) => {
+      if (reason.completionStatus) {
+        reasonTexts.push(reason.completionStatus);
+      }
+      if (reason.wordCount) {
+        reasonTexts.push(reason.wordCount);
+      }
+      if (reason.tags) {
+        if (reason.tags.length === 1) {
+          reasonTexts.push(`tags include <strong>${reason.tags[0]}</strong>`);
+        } else {
+          const tagList = reason.tags.map(tag => `<strong>${tag}</strong>`).join(', ');
+          reasonTexts.push(`tags include ${tagList}`);
+        }
+      }
+      if (reason.authors) {
+        if (reason.authors.length === 1) {
+          reasonTexts.push(`author is <strong>${reason.authors[0]}</strong>`);
+        } else {
+          const authorList = reason.authors.map(author => `<strong>${author}</strong>`).join(', ');
+          reasonTexts.push(`authors include ${authorList}`);
+        }
+      }
+      if (reason.titles) {
+        if (reason.titles.length === 1) {
+          reasonTexts.push(`title matches <strong>${reason.titles[0]}</strong>`);
+        } else {
+          const titleList = reason.titles.map(title => `<strong>${title}</strong>`).join(', ');
+          reasonTexts.push(`title matches ${titleList}`);
+        }
+      }
+      if (reason.summaryTerms) {
+        if (reason.summaryTerms.length === 1) {
+          reasonTexts.push(`summary includes <strong>${reason.summaryTerms[0]}</strong>`);
+        } else {
+          const termList = reason.summaryTerms.map(term => `<strong>${term}</strong>`).join(', ');
+          reasonTexts.push(`summary includes ${termList}`);
+        }
+      }
+      if (reason.language) {
+        reasonTexts.push(`language is <strong>${reason.language}</strong>`);
+      }
+      if (reason.crossovers !== undefined) {
+        const max = (window.ao3Blocker && window.ao3Blocker.config && window.ao3Blocker.config.maxCrossovers) || 0;
+        reasonTexts.push(`too many fandoms: <strong>${reason.crossovers} &gt; ${max}</strong>`);
+      }
+      if (reason.primaryPairing) {
+        reasonTexts.push(`<strong>${reason.primaryPairing}</strong>`);
+      }
+    });
+
+    if (reasonTexts.length > 0) {
+      const reasonText = reasonTexts.join('; ');
+      span.innerHTML = `(Reason: ${reasonText}.)`;
+    }
+
+    return span;
+  }
+
   function blockWork(workElement, reasons, config) {
     if (!reasons) return;
 
@@ -1112,22 +1134,29 @@
     }
   }
 
+  // Normalize text by removing punctuation and standardizing whitespace
+  function normalizeText(text) {
+    return text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')  // Replace punctuation with spaces
+      .replace(/\s+/g, ' ')      // Normalize multiple spaces
+      .trim();
+  }
+
   // Fast pattern matching with pre-compiled regex for wildcards
-  // Note: patterns are already normalized during config initialization
   function matchPattern(text, pattern, exactMatch = false) {
     const normalizedText = normalizeText(text);
 
-    // If it's a simple string pattern (already normalized)
+    // If it's a simple string pattern
     if (typeof pattern === 'string') {
       return exactMatch ? normalizedText === pattern : normalizedText.includes(pattern);
     }
 
-    // If it's a compiled pattern object (text already normalized)
+    // If it's a compiled pattern object
     if (!pattern.hasWildcard) {
       return exactMatch ? normalizedText === pattern.text : normalizedText.includes(pattern.text);
     }
 
-    // Use pre-compiled regex for wildcards (pattern already normalized)
+    // Use pre-compiled regex for wildcards
     if (exactMatch) {
       // For exact matching with wildcards, the regex should match the entire string
       const exactRegex = new RegExp('^' + pattern.regex.source + '$', 'i');
@@ -1139,10 +1168,12 @@
 
   function isTagWhitelisted(tags, whitelist) {
     return tags.some((tag) => {
+      const normalizedTag = tag.toLowerCase().trim();
+
       return whitelist.some((pattern) => {
         if ((typeof pattern === 'string' && !pattern.trim()) || (pattern && pattern.text && !pattern.text.trim())) return false;
 
-        return matchPattern(tag, pattern, true); // Use exact matching for tags
+        return matchPattern(normalizedTag, pattern, true); // Use exact matching for tags
       });
     });
   }
@@ -1159,15 +1190,14 @@
       return null;
     }
 
-    // Get relationship and character tags from categorized data and normalize them
-    const relationshipTags = categorizedTags.relationships.slice(0, relpad).map(tag => normalizeText(tag));
-    const characterTags = categorizedTags.characters.slice(0, charpad).map(tag => normalizeText(tag));
+    // Get relationship and character tags from categorized data
+    const relationshipTags = categorizedTags.relationships.slice(0, relpad);
+    const characterTags = categorizedTags.characters.slice(0, charpad);
 
     let missingRelationships = [];
     let missingCharacters = [];
 
     // Check relationships - OR logic: any match passes
-    // Note: both primaryRelationships and relationshipTags are now normalized
     if (primaryRelationships.length > 0) {
       const hasPrimaryRelationship = primaryRelationships.some(rel =>
         relationshipTags.includes(rel)
@@ -1178,7 +1208,6 @@
     }
 
     // Check characters - OR logic: any match passes
-    // Note: both primaryCharacters and characterTags are now normalized
     if (primaryCharacters.length > 0) {
       const hasPrimaryCharacter = primaryCharacters.some(char =>
         characterTags.includes(char)
@@ -1288,7 +1317,9 @@
     allTags.forEach((tag) => {
       tagBlacklist.forEach((pattern) => {
         if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
-          if (matchPattern(tag, pattern, true)) { // Use exact matching for tags
+          const normalizedTag = tag.toLowerCase().trim();
+
+          if (matchPattern(normalizedTag, pattern, true)) { // Use exact matching for tags
             blockedTags.push(tag);
           }
         }
@@ -1302,8 +1333,8 @@
     const blockedAuthors = [];
     authors.forEach((author) => {
       authorBlacklist.forEach((blacklistedAuthor) => {
-        if (blacklistedAuthor.trim() && author.toLowerCase() === blacklistedAuthor) {
-          blockedAuthors.push(author);
+        if (blacklistedAuthor.trim() && author.toLowerCase() === blacklistedAuthor.toLowerCase()) {
+          blockedAuthors.push(blacklistedAuthor);
         }
       });
     });
@@ -1316,9 +1347,7 @@
     titleBlacklist.forEach((pattern) => {
       if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
         if (matchPattern(title, pattern, false)) { // Use substring matching for titles
-          // Store the original pattern for display (preserves punctuation and wildcards)
-          const patternText = typeof pattern === 'string' ? pattern : (pattern.originalText || pattern.text);
-          blockedTitles.add(patternText);
+          blockedTitles.add(title);
         }
       }
     });
@@ -1331,14 +1360,26 @@
     summaryBlacklist.forEach((pattern) => {
       if ((typeof pattern === 'string' && pattern.trim()) || (pattern && pattern.text && pattern.text.trim())) {
         if (matchPattern(summary, pattern, false)) { // Use substring matching for summaries
-          // Use the original pattern for display (preserves punctuation and wildcards)
-          const displayTerm = typeof pattern === 'string' ? pattern : (pattern.originalText || pattern.text);
+          // Use the original pattern text for display
+          const displayTerm = (typeof pattern === 'string' ? pattern : pattern.text).replace(/\*/g, '');
           blockedSummaryTerms.push(displayTerm);
         }
       }
     });
     if (blockedSummaryTerms.length > 0) {
       reasons.push({ summaryTerms: blockedSummaryTerms });
+    }
+
+    // Helper function to find the actual matching text
+    function findMatchingText(text, pattern) {
+      if (pattern.indexOf('*') === -1) {
+        // Exact match - return the pattern since it matches exactly
+        return pattern;
+      }
+
+      // For wildcards, this is complex - we'd need regex matching
+      // For now, return the pattern as fallback
+      return pattern;
     }
 
     return reasons.length > 0 ? reasons : null;
@@ -1398,6 +1439,16 @@
   }
 
   function checkWorks() {
+    // ...existing code...
+    let path = window.location.pathname;
+    let isUserDashboard = (
+      /^\/users\/[^\/]+\/?$/.test(path) && !/^\/users\/[^\/]+\/.+/.test(path)
+    ) || (
+        /^\/users\/[^\/]+\/pseuds\/[^\/]+\/?$/.test(path) && !/^\/users\/[^\/]+\/pseuds\/[^\/]+\/.+/.test(path)
+      );
+    if (window.ao3Blocker && window.ao3Blocker.config && window.ao3Blocker.config.debugMode) {
+      console.log('[AO3 Blocker] Dashboard detection:', path, 'isUserDashboard:', isUserDashboard, 'disableOnDashboards:', window.ao3Blocker.config.disableOnDashboards);
+    }
     const debugMode = window.ao3Blocker.config.debugMode;
     const config = window.ao3Blocker.config;
     let blocked = 0;
@@ -1411,29 +1462,28 @@
       }
     }
 
-    // Check if we're on user's own content pages (dashboard, bookmarks, works)
-    const path = window.location.pathname;
-    let isOnMyContent = false;
-    if (config.disableOnMyContent && config.myUsername) {
-      const userPatterns = buildUserRegexPatterns(config.myUsername);
-      if (userPatterns) {
-        const isMyDashboard = userPatterns.dashboard.test(path);
-        const isMyBookmarks = userPatterns.bookmarks.test(path);
-        const isMyWorks = userPatterns.works.test(path);
-        
-        if (isMyDashboard || isMyBookmarks || isMyWorks) {
-          isOnMyContent = true;
-          if (debugMode) {
-            console.info("Advanced Blocker: On user's own content page.");
-            console.log("Path:", path, "Dashboard:", isMyDashboard, "Bookmarks:", isMyBookmarks, "Works:", isMyWorks);
-            console.log("Blocking disabled. Highlighting:", config.enableHighlightingOnMyContent ? "enabled" : "disabled");
-          }
-          // If highlighting is not enabled on user content, exit completely
-          if (!config.enableHighlightingOnMyContent) {
-            return;
-          }
-        }
+    // Optionally exclude user dashboard only
+    // path and isUserDashboard already declared above
+    // Always read from config object
+    const disableOnDashboards = !!(window.ao3Blocker.config.disableOnDashboards !== undefined ? window.ao3Blocker.config.disableOnDashboards : false);
+    if (disableOnDashboards && isUserDashboard) {
+      if (debugMode) {
+        console.info("Advanced Blocker: Skipping user dashboard page.");
       }
+      return;
+    }
+
+    const isBookmarksPage = /\/users\/[^\/]+\/bookmarks(\/|$)/.test(window.location.pathname);
+    const isCollectionsPage = /\/collections\/[^\/]+(\/|$)/.test(window.location.pathname);
+    const disableOnBookmarks = !!config.disableOnBookmarks;
+    const disableOnCollections = !!config.disableOnCollections;
+
+    // Skip all blocking/highlighting if dashboard option is enabled and page is dashboard
+    if (disableOnDashboards && isUserDashboard) {
+      if (debugMode) {
+        console.info("Advanced Blocker: Skipping all blocking/highlighting on user dashboard page.");
+      }
+      return;
     }
 
     const blurbs = document.querySelectorAll("li.blurb");
@@ -1449,12 +1499,9 @@
         console.log(`[Advanced Blocker][DEBUG] All blockables:`, blockables);
       }
 
-      if (isWorkOrBookmark) {
-        // Only check for blocking if not on user's own content
-        if (!isOnMyContent) {
-          reason = getBlockReason(blockables, config);
-          total++;
-        }
+      if (isWorkOrBookmark && !((isBookmarksPage && disableOnBookmarks) || (isCollectionsPage && disableOnCollections))) {
+        reason = getBlockReason(blockables, config);
+        total++;
       }
 
       if (reason) {
@@ -1474,10 +1521,21 @@
       // Highlighting uses exact tag matching
       const allTags = blockables.tags || getAllTagsFlat(blockables.categorizedTags || {});
       allTags.forEach((tag) => {
-        // Use exact matching for tag highlights - both tag and patterns are normalized
-        const normalizedTag = normalizeText(tag);
+        // Use exact matching for tag highlights - compare normalized tag to normalized highlight patterns
+        const normalizedTag = tag.toLowerCase().trim();
         if (config.tagHighlights.some(highlightPattern => normalizedTag === highlightPattern)) {
           blurbEl.classList.add("ao3-blocker-highlight");
+          const color = config.highlightColor || '#f6e3ca';
+          blurbEl.style.cssText += `;background-color:${color} !important;`;
+          if (blurbEl.id && blurbEl.id.trim() !== "") {
+            const styleId = 'ao3-blocker-style-' + blurbEl.id;
+            if (!document.getElementById(styleId)) {
+              const style = document.createElement('style');
+              style.id = styleId;
+              style.textContent = `#${blurbEl.id}.ao3-blocker-highlight { background-color: ${color} !important; }`;
+              document.head.appendChild(style);
+            }
+          }
           if (debugMode) {
             console.groupCollapsed(`? highlighted ${blurbEl.id}`);
             console.log(blurbEl.innerHTML);
