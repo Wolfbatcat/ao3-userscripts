@@ -4,8 +4,7 @@
 // @description  Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author       BlackBatCat
 // @license      MIT
-// @match        http://archiveofourown.org/*
-// @match        https://archiveofourown.org/*
+// @match        *://archiveofourown.org/*
 // @grant        none
 // ==/UserScript==
 

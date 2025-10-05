@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @description   Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
+// @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       2.2
+// @version       2.3
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -16,7 +16,7 @@
 // @grant         GM.setValue
 // @run-at        document-end
 // ==/UserScript==
-rgb(235, 111, 146)
+
 ; (function () {
   "use strict";
   window.ao3Blocker = {};
@@ -1255,9 +1255,12 @@ rgb(235, 111, 146)
     // Language allowlist: if set and work language not included, block
     if (allowedLanguages.length > 0) {
       const lang = (language || "").toLowerCase().trim();
-      const allowed = allowedLanguages.includes(lang);
-      if (!allowed) {
-        reasons.push({ language: language || "unknown" });  // Use the original text for display
+      // Skip language check if language is unknown (typically a series)
+      if (lang && lang !== "unknown") {
+        const allowed = allowedLanguages.includes(lang);
+        if (!allowed) {
+          reasons.push({ language: language || "unknown" });  // Use the original text for display
+        }
       }
     }
 
