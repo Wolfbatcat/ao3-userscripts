@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: Chapter Shortcuts
 // @version      1.3
-// @description  Adds shortcuts for first and last chapters on AO3 works. Customizable!
+// @description  Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author       BlackBatCat
 // @license      MIT
 // @match        http://archiveofourown.org/*

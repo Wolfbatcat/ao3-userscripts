@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
 // @version      2.7
-// @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
+// @description  Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
 // @license      MIT
