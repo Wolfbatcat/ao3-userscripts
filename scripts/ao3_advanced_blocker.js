@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       1.9
+// @version       2.2
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -16,7 +16,7 @@
 // @grant         GM.setValue
 // @run-at        document-end
 // ==/UserScript==
-
+rgb(235, 111, 146)
 ; (function () {
   "use strict";
   window.ao3Blocker = {};
@@ -243,7 +243,6 @@
   /* Highlighted works (left border using pseudo-element) */
   .ao3-blocker-highlight {
     position: relative !important;
-    overflow: hidden !important;
   }
 
   .ao3-blocker-highlight::before {
@@ -251,10 +250,10 @@
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
+    right: 0 !important;
     bottom: 0 !important;
-    width: 4px !important;
-    background-color: var(--ao3-blocker-highlight-color, #eb6f92) !important;
-    z-index: 1 !important;
+    box-shadow: inset 4px 0 0 0 var(--ao3-blocker-highlight-color, #eb6f92) !important;
+    pointer-events: none !important;
     border-radius: inherit !important;
   }
   /* Tooltip icon style for settings menu (scoped) */
@@ -443,7 +442,7 @@
       "titleBlacklist": config.titleBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
       "tagBlacklist": config.tagBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
       "tagWhitelist": config.tagWhitelist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
-      "tagHighlights": config.tagHighlights.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(s => normalizeText(s)),
+      "tagHighlights": config.tagHighlights.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
       "summaryBlacklist": config.summaryBlacklist.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern),
 
       "highlightColor": config.highlightColor,
@@ -1471,12 +1470,11 @@
         console.groupEnd();
       }
 
-      // Highlighting uses exact tag matching
+      // Highlighting uses exact tag matching with wildcard support
       const allTags = blockables.tags || getAllTagsFlat(blockables.categorizedTags || {});
       allTags.forEach((tag) => {
-        // Use exact matching for tag highlights - both tag and patterns are normalized
-        const normalizedTag = normalizeText(tag);
-        if (config.tagHighlights.some(highlightPattern => normalizedTag === highlightPattern)) {
+        // Check if tag matches any highlight pattern (supports wildcards)
+        if (config.tagHighlights.some(highlightPattern => matchPattern(tag, highlightPattern, true))) {
           blurbEl.classList.add("ao3-blocker-highlight");
           if (debugMode) {
             console.groupCollapsed(`? highlighted ${blurbEl.id}`);
@@ -1485,6 +1483,7 @@
           }
         }
       });
+    
     });
 
     if (debugMode) {

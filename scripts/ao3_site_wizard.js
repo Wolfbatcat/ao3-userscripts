@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      2.6
+// @version      2.7
 // @description  Change fonts and font sizes across the site easily and fix paragraph spacing issues.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
@@ -41,14 +41,11 @@
   let cachedElements = {
     paraStyle: null,
     siteStyle: null,
-    workskin: null,
   };
-
-  // Cache current page type
-  let isWorksPage = WORKS_PAGE_REGEX.test(window.location.href);
 
   // --- UTILITIES ---
   function getOrCreateStyle(id) {
+    if (!document.head) return null;
     let style = document.getElementById(id);
     if (!style) {
       style = document.createElement("style");
@@ -89,14 +86,14 @@
       cachedElements.paraStyle = getOrCreateStyle(
         "ao3-formatter-paragraph-style"
       );
+      if (!cachedElements.paraStyle) return;
     }
 
-    if (isWorksPage) {
+    if (WORKS_PAGE_REGEX.test(window.location.href)) {
       const {
         paragraphWidthPercent,
         paragraphFontSizePercent,
         paragraphTextAlign,
-        paragraphFontFamily,
         paragraphGap,
       } = FORMATTER_CONFIG;
 
@@ -116,37 +113,15 @@
           max-width: ${paragraphWidthPercent}vw !important;
           font-size: ${paragraphFontSizePercent}% !important;
         }
-          #workskin p {
-            margin-bottom: ${paragraphGap}em !important;
-          }
-          ${
-            paragraphFontFamily
-              ? `
-              #workskin p,
-              #workskin h1, #workskin h2, #workskin h3, 
-              #workskin h4, #workskin h5, #workskin h6,
-              #workskin ul, #workskin ol, #workskin li,
-              #workskin dl, #workskin dt, #workskin dd,
-              #workskin blockquote,
-              #workskin summary,
-              #workskin .preface .title,
-              #workskin .preface .byline,
-              #workskin .title.heading,
-              #workskin .byline.heading {
-                font-family: ${paragraphFontFamily} !important;
-              }
-              `
-              : ""
-          }
+        #workskin p {
+          margin-bottom: ${paragraphGap}em !important;
         }
-        /* Override inline align attributes on paragraphs only */
         #workskin p[align] {
           text-align: ${paragraphTextAlign} !important;
         }
         ${
           paragraphTextAlign === "right"
             ? `
-        /* RTL list styling */
         #workskin ul, #workskin ol {
           direction: rtl !important;
           text-align: right !important;
@@ -154,22 +129,18 @@
         #workskin li {
           text-align: right !important;
         }
-        /* RTL definition list styling */
         #workskin dl {
           direction: rtl !important;
         }
         #workskin dt, #workskin dd {
           text-align: right !important;
         }
-        /* RTL blockquote styling */
         #workskin blockquote {
           text-align: right !important;
         }
-        /* RTL details/summary styling */
         #workskin summary {
           text-align: right !important;
         }
-        /* RTL heading styling - only for headings within workskin */
         #workskin h1, #workskin h2, #workskin h3, 
         #workskin h4, #workskin h5, #workskin h6 {
           text-align: right !important;
@@ -179,23 +150,17 @@
         }
       `;
 
-      // Cache workskin element
-      if (!cachedElements.workskin) {
-        cachedElements.workskin = document.getElementById("workskin");
-      }
-
-      if (cachedElements.workskin) {
+      // Query workskin element fresh each time
+      const workskin = document.getElementById("workskin");
+      if (workskin) {
         if (paragraphTextAlign === "right") {
-          cachedElements.workskin.setAttribute("dir", "rtl");
+          workskin.setAttribute("dir", "rtl");
         } else {
-          cachedElements.workskin.removeAttribute("dir");
+          workskin.removeAttribute("dir");
         }
       }
     } else {
       cachedElements.paraStyle.textContent = "";
-      if (cachedElements.workskin) {
-        cachedElements.workskin.removeAttribute("dir");
-      }
     }
 
     applySiteWideStyles();
@@ -204,6 +169,7 @@
   function applySiteWideStyles() {
     if (!cachedElements.siteStyle) {
       cachedElements.siteStyle = getOrCreateStyle("ao3-sitewide-style");
+      if (!cachedElements.siteStyle) return;
     }
 
     const {
@@ -225,21 +191,16 @@
     rules.push(`html { font-size: ${siteFontSizePercent}% !important; }`);
 
     if (siteFontFamily) {
-      // When expandCodeFontUsage is enabled, exclude textarea from site-wide font
-      const textareaSelector = expandCodeFontUsage
-        ? ""
-        : ", textarea:not(#skin_css):not(#floaty-textarea)";
-
-      // Exclude header elements from site-wide font if custom header font is specified
-      const headerExclusion = headerFontFamily
-        ? ":not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.heading)"
-        : "";
-
-      rules.push(
-        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination${headerExclusion}${
-          headerFontFamily ? "" : ", h1, h2, h3, h4, h5, h6, .heading"
-        } { font-family: ${siteFontFamily} !important; }`
-      );
+      // Build selector to exclude code elements and conditionally textareas
+      if (expandCodeFontUsage) {
+        rules.push(
+          `body, body *:not(textarea):not(textarea *):not(code):not(pre):not(tt):not(kbd):not(samp):not(var), input:not([type="file"]), select, button:not(.comment-format button):not(ul.comment-format button) { font-family: ${siteFontFamily} !important; }`
+        );
+      } else {
+        rules.push(
+          `body, body *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var), input:not([type="file"]), textarea:not(#skin_css):not(#floaty-textarea), select, button:not(.comment-format button):not(ul.comment-format button) { font-family: ${siteFontFamily} !important; }`
+        );
+      }
     }
 
     if (siteFontWeight) {
@@ -247,31 +208,36 @@
         ? ""
         : ", textarea:not(#skin_css):not(#floaty-textarea)";
 
-      // Exclude header elements from site-wide weight if custom header weight is specified
-      const headerExclusion = headerFontWeight
-        ? ":not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(.heading)"
-        : "";
-
       rules.push(
-        `body, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button), .toggled form, .dynamic form, .secondary, .dropdown, blockquote:not(pre), .prompt .blurb h6, .bookmark .user .meta, a.work, .heading .actions, .heading .action, .heading span.actions, span.unread, .replied, span.claimed, .actions span.defaulted, .splash .news .meta, .datetime, h5.fandoms.heading a.tag, dd.fandom.tags a, #dashboard, #header, #main, #footer, .navigation, .menu, .dropdown-menu, .blurb, .meta, .stats, .tags, .module, .wrapper, .region, li:not(.comment-format):not(.comment-format li):not(ul.comment-format):not(ul.comment-format li), span:not(.comment-format):not(.comment-format span):not(ul.comment-format):not(ul.comment-format span):not(code):not(code span):not(pre span):not(kbd):not(tt):not(var):not(samp), div:not(.comment-format):not(.comment-format div):not(ul.comment-format):not(ul.comment-format div):not(code):not(pre):not(.userstuff div code):not(.userstuff div pre), a:not(.comment-format):not(.comment-format a):not(ul.comment-format):not(ul.comment-format a):not(code a):not(pre a), p:not(.comment-format):not(.comment-format p):not(ul.comment-format):not(ul.comment-format p):not(.userstuff p code):not(.userstuff p pre), label:not(.comment-format):not(.comment-format label):not(ul.comment-format):not(ul.comment-format label):not(code label), .user, .current, .action, .notice, .comment:not(.userstuff):not(.comment-format), .thread, .work, .bookmark, .series, .pagination, .current${headerExclusion} { font-weight: ${siteFontWeight} !important; }`
+        `body, body *, input:not([type="file"])${textareaSelector}, select, button:not(.comment-format button):not(ul.comment-format button) { font-weight: ${siteFontWeight} !important; }`
       );
     }
 
-    // Header font settings - these come after site-wide to ensure they override
+    // Work font - applies to all work content except code elements, headings (when header font is set), and conditionally textareas
+    if (paragraphFontFamily) {
+      // Conditionally exclude textareas if expandCodeFontUsage is enabled (so code font can apply)
+      const textareaExclusion = expandCodeFontUsage ? ":not(textarea)" : "";
+
+      if (headerFontFamily) {
+        rules.push(
+          `#workskin:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6), 
+           #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(h1 *):not(h2 *):not(h3 *):not(h4 *):not(h5 *):not(h6 *)${textareaExclusion} { font-family: ${paragraphFontFamily} !important; }`
+        );
+      } else {
+        rules.push(
+          `#workskin, #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var)${textareaExclusion} { font-family: ${paragraphFontFamily} !important; }`
+        );
+      }
+    }
+
+    // Header font - overrides work font
     if (headerFontFamily) {
       rules.push(
-        `h1, h2, h3, h4, h5, h6, .heading { font-family: ${headerFontFamily} !important; }`
+        `h1, h1 *, h2, h2 *, h3, h3 *, h4, h4 *, h5, h5 *, h6, h6 *, .heading, .heading *,
+         #workskin h1, #workskin h1 *, #workskin h2, #workskin h2 *, #workskin h3, #workskin h3 *,
+         #workskin h4, #workskin h4 *, #workskin h5, #workskin h5 *, #workskin h6, #workskin h6 * { font-family: ${headerFontFamily} !important; }`
       );
-    }
-
-    if (headerFontWeight) {
-      rules.push(
-        `h1, h2, h3, h4, h5, h6, .heading { font-weight: ${headerFontWeight} !important; }`
-      );
-    }
-
-    // Work font overrides for chapter titles/bylines
-    if (paragraphFontFamily) {
+    } else if (paragraphFontFamily) {
       rules.push(
         `#chapters h3.title,
          #chapters h3.byline.heading,
@@ -282,41 +248,50 @@
       );
     }
 
+    if (headerFontWeight) {
+      rules.push(
+        `h1, h1 *, h2, h2 *, h3, h3 *, h4, h4 *, h5, h5 *, h6, h6 *, .heading, .heading *,
+         #workskin h1, #workskin h1 *, #workskin h2, #workskin h2 *, #workskin h3, #workskin h3 *,
+         #workskin h4, #workskin h4 *, #workskin h5, #workskin h5 *, #workskin h6, #workskin h6 * { font-weight: ${headerFontWeight} !important; }`
+      );
+    }
+
     // Code fonts - apply user customizations if specified
     const codeRules = [];
     if (codeFontFamily)
       codeRules.push(`font-family: ${codeFontFamily} !important`);
-    if (codeFontStyle)
+    if (codeFontStyle && codeFontStyle !== "normal")
       codeRules.push(`font-style: ${codeFontStyle} !important`);
     if (codeFontSize) codeRules.push(`font-size: ${codeFontSize} !important`);
 
     // Apply custom code font settings if any are specified
     if (codeRules.length > 0) {
       // Base code selectors for code/monospace elements - include children and nested elements
-      const baseCodeSelectors = "code, code *, pre, pre *, tt, tt *, kbd, kbd *, samp, samp *, var, var *, textarea#skin_css, .css.module blockquote pre, #floaty-textarea";
-      
+      const baseCodeSelectors =
+        "code, code *, pre, pre *, tt, tt *, kbd, kbd *, samp, samp *, var, var *, textarea#skin_css, .css.module blockquote pre, #floaty-textarea, #workskin code, #workskin code *, #workskin pre, #workskin pre *, #workskin tt, #workskin tt *, #workskin kbd, #workskin kbd *, #workskin samp, #workskin samp *, #workskin var, #workskin var *";
+
       // Use expanded selectors if expandCodeFontUsage is enabled (adds all textareas)
       const codeSelectors = expandCodeFontUsage
-        ? "code, code *, pre, pre *, tt, tt *, kbd, kbd *, samp, samp *, var, var *, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea"
+        ? "code, code *, pre, pre *, tt, tt *, kbd, kbd *, samp, samp *, var, var *, textarea, textarea#skin_css, .css.module blockquote pre, #floaty-textarea, #workskin code, #workskin code *, #workskin pre, #workskin pre *, #workskin tt, #workskin tt *, #workskin kbd, #workskin kbd *, #workskin samp, #workskin samp *, #workskin var, #workskin var *, #workskin textarea"
         : baseCodeSelectors;
 
       rules.push(`${codeSelectors} { ${codeRules.join("; ")}; }`);
     }
 
-    // If expandCodeFontUsage is enabled but no custom code font is set,
-    // ensure expanded selectors use monospace to override site-wide font
-    if (expandCodeFontUsage && codeRules.length === 0 && siteFontFamily) {
-      rules.push(`textarea { font-family: monospace !important; }`);
+    // Monospace fallback when no custom code font is specified
+    if (codeRules.length === 0) {
+      rules.push(
+        `code, code *, pre, pre *, tt, tt *, kbd, kbd *, samp, samp *, var, var *, #workskin code, #workskin code *, #workskin pre, #workskin pre *, #workskin tt, #workskin tt *, #workskin kbd, #workskin kbd *, #workskin samp, #workskin samp *, #workskin var, #workskin var * { font-family: monospace !important; }`
+      );
+
+      if (expandCodeFontUsage) {
+        rules.push(
+          `textarea, #workskin textarea { font-family: monospace !important; }`
+        );
+      }
     }
 
-    // Preserve proper fonts for comment formatting - support both FontAwesome and emoji
-    rules.push(
-      `ul.comment-format { font-family: "FontAwesome", sans-serif !important; font-weight: normal !important; }`,
-      `ul.actions.comment-format { text-align: left !important; }`
-    );
-
-    // Protect title and byline from alignment changes - always keep centered
-    // Use high specificity to override dir="rtl" inheritance
+    // Keep titles and bylines centered regardless of text alignment
     rules.push(
       `#workskin .preface .title.heading,
        #workskin .preface .byline.heading,
@@ -329,12 +304,18 @@
        }`
     );
 
-    // Protect code elements from alignment changes - always keep left-aligned and LTR
+    // Keep code blocks left-aligned and LTR
     rules.push(
       `#workskin pre {
          text-align: left !important;
          direction: ltr !important;
        }`
+    );
+
+    // Preserve FontAwesome icons for comment formatting toolbar
+    rules.push(
+      `#cmtFmtDialog #stdbutton label, ul.comment-format, ul.comment-format * { font-family: "FontAwesome", sans-serif !important; font-weight: normal !important; }`,
+      `ul.actions.comment-format { text-align: left !important; }`
     );
 
     cachedElements.siteStyle.textContent = rules.join("\n");
@@ -398,7 +379,7 @@
     ];
 
     return function () {
-      if (!isWorksPage) return;
+      if (!WORKS_PAGE_REGEX.test(window.location.href)) return;
 
       document
         .querySelectorAll(
@@ -450,8 +431,6 @@
     style.textContent = `.ao3-formatter-menu-dialog .settings-section { background: rgba(0,0,0,0.03); border-radius: 6px; padding: 15px; margin-bottom: 20px; border-left: 4px solid currentColor; } .ao3-formatter-menu-dialog .section-title { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; font-weight: bold; color: inherit; opacity: 0.85; font-family: inherit; } .ao3-formatter-menu-dialog .setting-group { margin-bottom: 15px; } .ao3-formatter-menu-dialog .setting-label { display: block; margin-bottom: 6px; font-weight: bold; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .setting-description { display: block; margin-bottom: 8px; font-size: 0.9em; color: inherit; opacity: 0.6; line-height: 1.4; } .ao3-formatter-menu-dialog .checkbox-label { display: block; font-weight: normal; color: inherit; } .ao3-formatter-menu-dialog input[type="text"], .ao3-formatter-menu-dialog input[type="number"], .ao3-formatter-menu-dialog select { width: 100%; box-sizing: border-box; } .ao3-formatter-menu-dialog input[type="number"]:focus { background: ${inputBg} !important; } .ao3-formatter-menu-dialog .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } .ao3-formatter-menu-dialog .slider-with-value { display: flex; align-items: center; gap: 10px; } .ao3-formatter-menu-dialog .slider-with-value input[type="range"] { flex-grow: 1; } .ao3-formatter-menu-dialog .value-display { min-width: 40px; text-align: center; font-weight: bold; color: inherit; opacity: 0.6; } .ao3-formatter-menu-dialog .button-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; } .ao3-formatter-menu-dialog .button-group button { flex: 1; padding: 10px; color: inherit; opacity: 0.9; } .ao3-formatter-menu-dialog .reset-link { text-align: center; margin-top: 10px; color: inherit; opacity: 0.7; } .ao3-formatter-menu-dialog .symbol.question { font-size: 0.5em; vertical-align: middle; }`;
     document.head.appendChild(style);
 
-    // Use DocumentFragment for better performance
-    const fragment = document.createDocumentFragment();
     dialog.innerHTML = `
       <h3 style="text-align: center; margin-top: 0; color: inherit;">🪄 Site Wizard Settings 🪄</h3>
       
@@ -610,7 +589,10 @@
             </label>
             <select id="code-fontstyle-select">
               <option value="normal" ${
-                FORMATTER_CONFIG.codeFontStyle === "normal" || FORMATTER_CONFIG.codeFontStyle === "" ? "selected" : ""
+                !FORMATTER_CONFIG.codeFontStyle ||
+                FORMATTER_CONFIG.codeFontStyle === "normal"
+                  ? "selected"
+                  : ""
               }>Normal</option>
               <option value="italic" ${
                 FORMATTER_CONFIG.codeFontStyle === "italic" ? "selected" : ""
@@ -624,7 +606,7 @@
               FORMATTER_CONFIG.expandCodeFontUsage ? "checked" : ""
             }>
             Apply code font to comments
-            <span class="symbol question" title="Applies to all textareas, not just comments"><span>?</span></span>
+            <span class="symbol question" title="Applies code font to all textareas. Requires a code/monospace font to be specified above."><span>?</span></span>
           </label>
         </div>
       </div>
@@ -682,17 +664,16 @@
         "#paragraph-gap-input",
         DEFAULT_FORMATTER_CONFIG.paragraphGap
       );
-      FORMATTER_CONFIG.fixParagraphSpacing = dialog.querySelector(
-        "#fix-paragraph-spacing-checkbox"
-      ).checked;
+      FORMATTER_CONFIG.fixParagraphSpacing =
+        dialog.querySelector("#fix-paragraph-spacing-checkbox")?.checked ??
+        false;
       FORMATTER_CONFIG.headerFontFamily = getValue("#header-fontfamily-input");
       FORMATTER_CONFIG.headerFontWeight = getValue("#header-fontweight-input");
       FORMATTER_CONFIG.codeFontFamily = getValue("#code-fontfamily-input");
       FORMATTER_CONFIG.codeFontStyle = getValue("#code-fontstyle-select");
       FORMATTER_CONFIG.codeFontSize = getValue("#code-fontsize-input");
-      FORMATTER_CONFIG.expandCodeFontUsage = dialog.querySelector(
-        "#expand-code-font-checkbox"
-      ).checked;
+      FORMATTER_CONFIG.expandCodeFontUsage =
+        dialog.querySelector("#expand-code-font-checkbox")?.checked ?? false;
 
       saveFormatterConfig();
       dialog.remove();
@@ -770,7 +751,10 @@
 
   // Run paragraph spacing fix
   function runParagraphSpacingFixIfEnabled() {
-    if (FORMATTER_CONFIG.fixParagraphSpacing && isWorksPage) {
+    if (
+      FORMATTER_CONFIG.fixParagraphSpacing &&
+      WORKS_PAGE_REGEX.test(window.location.href)
+    ) {
       fixParagraphSpacing();
     }
   }

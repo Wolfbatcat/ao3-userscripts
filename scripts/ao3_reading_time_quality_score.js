@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description Combined reading time and quality scoring. Highly customizable.
 // @author      BlackBatCat
-// @version     2
+// @version     2.1
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -68,16 +68,6 @@
     if (savedConfig) {
       try {
         const parsedConfig = JSON.parse(savedConfig);
-        // Migrate old enableBarColors to new colorStyle
-        if (
-          parsedConfig.enableBarColors !== undefined &&
-          parsedConfig.colorStyle === undefined
-        ) {
-          parsedConfig.colorStyle = parsedConfig.enableBarColors
-            ? "background"
-            : "none";
-          delete parsedConfig.enableBarColors;
-        }
         CONFIG = { ...DEFAULTS, ...parsedConfig };
       } catch (e) {
         console.error("Error loading saved config, using defaults:", e);
@@ -109,8 +99,8 @@
         localStorage.removeItem("ao3_reading_quality_config");
       }
       CONFIG = { ...DEFAULTS };
-      countRatio();
-      calculateReadtime();
+      if (CONFIG.enableReadingTime && countable) calculateReadtime();
+      if (CONFIG.enableQualityScore && countable) countRatio();
     }
   };
 
@@ -129,7 +119,7 @@
   };
 
   // Apply color styling based on colorStyle setting
-  const applyColorStyling = (element, color, isWrappedInIcon = false) => {
+  const applyColorStyling = (element, color) => {
     if (CONFIG.colorStyle === "background") {
       element.style.backgroundColor = color;
       element.style.color = CONFIG.colorText;
@@ -167,7 +157,7 @@
           min-height: 1em !important;
           margin-right: 5px !important;
           background-color: ${iconColor} !important;
-          ${CONFIG.iconColor ? 'filter: none !important;' : ''}
+          ${CONFIG.iconColor ? "filter: none !important;" : ""}
           -webkit-mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_readingtime.svg") !important;
           mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_readingtime.svg") !important;
           -webkit-mask-size: contain !important;
@@ -190,7 +180,7 @@
           min-height: 1em !important;
           margin-right: 5px !important;
           background-color: ${iconColor} !important;
-          ${CONFIG.iconColor ? 'filter: none !important;' : ''}
+          ${CONFIG.iconColor ? "filter: none !important;" : ""}
           -webkit-mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_score-sparkles.svg") !important;
           mask-image: url("https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/373d8c4cde1210ac54eb0c6ce74cfe0415c2814a/assets/icon_score-sparkles.svg") !important;
           -webkit-mask-size: contain !important;
@@ -315,13 +305,13 @@
         textSpan.style.display = "inline-block";
         textSpan.style.verticalAlign = "baseline";
 
-        applyColorStyling(textSpan, color, true);
+        applyColorStyling(textSpan, color);
         readtime_value.appendChild(textSpan);
       } else {
         readtime_value.textContent = minutes_print;
         readtime_value.style.borderRadius = "4px";
 
-        applyColorStyling(readtime_value, color, false);
+        applyColorStyling(readtime_value, color);
       }
 
       // Insert after words_value
@@ -416,13 +406,13 @@
           textSpan.style.display = "inline-block";
           textSpan.style.verticalAlign = "baseline";
 
-          applyColorStyling(textSpan, color, true);
+          applyColorStyling(textSpan, color);
           ratioValue.appendChild(textSpan);
         } else {
           ratioValue.textContent = displayScore;
           ratioValue.style.borderRadius = "4px";
 
-          applyColorStyling(ratioValue, color, false);
+          applyColorStyling(ratioValue, color);
         }
 
         hitsElement.insertAdjacentElement("afterend", ratioValue);
@@ -861,14 +851,19 @@
     useIconsCheckbox.addEventListener("change", toggleIconSettings);
 
     // Toggle custom icon color picker
-    const useCustomIconColorCheckbox = form.querySelector("#useCustomIconColor");
+    const useCustomIconColorCheckbox = form.querySelector(
+      "#useCustomIconColor"
+    );
     const customIconColorPicker = form.querySelector("#customIconColorPicker");
     const toggleCustomIconColor = () => {
       customIconColorPicker.style.display = useCustomIconColorCheckbox.checked
         ? "block"
         : "none";
     };
-    useCustomIconColorCheckbox.addEventListener("change", toggleCustomIconColor);
+    useCustomIconColorCheckbox.addEventListener(
+      "change",
+      toggleCustomIconColor
+    );
 
     // Toggle reading time settings
     const readingTimeCheckbox = form.querySelector("#enableReadingTime");
@@ -1149,27 +1144,7 @@
   }
 
   // --- INITIALIZATION ---
-  loadUserSettings();
-
-  // Add icon styles
-  addIconStyles();
-
-  // Show startup message
-  console.log("[AO3: Reading Time & Quality Score] loaded.");
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      checkCountable();
-      initSharedMenu();
-      if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 100);
-      if (CONFIG.alwaysCountQualityScore) {
-        setTimeout(() => {
-          countRatio();
-          if (CONFIG.alwaysSortQualityScore) sortByRatio();
-        }, 100);
-      }
-    });
-  } else {
+  const init = () => {
     checkCountable();
     initSharedMenu();
     if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 100);
@@ -1179,5 +1154,19 @@
         if (CONFIG.alwaysSortQualityScore) sortByRatio();
       }, 100);
     }
+  };
+
+  loadUserSettings();
+
+  // Add icon styles
+  addIconStyles();
+
+  // Show startup message
+  console.log("[AO3: Reading Time & Quality Score] loaded.");
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
   }
 })();
