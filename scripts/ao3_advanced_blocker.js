@@ -687,7 +687,7 @@
               <label class="setting-label" for="min-words-input">Min Words
                 <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
               </label>
-              <input id="min-words-input" type="text" style="width:100%;" placeholder="e.g. 1000" value="${config.minWords || ''}" title="Hide works under this many words.">
+              <input id="min-words-input" type="text" style="width:100%;" placeholder="1000" value="${config.minWords || ''}" title="Hide works under this many words.">
             </div>
             <div class="setting-group">
               <label class="checkbox-label" for="block-ongoing-checkbox">
@@ -710,7 +710,7 @@
               <label class="setting-label" for="max-words-input">Max Words
                 <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
               </label>
-              <input id="max-words-input" type="text" style="width:100%;" placeholder="e.g. 100000" value="${config.maxWords || ''}" title="Hide works over this many words.">
+              <input id="max-words-input" type="text" style="width:100%;" placeholder="100000" value="${config.maxWords || ''}" title="Hide works over this many words.">
             </div>
             <div class="setting-group">
               <label class="checkbox-label" for="block-complete-checkbox">
