@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: Skin Changer
-// @version      1.7
-// @description  Change AO3 site skins from anywhere on the site with a convenient dropdown menu
+// @version      1.0
+// @description  Change site skins from anywhere without leaving the page.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
 // @license      MIT
@@ -14,21 +14,42 @@
   "use strict";
 
   // --- CONSTANTS ---
-  const USERNAME_KEY = "ao3_skin_changer_username";
+  const CONFIG_KEY = "ao3_skin_changer_config";
   let cachedUsername = null;
-  let cachedSkins = null;
   let isLoading = false;
+
+  // --- CONFIG MANAGEMENT ---
+  function loadConfig() {
+    try {
+      const saved = localStorage.getItem(CONFIG_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("[AO3: Skin Changer] Error loading config:", e);
+    }
+    return { username: null };
+  }
+
+  function saveConfig(config) {
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    } catch (e) {
+      console.error("[AO3: Skin Changer] Error saving config:", e);
+    }
+  }
+
+  let config = loadConfig();
 
   // --- USERNAME DETECTION ---
   function detectUsername() {
     // Try cached first
     if (cachedUsername) return cachedUsername;
 
-    // Try localStorage
-    const stored = localStorage.getItem(USERNAME_KEY);
-    if (stored) {
-      cachedUsername = stored;
-      return stored;
+    // Try config
+    if (config.username) {
+      cachedUsername = config.username;
+      return config.username;
     }
 
     // Try to parse from page links and forms - cast a wide net
@@ -58,8 +79,8 @@
           const match = url.match(pattern);
           if (match && match[1]) {
             cachedUsername = match[1];
-            localStorage.setItem(USERNAME_KEY, cachedUsername);
-            console.log(`[AO3: Skin Changer] Username detected: ${cachedUsername}`);
+            config.username = cachedUsername;
+            saveConfig(config);
             return cachedUsername;
           }
         }
@@ -70,25 +91,11 @@
     const urlMatch = window.location.href.match(/\/users\/([^\/]+)/);
     if (urlMatch && urlMatch[1]) {
       cachedUsername = urlMatch[1];
-      localStorage.setItem(USERNAME_KEY, cachedUsername);
-      console.log(`[AO3: Skin Changer] Username detected from URL: ${cachedUsername}`);
+      config.username = cachedUsername;
+      saveConfig(config);
       return cachedUsername;
     }
 
-    return null;
-  }
-
-  // --- PROMPT FOR USERNAME ---
-  function promptForUsername() {
-    const username = prompt(
-      "Enter your AO3 username to enable the Skin Changer:"
-    );
-    if (username && username.trim()) {
-      const trimmed = username.trim();
-      localStorage.setItem(USERNAME_KEY, trimmed);
-      cachedUsername = trimmed;
-      return trimmed;
-    }
     return null;
   }
 
@@ -139,8 +146,7 @@
         }
       });
 
-      cachedSkins = { skins, formAction };
-      return cachedSkins;
+      return { skins, formAction };
     } catch (e) {
       console.error("Error fetching skins:", e);
       alert("Failed to load skins. Please try again.");
@@ -157,29 +163,24 @@
     if (tokenInput) {
       return tokenInput.value;
     }
-
+    
     // Try meta tag (some pages have it here)
     const metaToken = document.querySelector('meta[name="csrf-token"]');
     if (metaToken) {
       return metaToken.content;
     }
-
-    console.error("[AO3: Skin Changer] Could not find authenticity token on page");
+    
     return null;
   }
 
   // --- APPLY SKIN ---
-  async function applySkin(skinId, formAction) {
+  function applySkin(skinId, formAction) {
     const token = getFreshToken();
     if (!token) {
       alert("Could not find authentication token. Please try refreshing the page.");
       return;
     }
-
-    console.log(`[AO3: Skin Changer] Attempting to apply skin ID: ${skinId}`);
-    console.log(`[AO3: Skin Changer] Form action: ${formAction}`);
-    console.log(`[AO3: Skin Changer] Using fresh token from current page`);
-
+    
     try {
       // Submit form via fetch in background
       const formData = new FormData();
@@ -187,19 +188,18 @@
       formData.append("authenticity_token", token);
       formData.append("preference[skin_id]", skinId);
       formData.append("commit", "Use");
-
-      const response = await fetch(formAction, {
+      
+      fetch(formAction, {
         method: "POST",
         body: formData,
         credentials: "same-origin",
-        redirect: "manual" // Don't follow redirects
+        redirect: "manual"
+      }).then(() => {
+        location.reload();
+      }).catch(e => {
+        console.error("[AO3: Skin Changer] Error applying skin:", e);
+        alert("Failed to apply skin. Please try again.");
       });
-
-      console.log(`[AO3: Skin Changer] Response status: ${response.status}`);
-
-      // Reload current page to apply new skin
-      console.log(`[AO3: Skin Changer] Skin changed successfully, reloading page...`);
-      location.reload();
     } catch (e) {
       console.error("[AO3: Skin Changer] Error applying skin:", e);
       alert("Failed to apply skin. Please try again.");
@@ -207,16 +207,13 @@
   }
 
   // --- REVERT TO DEFAULT ---
-  async function revertToDefault(formAction) {
+  function revertToDefault(formAction) {
     const token = getFreshToken();
     if (!token) {
       alert("Could not find authentication token. Please try refreshing the page.");
       return;
     }
-
-    console.log(`[AO3: Skin Changer] Attempting to revert to default skin`);
-    console.log(`[AO3: Skin Changer] Using fresh token from current page`);
-
+    
     try {
       // Submit form via fetch in background
       const formData = new FormData();
@@ -224,19 +221,18 @@
       formData.append("authenticity_token", token);
       formData.append("preference[skin_id]", "1");
       formData.append("commit", "Revert to Default Skin");
-
-      const response = await fetch(formAction, {
+      
+      fetch(formAction, {
         method: "POST",
         body: formData,
         credentials: "same-origin",
-        redirect: "manual" // Don't follow redirects
+        redirect: "manual"
+      }).then(() => {
+        location.reload();
+      }).catch(e => {
+        console.error("[AO3: Skin Changer] Error reverting to default:", e);
+        alert("Failed to revert to default skin. Please try again.");
       });
-
-      console.log(`[AO3: Skin Changer] Response status: ${response.status}`);
-
-      // Reload current page to apply default skin
-      console.log(`[AO3: Skin Changer] Reverted to default, reloading page...`);
-      location.reload();
     } catch (e) {
       console.error("[AO3: Skin Changer] Error reverting to default:", e);
       alert("Failed to revert to default skin. Please try again.");
@@ -252,12 +248,8 @@
 
     const username = detectUsername();
     if (!username) {
-      // Last resort: prompt user
-      const inputUsername = promptForUsername();
-      if (!inputUsername) {
-        alert("Username is required to use Skin Changer.");
-        return;
-      }
+      alert("Could not detect your AO3 username. Please visit your Profile, Preferences, or Skins page to use Skin Changer.");
+      return;
     }
 
     // Get AO3 input field background color
@@ -286,7 +278,7 @@
         document.querySelector(".actions a"),
         document.querySelector(".module"),
       ];
-
+      
       for (const elem of elementsToCheck) {
         if (elem) {
           const computedRadius = window.getComputedStyle(elem).borderRadius;
@@ -294,6 +286,40 @@
             borderRadius = computedRadius;
             break;
           }
+        }
+      }
+    } catch (e) {}
+
+    // Get border color from page elements
+    let borderColor = "rgba(0,0,0,0.2)";
+    try {
+      // Try to get border color from common AO3 elements
+      const elementsToCheck = [
+        document.querySelector("input"),
+        document.querySelector("select"),
+        document.querySelector("button"),
+        document.querySelector(".actions a"),
+      ];
+      
+      for (const elem of elementsToCheck) {
+        if (elem) {
+          const computedBorder = window.getComputedStyle(elem).borderColor;
+          if (computedBorder && computedBorder !== "rgba(0, 0, 0, 0)") {
+            borderColor = computedBorder;
+            break;
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Get main text color (not link color)
+    let textColor = "inherit";
+    try {
+      const bodyElement = document.body;
+      if (bodyElement) {
+        const computed = window.getComputedStyle(bodyElement);
+        if (computed.color) {
+          textColor = computed.color;
         }
       }
     } catch (e) {}
@@ -319,6 +345,9 @@
 
     const { skins, formAction } = data;
 
+    // Sort skins alphabetically
+    const sortedSkins = [...skins].sort((a, b) => a.name.localeCompare(b.name));
+
     // Log success
     console.log(`[AO3: Skin Changer] Successfully loaded ${skins.length} skin(s).`);
 
@@ -327,18 +356,18 @@
 
     // Add revert to default option
     skinListHTML += `
-      <div class="skin-item" style="padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); border-radius: ${borderRadius}; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; color: inherit;" data-action="revert">
+      <div class="skin-item" style="padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.03); border: 1px solid ${borderColor}; border-radius: ${borderRadius}; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; color: inherit;" data-action="revert">
         <span style="font-weight: bold;">↺ Revert to Default Skin</span>
       </div>
     `;
 
     // Add skins
-    skins.forEach((skin) => {
+    sortedSkins.forEach((skin) => {
       const checkmark = skin.isActive
         ? '<span style="color: green; font-size: 1.2em;">✓</span>'
         : "";
       skinListHTML += `
-        <div class="skin-item" style="padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.1); border-radius: ${borderRadius}; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; color: inherit;" data-skin-id="${skin.id}">
+        <div class="skin-item" style="padding: 12px; margin: 8px 0; background: rgba(0,0,0,0.03); border: 1px solid ${borderColor}; border-radius: ${borderRadius}; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; color: inherit;" data-skin-id="${skin.id}">
           <span>${skin.name}</span>
           ${checkmark}
         </div>
@@ -348,7 +377,15 @@
     dialog.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h3 style="margin: 0; color: inherit;">🎨 Skin Changer</h3>
-        <button id="skin-changer-close" style="background: none; border: none; font-size: 1.5em; cursor: pointer; padding: 0; line-height: 1; color: inherit;">&times;</button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <a href="https://archiveofourown.org/users/${username}/skins" title="Go to Skins Page" style="display: flex; align-items: center; text-decoration: none; color: ${textColor};">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </a>
+          <button id="skin-changer-close" style="background: none; border: none; font-size: 1.5em; cursor: pointer; padding: 0; line-height: 1; color: inherit;">&times;</button>
+        </div>
       </div>
       <div style="margin-bottom: 10px;">
         ${skinListHTML}
@@ -360,6 +397,11 @@
     style.textContent = `
       .skin-item:hover {
         background: rgba(0,0,0,0.08) !important;
+      }
+      .ao3-skin-changer-dialog a[title="Go to Skins Page"],
+      .ao3-skin-changer-dialog a[title="Go to Skins Page"]:hover {
+        border-bottom: none !important;
+        text-decoration: none !important;
       }
     `;
     document.head.appendChild(style);
@@ -424,9 +466,21 @@
   // --- INITIALIZATION ---
   console.log("[AO3: Skin Changer] loaded.");
 
+  // Hide the "preferences successfully updated" flash message if it exists
+  const hidePreferenceFlash = () => {
+    const flash = document.querySelector('.flash.notice');
+    if (flash && flash.textContent.includes('Your preferences were successfully updated')) {
+      flash.style.display = 'none';
+    }
+  };
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initSharedMenu);
+    document.addEventListener("DOMContentLoaded", () => {
+      initSharedMenu();
+      hidePreferenceFlash();
+    });
   } else {
     initSharedMenu();
+    hidePreferenceFlash();
   }
 })();

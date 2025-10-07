@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Site Wizard
-// @version      2.7
+// @version      2.8
 // @description  Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*

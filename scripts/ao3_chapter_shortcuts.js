@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Chapter Shortcuts
-// @version      1.3
+// @version      1.4
 // @description  Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author       BlackBatCat
 // @license      MIT
@@ -91,7 +91,7 @@
     document.head.appendChild(style);
 
     dialog.innerHTML = `
-            <h3 style="text-align: center; margin-top: 0; color: inherit;">🏃🏻 Chapter Shortcuts Settings 🏃🏻</h3>
+            <h3 style="text-align: center; margin-top: 0; color: inherit;">🏃🏻 Chapter Shortcuts 🏃🏻</h3>
             <hr style='margin: 10px 0; border: none; border-top: 1px solid inherit;'>
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; font-family: inherit; color: inherit;">Choose a symbol for the Last Chapter button:</label>

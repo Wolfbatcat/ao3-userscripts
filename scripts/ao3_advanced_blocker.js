@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       2.3
+// @version       2.4
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -604,7 +604,7 @@
 
     // --- Build the menu content ---
     dialog.innerHTML = `
-      <h3 style="text-align: center; margin-top: 0; color: inherit;">🛡️ Advanced Blocker Settings 🛡️</h3>
+      <h3 style="text-align: center; margin-top: 0; color: inherit;">🛡️ Advanced Blocker 🛡️</h3>
 
       <!-- 1. Tag Filtering -->
       <div class="settings-section">

@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description  Add reading time and quality scores to AO3 works with color coding, normalization, and sorting. Highly customizable display and calculation options.
 // @author      BlackBatCat
-// @version     2.1
+// @version     2.2
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -585,7 +585,7 @@
       : CONFIG.colorThresholdHigh;
 
     form.innerHTML = `
-        <h3 style="text-align: center; margin-top: 0; color: inherit;">⏱️ Reading Time & Quality Score Settings ⭐</h3>
+        <h3 style="text-align: center; margin-top: 0; color: inherit;">⏱️ Reading Time & Quality Score ⭐</h3>
 
         <div class="settings-section">
           <h4 class="section-title">📚 Reading Time</h4>
