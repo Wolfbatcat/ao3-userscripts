@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         AO3: Skin Changer
-// @version      1.4
+// @name         AO3: Skin Switcher
+// @version      1.8
 // @description  Change site skins from anywhere without leaving the page.
 // @author       Blackbatcat
 // @match        *://archiveofourown.org/*
@@ -8,14 +8,12 @@
 // @grant        none
 // @run-at       document-end
 // @namespace    https://greasyfork.org/users/1498004
-// @downloadURL https://update.greasyfork.org/scripts/551820/AO3%3A%20Skin%20Changer.user.js
-// @updateURL https://update.greasyfork.org/scripts/551820/AO3%3A%20Skin%20Changer.meta.js
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  const CONFIG_KEY = "ao3_skin_changer_config";
+  const CONFIG_KEY = "ao3_skin_switcher_config";
   let cachedUsername = null;
   let config = loadConfig();
 
@@ -40,31 +38,33 @@
       return config.username;
     }
 
-    const patterns = [
-      /\/users\/([^\/]+)\/(?:preferences|pseuds|bookmarks|works|skins|inbox)/,
-      /\/users\/([^\/]+)\//,
-    ];
-
-    const elements = [
-      ...document.querySelectorAll('a[href*="/users/"]'),
-      ...document.querySelectorAll('form[action*="/users/"]'),
-    ];
-
-    for (const pattern of patterns) {
-      for (const element of elements) {
-        const url = element.href || element.action;
-        if (url) {
-          const match = url.match(pattern);
-          if (match && match[1]) {
-            cachedUsername = match[1];
-            config.username = cachedUsername;
-            saveConfig(config);
-            return cachedUsername;
-          }
+    // Try to get username from user menu
+    const userMenu = document.querySelector(
+      "li.user.logged-in > a, #greeting .dropdown-toggle, #greeting .user"
+    );
+    if (userMenu) {
+      // AO3 user menu: <a href="/users/USERNAME" ...>USERNAME</a>
+      const href = userMenu.getAttribute("href");
+      const text = userMenu.textContent.trim();
+      if (href && href.match(/\/users\//)) {
+        const match = href.match(/\/users\/([^\/]+)/);
+        if (match && match[1]) {
+          cachedUsername = match[1];
+          config.username = cachedUsername;
+          saveConfig(config);
+          return cachedUsername;
         }
+      }
+      // Fallback: sometimes the username is the text
+      if (text && !text.match(/\s/)) {
+        cachedUsername = text;
+        config.username = cachedUsername;
+        saveConfig(config);
+        return cachedUsername;
       }
     }
 
+    // Fallback: try to get username from current URL
     const urlMatch = window.location.href.match(/\/users\/([^\/]+)/);
     if (urlMatch && urlMatch[1]) {
       cachedUsername = urlMatch[1];
@@ -207,7 +207,7 @@
     const username = detectUsername();
     if (!username) {
       alert(
-        "Could not detect your AO3 username. Please visit your Profile, Preferences, or Skins page to use Skin Changer."
+        "Could not detect your AO3 username. Please visit your Dashboard, Preferences, or Skins page to initialize Skin Switcher."
       );
       return;
     }
@@ -312,7 +312,7 @@
         return b.lastModified - a.lastModified; // Most recent first
       });
       console.log(
-        `[AO3: Skin Changer] Successfully loaded ${skins.length} skin(s).`
+        `[AO3: Skin Switcher] Successfully loaded ${skins.length} skin(s).`
       );
 
       let editMode = false;
@@ -346,7 +346,7 @@
           }</span>${parentBadge}</div><div style="display: flex; align-items: center; gap: 8px;">${checkmark}</div></div>`;
         });
 
-        dialog.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;"><h3 style="margin: 0; color: inherit;">🎨 Skin Changer</h3><div style="display: flex; align-items: center; gap: 10px;"><button id="edit-toggle" title="${
+        dialog.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;"><h3 style="margin: 0; color: inherit;">🔄 Skin Switcher</h3><div style="display: flex; align-items: center; gap: 10px;"><button id="edit-toggle" title="${
           editMode ? "Exit Edit Mode" : "Edit Mode"
         }" style="background: none; border: none; cursor: pointer; color: ${textColor}; display: flex; align-items: center; padding: 0; opacity: ${
           editMode ? "1" : "0.7"
@@ -407,7 +407,7 @@
 
       render();
     } catch (e) {
-      console.error("[AO3: Skin Changer] Error:", e);
+      console.error("[AO3: Skin Switcher] Error:", e);
       dialog.remove();
       alert("Failed to load skins. Please try again.");
     }
@@ -434,7 +434,7 @@
     if (menu && !menu.querySelector("#opencfg_skin_changer")) {
       const menuItem = document.createElement("li");
       menuItem.innerHTML =
-        '<a href="javascript:void(0);" id="opencfg_skin_changer">Skin Changer</a>';
+        '<a href="javascript:void(0);" id="opencfg_skin_changer">Skin Switcher</a>';
       menuItem.querySelector("a").addEventListener("click", showSkinMenu);
       menu.appendChild(menuItem);
     }
@@ -454,7 +454,7 @@
     }
   };
 
-  console.log("[AO3: Skin Changer] loaded.");
+  console.log("[AO3: Skin Switcher] loaded.");
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

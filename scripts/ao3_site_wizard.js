@@ -12,7 +12,6 @@
 
 (function () {
   "use strict";
-  
 
   // --- CONSTANTS ---
   const FORMATTER_CONFIG_KEY = "ao3_wizard_config";
