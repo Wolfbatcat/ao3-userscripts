@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
-// @version     2.2
+// @version     2.3
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -166,8 +166,8 @@
         -webkit-mask-position: center center !important;
         mask-position: center center !important;
         content: "" !important;
-        vertical-align: text-bottom !important;
-        transform: translateY(-0.1em) !important;
+        /* vertical-align: text-bottom !important; */
+        transform: translate(0, 1px) !important;
       }
 
       .stats dd.kudoshits::before,
@@ -189,8 +189,8 @@
         -webkit-mask-position: center center !important;
         mask-position: center center !important;
         content: "" !important;
-        vertical-align: text-bottom !important;
-        transform: translateY(-0.1em) !important;
+        /* vertical-align: text-bottom !important; */
+        transform: translate(0, 1px) !important;
       }
 
       dl.stats dd {
@@ -1016,13 +1016,13 @@
               <input type="radio" name="chapterTimeStyle" value="colored" ${
                 CONFIG.chapterTimeStyle === "colored" ? "checked" : ""
               }>
-              Notice-style
+              Notice
             </label>
             <label class="radio-label">
               <input type="radio" name="chapterTimeStyle" value="timeonly" ${
                 CONFIG.chapterTimeStyle === "timeonly" ? "checked" : ""
               }>
-              Time only
+              Time Only
             </label>
           </div>
         </div>
