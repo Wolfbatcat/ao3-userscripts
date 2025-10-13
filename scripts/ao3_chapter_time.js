@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
+// @description  Add reading time and quality scores to AO3 works with color coding, normalization, and sorting. Highly customizable display and calculation options.
 // @author      BlackBatCat
 // @version     2.2
 // @match       *://archiveofourown.org/
