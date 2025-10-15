@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
-// @version     2.3
+// @version     2.7
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -32,6 +32,7 @@
     // Quality Score Settings
     alwaysCountQualityScore: true,
     alwaysSortQualityScore: false,
+    excludeMyContentFromSort: false, // Exclude all my content pages from auto sort
     hideHitcount: false,
     useNormalization: false,
     userMaxScore: 32,
@@ -49,6 +50,8 @@
     iconColor: "", // Empty = inherit from page, or set custom color
     // Chapter Time Settings
     chapterTimeStyle: "default", // "default", "colored", or "timeonly"
+    // Stored username
+    username: "", // Store detected username
   };
 
   // Current config, loaded from localStorage
@@ -89,11 +92,7 @@
     }
   };
 
-  // Save a specific setting
-  const saveSetting = (key, value) => {
-    CONFIG[key] = value;
-    saveAllSettings();
-  };
+
 
   // Reset all settings to defaults
   const resetAllSettings = () => {
@@ -108,13 +107,81 @@
     }
   };
 
+  // Detect and store username
+  const detectAndStoreUsername = () => {
+    let username = null;
+    
+    // Method 1: Try to get from user menu
+    const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
+    if (userLink) {
+      const match = userLink.getAttribute('href').match(/^\/users\/([^\/]+)/);
+      if (match) username = match[1];
+    }
+    
+    // Method 2: Check if already stored in config
+    if (!username && CONFIG.username) {
+      username = CONFIG.username;
+    }
+    
+    // Method 3: Try to get from URL path
+    if (!username) {
+      const urlMatch = window.location.pathname.match(/^\/users\/([^\/]+)/);
+      if (urlMatch) username = urlMatch[1];
+    }
+    
+    // Method 4: Try to get from user_id query parameter (for bookmark pages)
+    if (!username) {
+      const params = new URLSearchParams(window.location.search);
+      const paramUserId = params.get('user_id');
+      if (paramUserId) {
+        username = paramUserId;
+      }
+    }
+    
+    // If we found a username and it's not stored yet, store it
+    if (username && username !== CONFIG.username) {
+      saveSetting('username', username);
+    }
+    
+    return username;
+  };
+
+  // Check if current page is a "my content" page
+  const isMyContentPage = (username) => {
+    if (!username) return false;
+    
+    const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    
+    // Patterns for user content pages in the URL path
+    const patterns = [
+      new RegExp(`^/users/${escapedUsername}(/pseuds/[^/]+)?(/(bookmarks|works))?(/|$)`), // dashboard, bookmarks, works
+      new RegExp(`^/users/${escapedUsername}/readings(/|$)`) // history page
+    ];
+    
+    // Check path-based patterns
+    if (patterns.some(r => r.test(window.location.pathname))) {
+      return true;
+    }
+    
+    // Special case: /bookmarks with user_id parameter
+    if (window.location.pathname.startsWith('/bookmarks')) {
+      const params = new URLSearchParams(window.location.search);
+      const paramUserId = params.get('user_id');
+      if (paramUserId && paramUserId.toLowerCase() === username.toLowerCase()) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
   // Robust number extraction from element
   const getNumberFromElement = (element) => {
     if (!element) return NaN;
     let text =
       element.getAttribute("data-ao3e-original") || element.textContent;
     if (text === null) return NaN;
-    let cleanText = text.replace(/[,\sÃ¢â‚¬â€°Ã¢â‚¬Â¯]/g, "");
+    let cleanText = text.replace(/[,\sÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¯]/g, "");
     if (element.matches("dd.chapters")) {
       cleanText = cleanText.split("/")[0];
     }
@@ -342,8 +409,6 @@
       }
 
       Object.assign(readtime_value.style, {
-        fontSize: "1em",
-        lineHeight: "inherit",
         display: "inline-block",
         verticalAlign: "baseline",
       });
@@ -354,13 +419,17 @@
         textSpan.style.borderRadius = "4px";
         textSpan.style.display = "inline-block";
         textSpan.style.verticalAlign = "baseline";
-
+        // Remove fontSize and lineHeight so it inherits from parent
+        textSpan.style.fontSize = "inherit";
+        textSpan.style.lineHeight = "inherit";
         applyColorStyling(textSpan, color);
         readtime_value.appendChild(textSpan);
       } else {
         readtime_value.textContent = minutes_print;
         readtime_value.style.borderRadius = "4px";
-
+        // Remove fontSize and lineHeight so it inherits from parent
+        readtime_value.style.fontSize = "inherit";
+        readtime_value.style.lineHeight = "inherit";
         applyColorStyling(readtime_value, color);
       }
 
@@ -434,8 +503,6 @@
         }
 
         Object.assign(ratioValue.style, {
-          fontSize: "1em",
-          lineHeight: "inherit",
           display: "inline-block",
           verticalAlign: "baseline",
         });
@@ -446,13 +513,17 @@
           textSpan.style.borderRadius = "4px";
           textSpan.style.display = "inline-block";
           textSpan.style.verticalAlign = "baseline";
-
+          // Remove fontSize and lineHeight so it inherits from parent
+          textSpan.style.fontSize = "inherit";
+          textSpan.style.lineHeight = "inherit";
           applyColorStyling(textSpan, color);
           ratioValue.appendChild(textSpan);
         } else {
           ratioValue.textContent = displayScore;
           ratioValue.style.borderRadius = "4px";
-
+          // Remove fontSize and lineHeight so it inherits from parent
+          ratioValue.style.fontSize = "inherit";
+          ratioValue.style.lineHeight = "inherit";
           applyColorStyling(ratioValue, color);
         }
 
@@ -859,6 +930,15 @@
                 }>
                 Sort by score automatically
               </label>
+              <div class="subsettings" id="excludeMyContentSubsetting" style="margin-left:1em;${CONFIG.alwaysSortQualityScore ? '' : 'display:none;'}">
+                <label class="checkbox-label" title="Disable automatic sorting on your user dashboard, bookmarks, history, and works pages">
+                  <input type="checkbox" id="excludeMyContentFromSort" ${
+                    CONFIG.excludeMyContentFromSort ? "checked" : ""
+                  }>
+                  Exclude my content
+                  <span class="symbol question" title="Disable automatic sorting on your user dashboard, bookmarks, history, and works pages"><span>?</span></span>
+                </label>
+              </div>
             </div>
             <div class="setting-group">
               <label class="checkbox-label">
@@ -880,7 +960,7 @@
                   CONFIG.useNormalization ? "checked" : ""
                 }>
                 Normalize scores to 100%
-                <span class="symbol question" title="Scales the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable."><span>?</span></span>
+                <span class="symbol question" title="Scale the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable."><span>?</span></span>
               </label>
             </div>
             <div id="userMaxScoreContainer" class="setting-group" style="${
@@ -920,6 +1000,30 @@
         <div class="settings-section">
           <h4 class="section-title">🎨 Visual Styling</h4>
           
+          <div id="chapterTimeStyleSettings" class="setting-group" style="${
+            CONFIG.enableChapterStats ? "" : "display: none;"
+          }">
+            <label class="setting-label">Chapter Reading Time Style:</label>
+            <label class="radio-label">
+              <input type="radio" name="chapterTimeStyle" value="default" ${
+                CONFIG.chapterTimeStyle === "default" ? "checked" : ""
+              }>
+              Default
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="chapterTimeStyle" value="colored" ${
+                CONFIG.chapterTimeStyle === "colored" ? "checked" : ""
+              }>
+              Notice
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="chapterTimeStyle" value="timeonly" ${
+                CONFIG.chapterTimeStyle === "timeonly" ? "checked" : ""
+              }>
+              Time Only
+            </label>
+          </div>
+
           <div class="setting-group">
             <label class="setting-label">Color Style:</label>
             <label class="radio-label">
@@ -1003,28 +1107,6 @@
               }">
             </div>
           </div>
-
-          <div class="setting-group">
-            <label class="setting-label">Chapter Reading Time</label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="default" ${
-                CONFIG.chapterTimeStyle === "default" ? "checked" : ""
-              }>
-              Default
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="colored" ${
-                CONFIG.chapterTimeStyle === "colored" ? "checked" : ""
-              }>
-              Notice
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="timeonly" ${
-                CONFIG.chapterTimeStyle === "timeonly" ? "checked" : ""
-              }>
-              Time Only
-            </label>
-          </div>
         </div>
 
         <div class="button-group">
@@ -1083,12 +1165,22 @@
     // Toggle reading time settings
     const readingTimeCheckbox = form.querySelector("#enableReadingTime");
     const readingTimeSettings = form.querySelector("#readingTimeSettings");
+    const chapterTimeStyleSettings = form.querySelector("#chapterTimeStyleSettings");
+    const enableChapterStatsCheckbox = form.querySelector("#enableChapterStats");
+    
     const toggleReadingTimeSettings = () => {
       readingTimeSettings.style.display = readingTimeCheckbox.checked
         ? "block"
         : "none";
     };
     readingTimeCheckbox.addEventListener("change", toggleReadingTimeSettings);
+    
+    const toggleChapterTimeStyleSettings = () => {
+      chapterTimeStyleSettings.style.display = enableChapterStatsCheckbox.checked
+        ? "block"
+        : "none";
+    };
+    enableChapterStatsCheckbox.addEventListener("change", toggleChapterTimeStyleSettings);
 
     // Toggle quality score settings
     const qualityScoreCheckbox = form.querySelector("#enableQualityScore");
@@ -1157,6 +1249,16 @@
       .querySelector("#closePopup")
       .addEventListener("click", () => popup.remove());
 
+    // Show/hide the nested Exclude My Content option immediately and on change
+    const alwaysSortCheckbox = form.querySelector('#alwaysSortQualityScore');
+    const excludeMyContentDiv = form.querySelector('#excludeMyContentSubsetting');
+    if (alwaysSortCheckbox && excludeMyContentDiv) {
+      excludeMyContentDiv.style.display = alwaysSortCheckbox.checked ? '' : 'none';
+      alwaysSortCheckbox.addEventListener('change', function() {
+        excludeMyContentDiv.style.display = this.checked ? '' : 'none';
+      });
+    }
+
     // Form submission
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -1205,6 +1307,9 @@
       CONFIG.alwaysSortQualityScore = form.querySelector(
         "#alwaysSortQualityScore"
       ).checked;
+      CONFIG.excludeMyContentFromSort = form.querySelector(
+        "#excludeMyContentFromSort"
+      )?.checked || false;
       CONFIG.hideHitcount = form.querySelector("#hideHitcount").checked;
       CONFIG.minKudosToShowScore = parseInt(
         form.querySelector("#minKudosToShowScore").value
@@ -1359,16 +1464,37 @@
   const init = () => {
     checkCountable();
     initSharedMenu();
-    if (CONFIG.alwaysCountReadingTime) setTimeout(calculateReadtime, 100);
-    if (CONFIG.alwaysCountQualityScore) {
-      setTimeout(() => {
+    
+    // Detect and store username early
+    const username = detectAndStoreUsername();
+    
+    // Consolidate all delayed operations into a single setTimeout
+    setTimeout(() => {
+      if (CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) {
+        calculateReadtime();
+      }
+      
+      if (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore) {
         countRatio();
-        if (CONFIG.alwaysSortQualityScore) sortByRatio();
-      }, 100);
-    }
-    if (CONFIG.enableChapterStats) {
-      setTimeout(calculateChapterStats, 150);
-    }
+        
+        // Determine if this is a "my content" page
+        const myContentPage = isMyContentPage(username);
+        
+        // Only sort if:
+        // 1. Auto-sort is enabled, AND
+        // 2. Either exclude is off OR this is not my content page
+        if (
+          CONFIG.alwaysSortQualityScore &&
+          !(CONFIG.excludeMyContentFromSort && myContentPage)
+        ) {
+          sortByRatio();
+        }
+      }
+      
+      if (CONFIG.enableChapterStats) {
+        calculateChapterStats();
+      }
+    }, 150);
   };
 
   loadUserSettings();

@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       2.9
+// @version       2.8
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -13,10 +13,10 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @run-at        document-end
+// @namespace 
+// @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
+// @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
-
-
-// CRITICAL: Update every version number Ctrl+H
 
 (function () {
   "use strict";
@@ -90,46 +90,10 @@
     primaryCharacters: "",
     primaryRelpad: "1",
     primaryCharpad: "5",
-    _version: "2.9",
   };
 
   // Storage key for single config object
   const STORAGE_KEY = "ao3_advanced_blocker_config";
-
-  // Sanitize and validate config to prevent corruption
-  function sanitizeConfig(config) {
-    const sanitized = {};
-
-    // String fields - ensure they're strings
-    const stringFields = [
-      'tagBlacklist', 'tagWhitelist', 'tagHighlights',
-      'authorBlacklist', 'titleBlacklist', 'summaryBlacklist',
-      'allowedLanguages', 'primaryRelationships', 'primaryCharacters',
-      'minWords', 'maxWords', 'maxCrossovers', 'highlightColor',
-      'primaryRelpad', 'primaryCharpad', 'username'
-    ];
-
-    stringFields.forEach(field => {
-      const value = config[field];
-      sanitized[field] = typeof value === 'string' ? value : (value === null ? null : String(DEFAULTS[field]));
-    });
-
-    // Boolean fields - ensure they're booleans
-    const boolFields = [
-      'blockComplete', 'blockOngoing', 'showReasons',
-      'showPlaceholders', 'debugMode', 'disableOnMyContent',
-      'enableHighlightingOnMyContent'
-    ];
-
-    boolFields.forEach(field => {
-      sanitized[field] = typeof config[field] === 'boolean' ? config[field] : DEFAULTS[field];
-    });
-
-    // Add version
-    sanitized._version = "2.9";
-
-    return sanitized;
-  }
 
   // Custom styles for the script
   const STYLE = `
@@ -339,7 +303,7 @@
   .ao3-blocker-menu-dialog textarea::placeholder {
     opacity: 0.6 !important;
   }
-
+  
   /* Form elements use page background color when focused */
   .ao3-blocker-menu-dialog input[type="text"],
   .ao3-blocker-menu-dialog input[type="number"],
@@ -355,32 +319,11 @@
   function loadConfig() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-
-      if (!stored) {
-        // No stored config, return defaults
-        return { ...DEFAULTS };
-      }
-
-      const parsedConfig = JSON.parse(stored);
-
-      // Check if config needs sanitization (missing version or old version)
-      const needsSanitization = !parsedConfig._version || parsedConfig._version !== "2.9";
-
-      if (needsSanitization) {
-        console.log("[AO3 Advanced Blocker] Updating config to v2.9");
-        const sanitized = sanitizeConfig({ ...DEFAULTS, ...parsedConfig });
-        saveConfig(sanitized);
-        return sanitized;
-      }
-
-      // Config is already v2.9, merge with defaults for any new fields
-      return { ...DEFAULTS, ...parsedConfig };
+      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : { ...DEFAULTS };
     } catch (e) {
       console.error("[AO3 Advanced Blocker] Failed to load config:", e);
-      console.warn("[AO3 Advanced Blocker] Using default config");
-      // If parsing fails, return defaults
-      return { ...DEFAULTS };
     }
+    return { ...DEFAULTS };
   }
 
   // Save configuration to single object storage
@@ -578,32 +521,50 @@
     window.ao3Blocker.config = {
       showReasons: config.showReasons,
       showPlaceholders: config.showPlaceholders,
-      authorBlacklist: config.authorBlacklist
+      authorBlacklist: (typeof config.authorBlacklist === "string"
+        ? config.authorBlacklist
+        : ""
+      )
         .toLowerCase()
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean),
-      titleBlacklist: config.titleBlacklist
+      titleBlacklist: (typeof config.titleBlacklist === "string"
+        ? config.titleBlacklist
+        : ""
+      )
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagBlacklist: config.tagBlacklist
+      tagBlacklist: (typeof config.tagBlacklist === "string"
+        ? config.tagBlacklist
+        : ""
+      )
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagWhitelist: config.tagWhitelist
+      tagWhitelist: (typeof config.tagWhitelist === "string"
+        ? config.tagWhitelist
+        : ""
+      )
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagHighlights: config.tagHighlights
+      tagHighlights: (typeof config.tagHighlights === "string"
+        ? config.tagHighlights
+        : ""
+      )
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      summaryBlacklist: config.summaryBlacklist
+      summaryBlacklist: (typeof config.summaryBlacklist === "string"
+        ? config.summaryBlacklist
+        : ""
+      )
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
@@ -611,7 +572,10 @@
 
       highlightColor: config.highlightColor,
       debugMode: config.debugMode,
-      allowedLanguages: config.allowedLanguages
+      allowedLanguages: (typeof config.allowedLanguages === "string"
+        ? config.allowedLanguages
+        : ""
+      )
         .toLowerCase()
         .split(/,(?:\s)?/g)
         .map((s) => s.trim())
@@ -636,12 +600,18 @@
       blockComplete: config.blockComplete,
       blockOngoing: config.blockOngoing,
       // Primary Pairing Config - normalize for case/punctuation insensitive matching
-      primaryRelationships: config.primaryRelationships
+      primaryRelationships: (typeof config.primaryRelationships === "string"
+        ? config.primaryRelationships
+        : ""
+      )
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
         .map((s) => normalizeText(s)),
-      primaryCharacters: config.primaryCharacters
+      primaryCharacters: (typeof config.primaryCharacters === "string"
+        ? config.primaryCharacters
+        : ""
+      )
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
@@ -1190,7 +1160,6 @@
         primaryCharpad:
           dialog.querySelector("#primary-charpad-input").value ||
           DEFAULTS.primaryCharpad,
-        _version: "2.9",
       };
 
       // Save using our custom storage system
