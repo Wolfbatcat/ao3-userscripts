@@ -2,7 +2,7 @@
 // @name        AO3: Reading Time & Quality Score
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
-// @version     2.7
+// @version     2.8
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
@@ -92,7 +92,11 @@
     }
   };
 
-
+  // Save a single setting to CONFIG and localStorage
+  function saveSetting(key, value) {
+    CONFIG[key] = value;
+    saveAllSettings();
+  }
 
   // Reset all settings to defaults
   const resetAllSettings = () => {
@@ -110,68 +114,72 @@
   // Detect and store username
   const detectAndStoreUsername = () => {
     let username = null;
-    
+
     // Method 1: Try to get from user menu
-    const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
+    const userLink = document.querySelector(
+      'li.user.logged-in a[href^="/users/"]'
+    );
     if (userLink) {
-      const match = userLink.getAttribute('href').match(/^\/users\/([^\/]+)/);
+      const match = userLink.getAttribute("href").match(/^\/users\/([^\/]+)/);
       if (match) username = match[1];
     }
-    
+
     // Method 2: Check if already stored in config
     if (!username && CONFIG.username) {
       username = CONFIG.username;
     }
-    
+
     // Method 3: Try to get from URL path
     if (!username) {
       const urlMatch = window.location.pathname.match(/^\/users\/([^\/]+)/);
       if (urlMatch) username = urlMatch[1];
     }
-    
+
     // Method 4: Try to get from user_id query parameter (for bookmark pages)
     if (!username) {
       const params = new URLSearchParams(window.location.search);
-      const paramUserId = params.get('user_id');
+      const paramUserId = params.get("user_id");
       if (paramUserId) {
         username = paramUserId;
       }
     }
-    
+
     // If we found a username and it's not stored yet, store it
     if (username && username !== CONFIG.username) {
-      saveSetting('username', username);
+      saveSetting("username", username);
     }
-    
+
     return username;
   };
 
   // Check if current page is a "my content" page
   const isMyContentPage = (username) => {
     if (!username) return false;
-    
+
     const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    
+
     // Patterns for user content pages in the URL path
     const patterns = [
-      new RegExp(`^/users/${escapedUsername}(/pseuds/[^/]+)?(/(bookmarks|works))?(/|$)`), // dashboard, bookmarks, works
-      new RegExp(`^/users/${escapedUsername}/readings(/|$)`) // history page
+      new RegExp(
+        `^/users/${escapedUsername}(/pseuds/[^/]+)?(/(bookmarks|works))?(/|$)`
+      ), // dashboard, bookmarks, works
+      new RegExp(`^/users/${escapedUsername}/readings(/|$)`), // history page
     ];
-    
+
     // Check path-based patterns
-    if (patterns.some(r => r.test(window.location.pathname))) {
+    if (patterns.some((r) => r.test(window.location.pathname))) {
       return true;
     }
-    
+
     // Special case: /bookmarks with user_id parameter
-    if (window.location.pathname.startsWith('/bookmarks')) {
+    if (window.location.pathname.startsWith("/bookmarks")) {
       const params = new URLSearchParams(window.location.search);
-      const paramUserId = params.get('user_id');
+      const paramUserId = params.get("user_id");
       if (paramUserId && paramUserId.toLowerCase() === username.toLowerCase()) {
         return true;
       }
     }
-    
+
     return false;
   };
 
@@ -701,133 +709,10 @@
 
   // --- SETTINGS POPUP ---
   const showSettingsPopup = () => {
-    // Get AO3 input field background color
-    let inputBg = "#fffaf5"; // fallback
-    const testInput = document.createElement("input");
-    document.body.appendChild(testInput);
-    try {
-      const computedStyle = window.getComputedStyle(testInput);
-      const computedBg = computedStyle.backgroundColor;
-      if (
-        computedBg &&
-        computedBg !== "rgba(0, 0, 0, 0)" &&
-        computedBg !== "transparent"
-      ) {
-        inputBg = computedBg;
-      }
-    } catch (e) {}
-    testInput.remove();
-    const popup = document.createElement("div");
-    popup.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: ${inputBg};
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            z-index: 10000;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            font-family: inherit;
-            font-size: inherit;
-            box-sizing: border-box;
-        `;
-    // Ensure headings inherit font family and add tooltip styles
-    const style = document.createElement("style");
-    style.textContent = `
-      #ao3-rtqs-popup .settings-section {
-        background: rgba(0,0,0,0.03);
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-left: 4px solid currentColor;
-      }
-      #ao3-rtqs-popup .section-title {
-        margin-top: 0;
-        margin-bottom: 15px;
-        font-size: 1.2em;
-        font-weight: bold;
-        color: inherit;
-        opacity: 0.85;
-        font-family: inherit;
-      }
-      #ao3-rtqs-popup .setting-group {
-        margin-bottom: 15px;
-      }
-      #ao3-rtqs-popup .setting-label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: bold;
-        color: inherit;
-        opacity: 0.9;
-      }
-      #ao3-rtqs-popup .checkbox-label {
-        display: block;
-        font-weight: normal;
-        color: inherit;
-        margin-bottom: 8px;
-      }
-      #ao3-rtqs-popup .radio-label {
-        display: block;
-        font-weight: normal;
-        color: inherit;
-        margin-left: 20px;
-        margin-bottom: 8px;
-      }
-      #ao3-rtqs-popup .subsettings {
-        padding-left: 20px;
-        margin-top: 10px;
-      }
-      #ao3-rtqs-popup .two-column {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-      }
-      #ao3-rtqs-popup .button-group {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 20px;
-      }
-      #ao3-rtqs-popup .button-group button {
-        flex: 1;
-        padding: 10px;
-        color: inherit;
-        opacity: 0.9;
-      }
-      #ao3-rtqs-popup .reset-link {
-        text-align: center;
-        margin-top: 10px;
-        color: inherit;
-        opacity: 0.7;
-      }
-      #ao3-rtqs-popup .symbol.question {
-        font-size: 0.5em;
-        vertical-align: middle;
-      }
-      #ao3-rtqs-popup input[type="text"],
-      #ao3-rtqs-popup input[type="number"],
-      #ao3-rtqs-popup input[type="color"],
-      #ao3-rtqs-popup select,
-      #ao3-rtqs-popup textarea {
-        width: 100%;
-        box-sizing: border-box;
-      }
-      #ao3-rtqs-popup input[type="text"]:focus,
-      #ao3-rtqs-popup input[type="number"]:focus,
-      #ao3-rtqs-popup input[type="color"]:focus,
-      #ao3-rtqs-popup select:focus,
-      #ao3-rtqs-popup textarea:focus {
-        background: ${inputBg} !important;
-      }
-    `;
-    document.head.appendChild(style);
+    if (!window.AO3MenuHelpers) return;
 
-    popup.id = "ao3-rtqs-popup";
+    // Create dialog using helper
+    const popup = window.AO3MenuHelpers.createDialog("⏱️ Reading Time & Quality Score ⭐");
     const form = document.createElement("form");
 
     // Calculate values for display
@@ -839,284 +724,294 @@
       ? Math.ceil((CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100)
       : CONFIG.colorThresholdHigh;
 
-    form.innerHTML = `
-        <h3 style="text-align: center; margin-top: 0; color: inherit;">⏱️ Reading Time & Quality Score ⭐</h3>
+    // Create form content using helpers
+    const readingTimeSection = window.AO3MenuHelpers.createSection("📚 Reading Time");
+    readingTimeSection.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "enableReadingTime",
+      label: "Enable Reading Time",
+      checked: CONFIG.enableReadingTime
+    }));
 
-        <div class="settings-section">
-          <h4 class="section-title">📚 Reading Time</h4>
-          <div class="setting-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="enableReadingTime" ${
-                CONFIG.enableReadingTime ? "checked" : ""
-              }>
-              Enable Reading Time
-            </label>
-          </div>
-          <div id="readingTimeSettings" class="subsettings" style="${
-            CONFIG.enableReadingTime ? "" : "display: none;"
-          }">
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="alwaysCountReadingTime" ${
-                  CONFIG.alwaysCountReadingTime ? "checked" : ""
-                }>
-                Calculate automatically
-              </label>
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="enableChapterStats" ${
-                  CONFIG.enableChapterStats ? "checked" : ""
-                }>
-                Show chapter reading times
-                <span class="symbol question" title="Show word count and reading time at the start of each chapter"><span>?</span></span>
-              </label>
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">
-                Words per minute
-                <span class="symbol question" title="Average reading speed is 200-300 wpm. 375 is for faster readers."><span>?</span></span>
-              </label>
-              <input type="number" id="wpm" value="${
-                CONFIG.wpm
-              }" min="100" max="1000" step="25">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">
-                Yellow threshold (minutes)
-                <span class="symbol question" title="Works taking less than this many minutes will be colored green"><span>?</span></span>
-              </label>
-              <input type="number" id="readingTimeLvl1" value="${
-                CONFIG.readingTimeLvl1
-              }" min="5" max="240" step="5">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">
-                Red threshold (minutes)
-                <span class="symbol question" title="Works taking more than this many minutes will be colored red"><span>?</span></span>
-              </label>
-              <input type="number" id="readingTimeLvl2" value="${
-                CONFIG.readingTimeLvl2
-              }" min="30" max="480" step="10">
-            </div>
-          </div>
-        </div>
+    const readingTimeSettingsEl = window.AO3MenuHelpers.createSubsettings();
+    readingTimeSettingsEl.id = "readingTimeSettings";
+    readingTimeSettingsEl.style.display = CONFIG.enableReadingTime ? "" : "none";
 
-        <div class="settings-section">
-          <h4 class="section-title">💖 Quality Score</h4>
-          <div class="setting-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="enableQualityScore" ${
-                CONFIG.enableQualityScore ? "checked" : ""
-              }>
-              Enable Quality Score
-            </label>
-          </div>
-          <div id="qualityScoreSettings" class="subsettings" style="${
-            CONFIG.enableQualityScore ? "" : "display: none;"
-          }">
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="alwaysCountQualityScore" ${
-                  CONFIG.alwaysCountQualityScore ? "checked" : ""
-                }>
-                Calculate automatically
-              </label>
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="alwaysSortQualityScore" ${
-                  CONFIG.alwaysSortQualityScore ? "checked" : ""
-                }>
-                Sort by score automatically
-              </label>
-              <div class="subsettings" id="excludeMyContentSubsetting" style="margin-left:1em;${CONFIG.alwaysSortQualityScore ? '' : 'display:none;'}">
-                <label class="checkbox-label" title="Disable automatic sorting on your user dashboard, bookmarks, history, and works pages">
-                  <input type="checkbox" id="excludeMyContentFromSort" ${
-                    CONFIG.excludeMyContentFromSort ? "checked" : ""
-                  }>
-                  Exclude my content
-                  <span class="symbol question" title="Disable automatic sorting on your user dashboard, bookmarks, history, and works pages"><span>?</span></span>
-                </label>
-              </div>
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="hideHitcount" ${
-                  CONFIG.hideHitcount ? "checked" : ""
-                }>
-                Hide hit count
-              </label>
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">Minimum kudos to show score</label>
-              <input type="number" id="minKudosToShowScore" value="${
-                CONFIG.minKudosToShowScore
-              }" min="0" max="10000" step="1">
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="useNormalization" ${
-                  CONFIG.useNormalization ? "checked" : ""
-                }>
-                Normalize scores to 100%
-                <span class="symbol question" title="Scale the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable."><span>?</span></span>
-              </label>
-            </div>
-            <div id="userMaxScoreContainer" class="setting-group" style="${
-              CONFIG.useNormalization ? "" : "display: none;"
-            }">
-              <label class="setting-label">
-                Best Possible Raw Score <span id="normalizationLabel">${
-                  CONFIG.useNormalization ? "(for 100%)" : ""
-                }</span>
-                <span class="symbol question" title="The highest score you've seen in your fandom. Used to scale other scores to percentages."><span>?</span></span>
-              </label>
-              <input type="number" id="userMaxScore" value="${
-                CONFIG.userMaxScore
-              }" min="1" max="100" step="1">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">
-                Good Score <span id="thresholdLowLabel">${
-                  CONFIG.useNormalization ? "(%)" : ""
-                }</span>
-                <span class="symbol question" title="Scores at or above this threshold will be colored yellow"><span>?</span></span>
-              </label>
-              <input type="number" id="colorThresholdLow" value="${displayThresholdLow}" min="0.1" max="100" step="0.1">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label">
-                Excellent Score <span id="thresholdHighLabel">${
-                  CONFIG.useNormalization ? "(%)" : ""
-                }</span>
-                <span class="symbol question" title="Scores at or above this threshold will be colored green"><span>?</span></span>
-              </label>
-              <input type="number" id="colorThresholdHigh" value="${displayThresholdHigh}" min="0.1" max="100" step="0.1">
-            </div>
-          </div>
-        </div>
+    readingTimeSettingsEl.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "alwaysCountReadingTime",
+      label: "Calculate automatically",
+      checked: CONFIG.alwaysCountReadingTime
+    }));
 
-        <div class="settings-section">
-          <h4 class="section-title">🎨 Visual Styling</h4>
-          
-          <div id="chapterTimeStyleSettings" class="setting-group" style="${
-            CONFIG.enableChapterStats ? "" : "display: none;"
-          }">
-            <label class="setting-label">Chapter Reading Time Style:</label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="default" ${
-                CONFIG.chapterTimeStyle === "default" ? "checked" : ""
-              }>
-              Default
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="colored" ${
-                CONFIG.chapterTimeStyle === "colored" ? "checked" : ""
-              }>
-              Notice
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="chapterTimeStyle" value="timeonly" ${
-                CONFIG.chapterTimeStyle === "timeonly" ? "checked" : ""
-              }>
-              Time Only
-            </label>
-          </div>
+    readingTimeSettingsEl.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "enableChapterStats",
+      label: "Show chapter reading times",
+      checked: CONFIG.enableChapterStats,
+      tooltip: "Show word count and reading time at the start of each chapter"
+    }));
 
-          <div class="setting-group">
-            <label class="setting-label">Color Style:</label>
-            <label class="radio-label">
-              <input type="radio" name="colorStyle" value="none" ${
-                CONFIG.colorStyle === "none" ? "checked" : ""
-              }>
-              Default text
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="colorStyle" value="text" ${
-                CONFIG.colorStyle === "text" ? "checked" : ""
-              }>
-              Colored text
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="colorStyle" value="background" ${
-                CONFIG.colorStyle === "background" ? "checked" : ""
-              }>
-              Colored backgrounds
-            </label>
-          </div>
+    readingTimeSettingsEl.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "wpm",
+      label: "Words per minute",
+      value: CONFIG.wpm,
+      min: 100,
+      max: 1000,
+      step: 25,
+      tooltip: "Average reading speed is 200-300 wpm. 375 is for faster readers."
+    }));
 
-          <div id="colorPickerSettings" class="subsettings" style="${
-            CONFIG.colorStyle !== "none" ? "" : "display: none;"
-          }">
-            <div class="two-column">
-              <div class="setting-group">
-                <label class="setting-label">Green</label>
-                <input type="color" id="colorGreen" value="${
-                  CONFIG.colorGreen
-                }">
-              </div>
-              <div class="setting-group">
-                <label class="setting-label">Yellow</label>
-                <input type="color" id="colorYellow" value="${
-                  CONFIG.colorYellow
-                }">
-              </div>
-              <div class="setting-group">
-                <label class="setting-label">Red</label>
-                <input type="color" id="colorRed" value="${CONFIG.colorRed}">
-              </div>
-              <div class="setting-group" id="textColorContainer" style="${
-                CONFIG.colorStyle === "background" ? "" : "display: none;"
-              }">
-                <label class="setting-label">Text color</label>
-                <input type="color" id="colorText" value="${CONFIG.colorText}">
-              </div>
-            </div>
-          </div>
+    readingTimeSettingsEl.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "readingTimeLvl1",
+      label: "Yellow threshold (minutes)",
+      value: CONFIG.readingTimeLvl1,
+      min: 5,
+      max: 240,
+      step: 5,
+      tooltip: "Works taking less than this many minutes will be colored green"
+    }));
 
-          <div class="setting-group">
-            <label class="setting-label">Icons:</label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="useIcons" ${
-                CONFIG.useIcons ? "checked" : ""
-              }>
-              Use icons instead of text labels
-              <span class="symbol question" title="Replace 'Time:' and 'Score:' labels with icons"><span>?</span></span>
-            </label>
-          </div>
+    readingTimeSettingsEl.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "readingTimeLvl2",
+      label: "Red threshold (minutes)",
+      value: CONFIG.readingTimeLvl2,
+      min: 30,
+      max: 480,
+      step: 10,
+      tooltip: "Works taking more than this many minutes will be colored red"
+    }));
 
-          <div id="iconColorSettings" class="subsettings" style="${
-            CONFIG.useIcons ? "" : "display: none;"
-          }">
-            <div class="setting-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="useCustomIconColor" ${
-                  CONFIG.iconColor ? "checked" : ""
-                }>
-                Use custom icon color
-                <span class="symbol question" title="When unchecked, icons will inherit color from your site skin. When checked, you can set a specific color."><span>?</span></span>
-              </label>
-            </div>
-            <div id="customIconColorPicker" class="setting-group" style="${
-              CONFIG.iconColor ? "" : "display: none;"
-            }">
-              <label class="setting-label">Icon color</label>
-              <input type="color" id="iconColor" value="${
-                CONFIG.iconColor || "#000000"
-              }">
-            </div>
-          </div>
-        </div>
+    readingTimeSection.appendChild(readingTimeSettingsEl);
+    form.appendChild(readingTimeSection);
 
-        <div class="button-group">
-          <button type="submit">Save</button>
-          <button type="button" id="closePopup">Close</button>
-        </div>
-        <div class="reset-link">
-          <a href="#" id="resetSettingsLink">Reset to Default Settings</a>
-        </div>
-      `;
+    // Quality Score section
+    const qualityScoreSection = window.AO3MenuHelpers.createSection("💖 Quality Score");
+    qualityScoreSection.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "enableQualityScore",
+      label: "Enable Quality Score",
+      checked: CONFIG.enableQualityScore
+    }));
+
+    const qualityScoreSettingsEl = window.AO3MenuHelpers.createSubsettings();
+    qualityScoreSettingsEl.id = "qualityScoreSettings";
+    qualityScoreSettingsEl.style.display = CONFIG.enableQualityScore ? "" : "none";
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "alwaysCountQualityScore",
+      label: "Calculate automatically",
+      checked: CONFIG.alwaysCountQualityScore
+    }));
+
+    const alwaysSortGroup = window.AO3MenuHelpers.createSettingGroup();
+    alwaysSortGroup.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "alwaysSortQualityScore",
+      label: "Sort by score automatically",
+      checked: CONFIG.alwaysSortQualityScore
+    }));
+
+    const excludeMyContentSubsetting = window.AO3MenuHelpers.createSubsettings();
+    excludeMyContentSubsetting.id = "excludeMyContentSubsetting";
+    excludeMyContentSubsetting.style.display = CONFIG.alwaysSortQualityScore ? "" : "none";
+    excludeMyContentSubsetting.style.marginLeft = "1em";
+    excludeMyContentSubsetting.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "excludeMyContentFromSort",
+      label: "Exclude my content",
+      checked: CONFIG.excludeMyContentFromSort,
+      tooltip: "Disable automatic sorting on your user dashboard, bookmarks, history, and works pages"
+    }));
+
+    alwaysSortGroup.appendChild(excludeMyContentSubsetting);
+    qualityScoreSettings.appendChild(alwaysSortGroup);
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "hideHitcount",
+      label: "Hide hit count",
+      checked: CONFIG.hideHitcount
+    }));
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "minKudosToShowScore",
+      label: "Minimum kudos to show score",
+      value: CONFIG.minKudosToShowScore,
+      min: 0,
+      max: 10000,
+      step: 1
+    }));
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "useNormalization",
+      label: "Normalize scores to 100%",
+      checked: CONFIG.useNormalization,
+      tooltip: "Scale the raw score so your 'Best Possible Raw Score' equals 100%. Makes scores from different fandoms more comparable."
+    }));
+
+    const userMaxScoreContainer = window.AO3MenuHelpers.createSettingGroup();
+    userMaxScoreContainer.id = "userMaxScoreContainer";
+    userMaxScoreContainer.style.display = CONFIG.useNormalization ? "" : "none";
+
+    const userMaxScoreLabel = window.AO3MenuHelpers.createLabel(
+      `Best Possible Raw Score <span id="normalizationLabel">${CONFIG.useNormalization ? "(for 100%)" : ""}</span>`,
+      "userMaxScore"
+    );
+    userMaxScoreLabel.appendChild(window.AO3MenuHelpers.createTooltip("The highest score you've seen in your fandom. Used to scale other scores to percentages."));
+    userMaxScoreContainer.appendChild(userMaxScoreLabel);
+
+    userMaxScoreContainer.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "userMaxScore",
+      value: CONFIG.userMaxScore,
+      min: 1,
+      max: 100,
+      step: 1
+    }));
+
+    qualityScoreSettings.appendChild(userMaxScoreContainer);
+
+    const thresholdLowLabel = window.AO3MenuHelpers.createLabel(
+      `Good Score <span id="thresholdLowLabel">${CONFIG.useNormalization ? "(%)" : ""}</span>`,
+      "colorThresholdLow"
+    );
+    thresholdLowLabel.appendChild(window.AO3MenuHelpers.createTooltip("Scores at or above this threshold will be colored yellow"));
+    qualityScoreSettings.appendChild(thresholdLowLabel);
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "colorThresholdLow",
+      value: displayThresholdLow,
+      min: 0.1,
+      max: 100,
+      step: 0.1
+    }));
+
+    const thresholdHighLabel = window.AO3MenuHelpers.createLabel(
+      `Excellent Score <span id="thresholdHighLabel">${CONFIG.useNormalization ? "(%)" : ""}</span>`,
+      "colorThresholdHigh"
+    );
+    thresholdHighLabel.appendChild(window.AO3MenuHelpers.createTooltip("Scores at or above this threshold will be colored green"));
+    qualityScoreSettings.appendChild(thresholdHighLabel);
+
+    qualityScoreSettings.appendChild(window.AO3MenuHelpers.createNumberInput({
+      id: "colorThresholdHigh",
+      value: displayThresholdHigh,
+      min: 0.1,
+      max: 100,
+      step: 0.1
+    }));
+
+    qualityScoreSection.appendChild(qualityScoreSettings);
+    form.appendChild(qualityScoreSection);
+
+    // Visual Styling section
+    const visualStylingSection = window.AO3MenuHelpers.createSection("🎨 Visual Styling");
+
+    const chapterTimeStyleSettings = window.AO3MenuHelpers.createSettingGroup();
+    chapterTimeStyleSettings.id = "chapterTimeStyleSettings";
+    chapterTimeStyleSettings.style.display = CONFIG.enableChapterStats ? "" : "none";
+
+    chapterTimeStyleSettings.appendChild(window.AO3MenuHelpers.createLabel("Chapter Reading Time Style:"));
+
+    chapterTimeStyleSettings.appendChild(window.AO3MenuHelpers.createRadioGroup({
+      name: "chapterTimeStyle",
+      options: [
+        { value: "default", label: "Default", checked: CONFIG.chapterTimeStyle === "default" },
+        { value: "colored", label: "Notice", checked: CONFIG.chapterTimeStyle === "colored" },
+        { value: "timeonly", label: "Time Only", checked: CONFIG.chapterTimeStyle === "timeonly" }
+      ]
+    }));
+
+    visualStylingSection.appendChild(chapterTimeStyleSettings);
+
+    visualStylingSection.appendChild(window.AO3MenuHelpers.createLabel("Color Style:"));
+
+    visualStylingSection.appendChild(window.AO3MenuHelpers.createRadioGroup({
+      name: "colorStyle",
+      options: [
+        { value: "none", label: "Default text", checked: CONFIG.colorStyle === "none" },
+        { value: "text", label: "Colored text", checked: CONFIG.colorStyle === "text" },
+        { value: "background", label: "Colored backgrounds", checked: CONFIG.colorStyle === "background" }
+      ]
+    }));
+
+    const colorPickerSettings = window.AO3MenuHelpers.createSubsettings();
+    colorPickerSettings.id = "colorPickerSettings";
+    colorPickerSettings.style.display = CONFIG.colorStyle !== "none" ? "" : "none";
+
+    const colorGrid = window.AO3MenuHelpers.createTwoColumnLayout(
+      window.AO3MenuHelpers.createColorPicker({
+        id: "colorGreen",
+        label: "Green",
+        value: CONFIG.colorGreen
+      }),
+      window.AO3MenuHelpers.createColorPicker({
+        id: "colorYellow",
+        label: "Yellow",
+        value: CONFIG.colorYellow
+      })
+    );
+
+    const colorGrid2 = window.AO3MenuHelpers.createTwoColumnLayout(
+      window.AO3MenuHelpers.createColorPicker({
+        id: "colorRed",
+        label: "Red",
+        value: CONFIG.colorRed
+      }),
+      null
+    );
+
+    const textColorContainer = window.AO3MenuHelpers.createSettingGroup();
+    textColorContainer.id = "textColorContainer";
+    textColorContainer.style.display = CONFIG.colorStyle === "background" ? "" : "none";
+    textColorContainer.appendChild(window.AO3MenuHelpers.createColorPicker({
+      id: "colorText",
+      label: "Text color",
+      value: CONFIG.colorText
+    }));
+
+    colorGrid2.appendChild(textColorContainer);
+
+    colorPickerSettings.appendChild(colorGrid);
+    colorPickerSettings.appendChild(colorGrid2);
+
+    visualStylingSection.appendChild(colorPickerSettings);
+
+    visualStylingSection.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "useIcons",
+      label: "Use icons instead of text labels",
+      checked: CONFIG.useIcons,
+      tooltip: "Replace 'Time:' and 'Score:' labels with icons"
+    }));
+
+    const iconColorSettings = window.AO3MenuHelpers.createSubsettings();
+    iconColorSettings.id = "iconColorSettings";
+    iconColorSettings.style.display = CONFIG.useIcons ? "" : "none";
+
+    iconColorSettings.appendChild(window.AO3MenuHelpers.createCheckbox({
+      id: "useCustomIconColor",
+      label: "Use custom icon color",
+      checked: CONFIG.iconColor ? true : false,
+      tooltip: "When unchecked, icons will inherit color from your site skin. When checked, you can set a specific color."
+    }));
+
+    const customIconColorPicker = window.AO3MenuHelpers.createSettingGroup();
+    customIconColorPicker.id = "customIconColorPicker";
+    customIconColorPicker.style.display = CONFIG.iconColor ? "" : "none";
+    customIconColorPicker.appendChild(window.AO3MenuHelpers.createColorPicker({
+      id: "iconColor",
+      label: "Icon color",
+      value: CONFIG.iconColor || "#000000"
+    }));
+
+    iconColorSettings.appendChild(customIconColorPicker);
+    visualStylingSection.appendChild(iconColorSettings);
+
+    form.appendChild(visualStylingSection);
+
+    // Button group
+    const buttonGroup = window.AO3MenuHelpers.createButtonGroup([
+      { text: "Save", id: "saveButton" },
+      { text: "Close", id: "closePopup", primary: false }
+    ]);
+    form.appendChild(buttonGroup);
+
+    // Reset link
+    const resetLink = window.AO3MenuHelpers.createResetLink("Reset to Default Settings", resetAllSettings);
+    form.appendChild(resetLink);
 
     // Toggle color picker settings and text color visibility
     const colorStyleRadios = form.querySelectorAll('input[name="colorStyle"]');
@@ -1165,22 +1060,28 @@
     // Toggle reading time settings
     const readingTimeCheckbox = form.querySelector("#enableReadingTime");
     const readingTimeSettings = form.querySelector("#readingTimeSettings");
-    const chapterTimeStyleSettings = form.querySelector("#chapterTimeStyleSettings");
-    const enableChapterStatsCheckbox = form.querySelector("#enableChapterStats");
-    
+    const chapterTimeStyleSettings = form.querySelector(
+      "#chapterTimeStyleSettings"
+    );
+    const enableChapterStatsCheckbox = form.querySelector(
+      "#enableChapterStats"
+    );
+
     const toggleReadingTimeSettings = () => {
       readingTimeSettings.style.display = readingTimeCheckbox.checked
         ? "block"
         : "none";
     };
     readingTimeCheckbox.addEventListener("change", toggleReadingTimeSettings);
-    
+
     const toggleChapterTimeStyleSettings = () => {
-      chapterTimeStyleSettings.style.display = enableChapterStatsCheckbox.checked
-        ? "block"
-        : "none";
+      chapterTimeStyleSettings.style.display =
+        enableChapterStatsCheckbox.checked ? "block" : "none";
     };
-    enableChapterStatsCheckbox.addEventListener("change", toggleChapterTimeStyleSettings);
+    enableChapterStatsCheckbox.addEventListener(
+      "change",
+      toggleChapterTimeStyleSettings
+    );
 
     // Toggle quality score settings
     const qualityScoreCheckbox = form.querySelector("#enableQualityScore");
@@ -1250,12 +1151,16 @@
       .addEventListener("click", () => popup.remove());
 
     // Show/hide the nested Exclude My Content option immediately and on change
-    const alwaysSortCheckbox = form.querySelector('#alwaysSortQualityScore');
-    const excludeMyContentDiv = form.querySelector('#excludeMyContentSubsetting');
+    const alwaysSortCheckbox = form.querySelector("#alwaysSortQualityScore");
+    const excludeMyContentDiv = form.querySelector(
+      "#excludeMyContentSubsetting"
+    );
     if (alwaysSortCheckbox && excludeMyContentDiv) {
-      excludeMyContentDiv.style.display = alwaysSortCheckbox.checked ? '' : 'none';
-      alwaysSortCheckbox.addEventListener('change', function() {
-        excludeMyContentDiv.style.display = this.checked ? '' : 'none';
+      excludeMyContentDiv.style.display = alwaysSortCheckbox.checked
+        ? ""
+        : "none";
+      alwaysSortCheckbox.addEventListener("change", function () {
+        excludeMyContentDiv.style.display = this.checked ? "" : "none";
       });
     }
 
@@ -1307,9 +1212,8 @@
       CONFIG.alwaysSortQualityScore = form.querySelector(
         "#alwaysSortQualityScore"
       ).checked;
-      CONFIG.excludeMyContentFromSort = form.querySelector(
-        "#excludeMyContentFromSort"
-      )?.checked || false;
+      CONFIG.excludeMyContentFromSort =
+        form.querySelector("#excludeMyContentFromSort")?.checked || false;
       CONFIG.hideHitcount = form.querySelector("#hideHitcount").checked;
       CONFIG.minKudosToShowScore = parseInt(
         form.querySelector("#minKudosToShowScore").value
@@ -1346,79 +1250,35 @@
 
   // --- SHARED MENU SYSTEM ---
   function initSharedMenu() {
-    const menuContainer = document.getElementById("scriptconfig");
-    if (!menuContainer) {
-      const headerMenu = document.querySelector(
-        "ul.primary.navigation.actions"
-      );
-      const searchItem = headerMenu
-        ? headerMenu.querySelector("li.search")
-        : null;
-      if (!headerMenu || !searchItem) return;
-
-      // Create menu container
-      const newMenuContainer = document.createElement("li");
-      newMenuContainer.className = "dropdown";
-      newMenuContainer.id = "scriptconfig";
-
-      const title = document.createElement("a");
-      title.className = "dropdown-toggle";
-      title.href = "/";
-      title.setAttribute("data-toggle", "dropdown");
-      title.setAttribute("data-target", "#");
-      title.textContent = "Userscripts";
-      newMenuContainer.appendChild(title);
-
-      const menu = document.createElement("ul");
-      menu.className = "menu dropdown-menu";
-      newMenuContainer.appendChild(menu);
-
-      // Insert before search item
-      headerMenu.insertBefore(newMenuContainer, searchItem);
-    }
-
-    // Add menu items
-    const menu = document.querySelector("#scriptconfig .dropdown-menu");
-    if (menu) {
-      const showMenuOptions = isAllowedMenuPage();
-
+    if (window.AO3MenuHelpers) {
       // Always add settings menu item
-      const settingsItem = document.createElement("li");
-      const settingsLink = document.createElement("a");
-      settingsLink.href = "javascript:void(0);";
-      settingsLink.id = "opencfg_reading_quality";
-      settingsLink.textContent = "Reading Time & Quality Score";
-      settingsLink.addEventListener("click", showSettingsPopup);
-      settingsItem.appendChild(settingsLink);
-      menu.appendChild(settingsItem);
+      window.AO3MenuHelpers.addToSharedMenu({
+        id: 'opencfg_reading_quality',
+        text: 'Reading Time & Quality Score',
+        onClick: showSettingsPopup
+      });
 
       // Add separator if we have conditional items
       if (CONFIG.enableReadingTime || CONFIG.enableQualityScore) {
-        const separator = document.createElement("li");
-        separator.innerHTML = "<hr style='margin: 5px 0;'>";
-        menu.appendChild(separator);
+        // Note: separator is handled automatically by the library
       }
 
       // Reading Time manual calculation only if 'Calculate automatically' is unchecked
       if (CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime) {
-        const readingTimeItem = document.createElement("li");
-        const readingTimeLink = document.createElement("a");
-        readingTimeLink.href = "javascript:void(0);";
-        readingTimeLink.textContent = "Reading Time: Calculate Times";
-        readingTimeLink.addEventListener("click", calculateReadtime);
-        readingTimeItem.appendChild(readingTimeLink);
-        menu.appendChild(readingTimeItem);
+        window.AO3MenuHelpers.addToSharedMenu({
+          id: 'calc_reading_time',
+          text: 'Reading Time: Calculate Times',
+          onClick: calculateReadtime
+        });
       }
 
       // Quality Score manual calculation only if 'Calculate automatically' is unchecked
       if (CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore) {
-        const qualityScoreItem = document.createElement("li");
-        const qualityScoreLink = document.createElement("a");
-        qualityScoreLink.href = "javascript:void(0);";
-        qualityScoreLink.textContent = "Quality Score: Calculate Scores";
-        qualityScoreLink.addEventListener("click", countRatio);
-        qualityScoreItem.appendChild(qualityScoreLink);
-        menu.appendChild(qualityScoreItem);
+        window.AO3MenuHelpers.addToSharedMenu({
+          id: 'calc_quality_score',
+          text: 'Quality Score: Calculate Scores',
+          onClick: countRatio
+        });
       }
 
       // Sort by Score only if 'Sort by score automatically' is unchecked AND not on actual works pages AND allowed by showMenuOptions
@@ -1426,18 +1286,16 @@
         window.location.pathname
       );
       if (
-        showMenuOptions &&
+        isAllowedMenuPage() &&
         CONFIG.enableQualityScore &&
         !CONFIG.alwaysSortQualityScore &&
         !isWorksPage
       ) {
-        const sortScoreItem = document.createElement("li");
-        const sortScoreLink = document.createElement("a");
-        sortScoreLink.href = "javascript:void(0);";
-        sortScoreLink.textContent = "Quality Score: Sort by Score";
-        sortScoreLink.addEventListener("click", () => sortByRatio());
-        sortScoreItem.appendChild(sortScoreLink);
-        menu.appendChild(sortScoreItem);
+        window.AO3MenuHelpers.addToSharedMenu({
+          id: 'sort_by_score',
+          text: 'Quality Score: Sort by Score',
+          onClick: () => sortByRatio()
+        });
       }
     }
   }
@@ -1464,22 +1322,22 @@
   const init = () => {
     checkCountable();
     initSharedMenu();
-    
+
     // Detect and store username early
     const username = detectAndStoreUsername();
-    
+
     // Consolidate all delayed operations into a single setTimeout
     setTimeout(() => {
       if (CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) {
         calculateReadtime();
       }
-      
+
       if (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore) {
         countRatio();
-        
+
         // Determine if this is a "my content" page
         const myContentPage = isMyContentPage(username);
-        
+
         // Only sort if:
         // 1. Auto-sort is enabled, AND
         // 2. Either exclude is off OR this is not my content page
@@ -1490,7 +1348,7 @@
           sortByRatio();
         }
       }
-      
+
       if (CONFIG.enableChapterStats) {
         calculateChapterStats();
       }

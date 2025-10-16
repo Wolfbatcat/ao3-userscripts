@@ -2,7 +2,7 @@
 // @name          AO3: Advanced Blocker
 // @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
-// @version       2.8
+// @version       2.9
 // @license       MIT
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -13,10 +13,9 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @run-at        document-end
-// @namespace 
-// @downloadURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.user.js
-// @updateURL https://update.greasyfork.org/scripts/549942/AO3%3A%20Advanced%20Blocker.meta.js
 // ==/UserScript==
+
+// CRITICAL: Update every version number Ctrl+H
 
 (function () {
   "use strict";
@@ -73,6 +72,9 @@
     highlightColor: "#eb6f92",
     minWords: "",
     maxWords: "",
+    minChapters: "",
+    maxChapters: "",
+    maxMonthsSinceUpdate: "",
     blockComplete: false,
     blockOngoing: false,
     authorBlacklist: "",
@@ -90,10 +92,72 @@
     primaryCharacters: "",
     primaryRelpad: "1",
     primaryCharpad: "5",
+    pauseBlocking: false, // ← ADD THIS
+    _version: "2.9",
   };
 
   // Storage key for single config object
   const STORAGE_KEY = "ao3_advanced_blocker_config";
+
+  // Sanitize and validate config to prevent corruption
+  function sanitizeConfig(config) {
+    const sanitized = {};
+
+    // String fields - ensure they're strings
+    const stringFields = [
+      "tagBlacklist",
+      "tagWhitelist",
+      "tagHighlights",
+      "authorBlacklist",
+      "titleBlacklist",
+      "summaryBlacklist",
+      "allowedLanguages",
+      "primaryRelationships",
+      "primaryCharacters",
+      "minWords",
+      "maxWords",
+      "minChapters",
+      "maxChapters",
+      "maxMonthsSinceUpdate",
+      "maxCrossovers",
+      "highlightColor",
+      "primaryRelpad",
+      "primaryCharpad",
+      "username",
+    ];
+
+    stringFields.forEach((field) => {
+      const value = config[field];
+      sanitized[field] =
+        typeof value === "string"
+          ? value
+          : value === null
+          ? null
+          : String(DEFAULTS[field]);
+    });
+
+    // Boolean fields - ensure they're booleans
+    const boolFields = [
+      "blockComplete",
+      "blockOngoing",
+      "showReasons",
+      "showPlaceholders",
+      "debugMode",
+      "disableOnMyContent",
+      "enableHighlightingOnMyContent",
+      "pauseBlocking", // ← ADD THIS
+    ];
+
+    boolFields.forEach((field) => {
+      sanitized[field] =
+        typeof config[field] === "boolean" ? config[field] : DEFAULTS[field];
+    });
+
+    // Add version
+    sanitized._version = "2.9";
+
+    return sanitized;
+  }
 
   // Custom styles for the script
   const STYLE = `
@@ -303,7 +367,7 @@
   .ao3-blocker-menu-dialog textarea::placeholder {
     opacity: 0.6 !important;
   }
-  
+
   /* Form elements use page background color when focused */
   .ao3-blocker-menu-dialog input[type="text"],
   .ao3-blocker-menu-dialog input[type="number"],
@@ -313,17 +377,44 @@
     width: 100%;
     box-sizing: border-box;
   }
+
+  /* Add visual separation between full-width row and two-column rows */
+  .ao3-blocker-menu-dialog .setting-group + .two-column {
+    margin-top: 15px;
+  }
 `;
 
   // Load configuration from single object storage
   function loadConfig() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? { ...DEFAULTS, ...JSON.parse(stored) } : { ...DEFAULTS };
+
+      if (!stored) {
+        // No stored config, return defaults
+        return { ...DEFAULTS };
+      }
+
+      const parsedConfig = JSON.parse(stored);
+
+      // Check if config needs sanitization (missing version or old version)
+      const needsSanitization =
+        !parsedConfig._version || parsedConfig._version !== "2.9";
+
+      if (needsSanitization) {
+        console.log("[AO3 Advanced Blocker] Updating config to v2.9");
+        const sanitized = sanitizeConfig({ ...DEFAULTS, ...parsedConfig });
+        saveConfig(sanitized);
+        return sanitized;
+      }
+
+      // Config is already v2.9, merge with defaults for any new fields
+      return { ...DEFAULTS, ...parsedConfig };
     } catch (e) {
       console.error("[AO3 Advanced Blocker] Failed to load config:", e);
+      console.warn("[AO3 Advanced Blocker] Using default config");
+      // If parsing fails, return defaults
+      return { ...DEFAULTS };
     }
-    return { ...DEFAULTS };
   }
 
   // Save configuration to single object storage
@@ -521,50 +612,32 @@
     window.ao3Blocker.config = {
       showReasons: config.showReasons,
       showPlaceholders: config.showPlaceholders,
-      authorBlacklist: (typeof config.authorBlacklist === "string"
-        ? config.authorBlacklist
-        : ""
-      )
+      authorBlacklist: config.authorBlacklist
         .toLowerCase()
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean),
-      titleBlacklist: (typeof config.titleBlacklist === "string"
-        ? config.titleBlacklist
-        : ""
-      )
+      titleBlacklist: config.titleBlacklist
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagBlacklist: (typeof config.tagBlacklist === "string"
-        ? config.tagBlacklist
-        : ""
-      )
+      tagBlacklist: config.tagBlacklist
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagWhitelist: (typeof config.tagWhitelist === "string"
-        ? config.tagWhitelist
-        : ""
-      )
+      tagWhitelist: config.tagWhitelist
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      tagHighlights: (typeof config.tagHighlights === "string"
-        ? config.tagHighlights
-        : ""
-      )
+      tagHighlights: config.tagHighlights
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
-      summaryBlacklist: (typeof config.summaryBlacklist === "string"
-        ? config.summaryBlacklist
-        : ""
-      )
+      summaryBlacklist: config.summaryBlacklist
         .split(/,(?:\s)?/g)
         .map((i) => i.trim())
         .filter(Boolean)
@@ -572,10 +645,7 @@
 
       highlightColor: config.highlightColor,
       debugMode: config.debugMode,
-      allowedLanguages: (typeof config.allowedLanguages === "string"
-        ? config.allowedLanguages
-        : ""
-      )
+      allowedLanguages: config.allowedLanguages
         .toLowerCase()
         .split(/,(?:\s)?/g)
         .map((s) => s.trim())
@@ -597,21 +667,30 @@
         const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      minChapters: (function () {
+        const v = config.minChapters;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
+      maxChapters: (function () {
+        const v = config.maxChapters;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
+      maxMonthsSinceUpdate: (function () {
+        const v = config.maxMonthsSinceUpdate;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
       blockComplete: config.blockComplete,
       blockOngoing: config.blockOngoing,
       // Primary Pairing Config - normalize for case/punctuation insensitive matching
-      primaryRelationships: (typeof config.primaryRelationships === "string"
-        ? config.primaryRelationships
-        : ""
-      )
+      primaryRelationships: config.primaryRelationships
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
         .map((s) => normalizeText(s)),
-      primaryCharacters: (typeof config.primaryCharacters === "string"
-        ? config.primaryCharacters
-        : ""
-      )
+      primaryCharacters: config.primaryCharacters
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
@@ -632,6 +711,7 @@
       })(),
       disableOnMyContent: !!config.disableOnMyContent,
       enableHighlightingOnMyContent: !!config.enableHighlightingOnMyContent,
+      pauseBlocking: !!config.pauseBlocking, // ← ADD THIS
       username: config.username || null,
     };
 
@@ -684,17 +764,52 @@
       headerMenu.insertBefore(newMenuContainer, searchItem);
     }
 
-    // Add Advanced Blocker menu item
+    // Get menu and current config
     const menu = document.querySelector("#scriptconfig .dropdown-menu");
     if (menu) {
-      const menuItem = document.createElement("li");
-      const menuLink = document.createElement("a");
-      menuLink.href = "javascript:void(0);";
-      menuLink.id = "opencfg_advanced_blocker";
-      menuLink.textContent = "Advanced Blocker";
-      menuLink.addEventListener("click", showBlockerMenu);
-      menuItem.appendChild(menuLink);
-      menu.appendChild(menuItem);
+      const config = loadConfig();
+
+      // Check if we should show pause toggle on this page
+      const username = config.username || detectUsername(config);
+      const isOnMyContent =
+        config.disableOnMyContent && username && isMyContentPage(username);
+
+      // Add settings menu item first
+      const settingsItem = document.createElement("li");
+      const settingsLink = document.createElement("a");
+      settingsLink.href = "javascript:void(0);";
+      settingsLink.id = "opencfg_advanced_blocker";
+      settingsLink.textContent = "Advanced Blocker";
+      settingsLink.addEventListener("click", showBlockerMenu);
+      settingsItem.appendChild(settingsLink);
+      menu.appendChild(settingsItem);
+
+      // Add pause toggle last, if NOT on "my content" pages
+      if (!isOnMyContent) {
+        // Add pause toggle as the last item
+        const pauseItem = document.createElement("li");
+        const pauseLink = document.createElement("a");
+        pauseLink.href = "javascript:void(0);";
+        pauseLink.id = "toggle-blocker-pause";
+
+        // Set text and icon based on state
+        if (config.pauseBlocking) {
+          pauseLink.innerHTML = `Advanced Blocker: Resume ▶`;
+        } else {
+          pauseLink.innerHTML = `Advanced Blocker: Pause ⏸`;
+        }
+
+        // Add click handler
+        pauseLink.addEventListener("click", function () {
+          const currentConfig = loadConfig();
+          currentConfig.pauseBlocking = !currentConfig.pauseBlocking;
+          saveConfig(currentConfig);
+          location.reload();
+        });
+
+        pauseItem.appendChild(pauseLink);
+        menu.appendChild(pauseItem);
+      }
     }
   }
 
@@ -849,61 +964,98 @@
       <!-- 3. Work Filtering -->
       <div class="settings-section">
         <h4 class="section-title">Work Filtering 📝</h4>
+        
+        <!-- Full-width row for Languages -->
+        <div class="setting-group">
+          <label class="setting-label" for="allowed-languages-input">Allowed Languages
+            <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
+          </label>
+          <input id="allowed-languages-input" type="text"
+                 placeholder="English, Русский, 中文-普通话国语"
+                 value="${config.allowedLanguages || ""}"
+                 title="Only show these languages. Leave empty for all."
+                 style="width: 100%;">
+        </div>
+
+        <!-- Row 1: Max Fandoms and Max Months Since Update -->
         <div class="two-column">
-          <div>
-            <div class="setting-group">
-              <label class="setting-label" for="allowed-languages-input">Allowed Languages
-                <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
-              </label>
-              <input id="allowed-languages-input" type="text"
-                     placeholder="English, Русский, 中文-普通话 國語"
-                     value="${config.allowedLanguages || ""}"
-                     title="Only show these languages. Leave empty for all.">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label" for="min-words-input">Min Words
-                <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
-              </label>
-              <input id="min-words-input" type="text" style="width:100%;" placeholder="1000" value="${
-                config.minWords || ""
-              }" title="Hide works under this many words.">
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label" for="block-ongoing-checkbox">
-                <input type="checkbox" id="block-ongoing-checkbox" ${
-                  config.blockOngoing ? "checked" : ""
-                }>
-                Block Ongoing Works
-                <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
-              </label>
-            </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-crossovers-input">Max Fandoms
+              <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
+            </label>
+            <input id="max-crossovers-input" type="number" min="1" step="1"
+                   value="${config.maxCrossovers || ""}"
+                   title="Hide works with more than this many fandoms.">
           </div>
-          <div>
-            <div class="setting-group">
-              <label class="setting-label" for="max-crossovers-input">Max Fandoms
-                <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
-              </label>
-              <input id="max-crossovers-input" type="number" min="1" step="1"
-                     value="${config.maxCrossovers || ""}"
-                     title="Hide works with more than this many fandoms.">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label" for="max-words-input">Max Words
-                <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
-              </label>
-              <input id="max-words-input" type="text" style="width:100%;" placeholder="100000" value="${
-                config.maxWords || ""
-              }" title="Hide works over this many words.">
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label" for="block-complete-checkbox">
-                <input type="checkbox" id="block-complete-checkbox" ${
-                  config.blockComplete ? "checked" : ""
-                }>
-                Block Complete Works
-                <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
-              </label>
-            </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-months-since-update-input">Max Months Since Update
+              <span class="symbol question" title="Hide ongoing works not updated in X months. Only applies to ongoing works."><span>?</span></span>
+            </label>
+            <input id="max-months-since-update-input" type="number" min="1" step="1" 
+                   placeholder="6" value="${config.maxMonthsSinceUpdate || ""}" 
+                   title="Hide ongoing works not updated in this many months.">
+          </div>
+        </div>
+
+        <!-- Row 2: Word Count -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="setting-label" for="min-words-input">Min Words
+              <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
+            </label>
+            <input id="min-words-input" type="text" style="width:100%;" placeholder="1000" value="${
+              config.minWords || ""
+            }" title="Hide works under this many words.">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-words-input">Max Words
+              <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
+            </label>
+            <input id="max-words-input" type="text" style="width:100%;" placeholder="100000" value="${
+              config.maxWords || ""
+            }" title="Hide works over this many words.">
+          </div>
+        </div>
+
+        <!-- Row 3: Chapter Count -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="setting-label" for="min-chapters-input">Min Chapters
+              <span class="symbol question" title="Hide works with fewer chapters. Set to 2 to skip oneshots."><span>?</span></span>
+            </label>
+            <input id="min-chapters-input" type="number" min="1" step="1" 
+                   placeholder="2" value="${config.minChapters || ""}" 
+                   title="Hide works with fewer chapters. Set to 2 to skip oneshots.">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-chapters-input">Max Chapters
+              <span class="symbol question" title="Hide works with more chapters. Useful for avoiding epic-length works or drabble collections."><span>?</span></span>
+            </label>
+            <input id="max-chapters-input" type="number" min="1" step="1" 
+                   placeholder="200" value="${config.maxChapters || ""}" 
+                   title="Hide works with more chapters. Useful for avoiding epic-length works.">
+          </div>
+        </div>
+
+        <!-- Row 4: Completion Status Checkboxes -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="checkbox-label" for="block-ongoing-checkbox">
+              <input type="checkbox" id="block-ongoing-checkbox" ${
+                config.blockOngoing ? "checked" : ""
+              }>
+              Block Ongoing Works
+              <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
+            </label>
+          </div>
+          <div class="setting-group">
+            <label class="checkbox-label" for="block-complete-checkbox">
+              <input type="checkbox" id="block-complete-checkbox" ${
+                config.blockComplete ? "checked" : ""
+              }>
+              Block Complete Works
+              <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
+            </label>
           </div>
         </div>
       </div>
@@ -1140,6 +1292,10 @@
           dialog.querySelector("#max-crossovers-input").value || "",
         minWords: dialog.querySelector("#min-words-input").value || "",
         maxWords: dialog.querySelector("#max-words-input").value || "",
+        minChapters: dialog.querySelector("#min-chapters-input").value || "",
+        maxChapters: dialog.querySelector("#max-chapters-input").value || "",
+        maxMonthsSinceUpdate:
+          dialog.querySelector("#max-months-since-update-input").value || "",
         blockComplete: dialog.querySelector("#block-complete-checkbox").checked,
         blockOngoing: dialog.querySelector("#block-ongoing-checkbox").checked,
         disableOnMyContent: dialog.querySelector(
@@ -1160,6 +1316,7 @@
         primaryCharpad:
           dialog.querySelector("#primary-charpad-input").value ||
           DEFAULTS.primaryCharpad,
+        _version: "2.9",
       };
 
       // Save using our custom storage system
@@ -1249,6 +1406,12 @@
         }
         if (reason.wordCount) {
           parts.push(`<em>${reason.wordCount}</em>`);
+        }
+        if (reason.chapterCount) {
+          parts.push(`<em>${reason.chapterCount}</em>`);
+        }
+        if (reason.staleUpdate) {
+          parts.push(`<em>${reason.staleUpdate}</em>`);
         }
         if (reason.tags && reason.tags.length > 0) {
           parts.push(`<em>Tags: ${reason.tags.join(", ")}</em>`);
@@ -1457,8 +1620,51 @@
     return null;
   }
 
+  // Parse chapter information from work element
+  function getChapterInfo(workElement) {
+    const chaptersElement = workElement.querySelector("dd.chapters");
+    if (!chaptersElement) return null;
+
+    const text = chaptersElement.textContent.trim();
+    // Match patterns like "5/10", "12/12", "3/?"
+    const match = text.match(/^(\d+)\s*\/\s*([\d\?]+)/);
+
+    if (!match) return null;
+
+    const current = parseInt(match[1], 10);
+    const totalStr = match[2];
+    const total = totalStr === "?" ? null : parseInt(totalStr, 10);
+
+    return {
+      current: current,
+      total: total,
+      isComplete: totalStr !== "?" && current === total,
+      isOngoing: totalStr === "?" || current < total,
+    };
+  }
+
+  // Calculate months since work was last updated
+  function getMonthsSinceUpdate(workElement) {
+    const dateElement = workElement.querySelector(
+      "dd.updated .datetime, .datetime"
+    );
+    if (!dateElement) return null;
+
+    const dateText = dateElement.textContent.trim();
+    const updated = new Date(dateText);
+
+    // Validate date
+    if (isNaN(updated.getTime())) return null;
+
+    const now = Date.now();
+    // Average month = 30.4 days
+    const months = (now - updated.getTime()) / (30.4 * 24 * 60 * 60 * 1000);
+
+    return months;
+  }
+
   // Determine blocking reasons for a work based on all criteria
-  function getBlockReason(_ref, _ref2) {
+  function getBlockReason(_ref, _ref2, blurbElement) {
     const completionStatus = _ref.completionStatus;
 
     const authors = _ref.authors === undefined ? [] : _ref.authors,
@@ -1558,6 +1764,47 @@
         const wcStr = wc?.toLocaleString?.() ?? wc;
         reasons.push({
           wordCount: `Words: ${wcStr}`,
+        });
+      }
+    }
+
+    // Chapter count filter
+    if (_ref2.minChapters != null || _ref2.maxChapters != null) {
+      const chapterInfo = getChapterInfo(blurbElement);
+
+      if (chapterInfo && chapterInfo.current != null) {
+        const chapters = chapterInfo.current;
+        let blocked = false;
+
+        if (_ref2.minChapters != null && chapters < _ref2.minChapters) {
+          blocked = true;
+        }
+
+        if (_ref2.maxChapters != null && chapters > _ref2.maxChapters) {
+          blocked = true;
+        }
+
+        if (blocked) {
+          reasons.push({
+            chapterCount: `Chapters: ${chapters}`,
+          });
+        }
+      }
+    }
+
+    // Update recency filter (only for ongoing works)
+    if (_ref2.maxMonthsSinceUpdate != null && completionStatus === "ongoing") {
+      const monthsSinceUpdate = getMonthsSinceUpdate(blurbElement);
+
+      if (
+        monthsSinceUpdate != null &&
+        monthsSinceUpdate > _ref2.maxMonthsSinceUpdate
+      ) {
+        const monthsDisplay = Math.floor(monthsSinceUpdate);
+        reasons.push({
+          staleUpdate: `Updated ${monthsDisplay} month${
+            monthsDisplay !== 1 ? "s" : ""
+          } ago`,
         });
       }
     }
@@ -1695,6 +1942,16 @@
     let blocked = 0;
     let total = 0;
 
+    // ← ADD THIS SECTION
+    // Early exit if blocking is paused
+    if (config.pauseBlocking) {
+      if (debugMode) {
+        console.log("[Advanced Blocker] Paused - skipping all blocking");
+      }
+      return;
+    }
+    // ← END OF ADDITION
+
     if (debugMode) {
       console.groupCollapsed("Advanced Blocker");
       if (!config) {
@@ -1753,7 +2010,7 @@
       if (isWorkOrBookmark) {
         // Only check for blocking if not on user's own content
         if (!isOnMyContent) {
-          reason = getBlockReason(blockables, config);
+          reason = getBlockReason(blockables, config, blurbEl);
           total++;
         }
       }

@@ -15,7 +15,6 @@
 // @run-at        document-end
 // ==/UserScript==
 
-
 // CRITICAL: Update every version number Ctrl+H
 
 (function () {
@@ -73,6 +72,9 @@
     highlightColor: "#eb6f92",
     minWords: "",
     maxWords: "",
+    minChapters: "",
+    maxChapters: "",
+    maxMonthsSinceUpdate: "",
     blockComplete: false,
     blockOngoing: false,
     authorBlacklist: "",
@@ -90,6 +92,7 @@
     primaryCharacters: "",
     primaryRelpad: "1",
     primaryCharpad: "5",
+    pauseBlocking: false,
     _version: "2.9",
   };
 
@@ -102,27 +105,52 @@
 
     // String fields - ensure they're strings
     const stringFields = [
-      'tagBlacklist', 'tagWhitelist', 'tagHighlights',
-      'authorBlacklist', 'titleBlacklist', 'summaryBlacklist',
-      'allowedLanguages', 'primaryRelationships', 'primaryCharacters',
-      'minWords', 'maxWords', 'maxCrossovers', 'highlightColor',
-      'primaryRelpad', 'primaryCharpad', 'username'
+      "tagBlacklist",
+      "tagWhitelist",
+      "tagHighlights",
+      "authorBlacklist",
+      "titleBlacklist",
+      "summaryBlacklist",
+      "allowedLanguages",
+      "primaryRelationships",
+      "primaryCharacters",
+      "minWords",
+      "maxWords",
+      "minChapters",
+      "maxChapters",
+      "maxMonthsSinceUpdate",
+      "maxCrossovers",
+      "highlightColor",
+      "primaryRelpad",
+      "primaryCharpad",
+      "username",
     ];
 
-    stringFields.forEach(field => {
+    stringFields.forEach((field) => {
       const value = config[field];
-      sanitized[field] = typeof value === 'string' ? value : (value === null ? null : String(DEFAULTS[field]));
+      sanitized[field] =
+        typeof value === "string"
+          ? value
+          : value === null
+          ? null
+          : String(DEFAULTS[field]);
     });
 
     // Boolean fields - ensure they're booleans
     const boolFields = [
-      'blockComplete', 'blockOngoing', 'showReasons',
-      'showPlaceholders', 'debugMode', 'disableOnMyContent',
-      'enableHighlightingOnMyContent'
+      "blockComplete",
+      "blockOngoing",
+      "showReasons",
+      "showPlaceholders",
+      "debugMode",
+      "disableOnMyContent",
+      "enableHighlightingOnMyContent",
+      "pauseBlocking",
     ];
 
-    boolFields.forEach(field => {
-      sanitized[field] = typeof config[field] === 'boolean' ? config[field] : DEFAULTS[field];
+    boolFields.forEach((field) => {
+      sanitized[field] =
+        typeof config[field] === "boolean" ? config[field] : DEFAULTS[field];
     });
 
     // Add version
@@ -349,7 +377,42 @@
     width: 100%;
     box-sizing: border-box;
   }
+
+  /* Add visual separation between full-width row and two-column rows */
+  .ao3-blocker-menu-dialog .setting-group + .two-column {
+    margin-top: 15px;
+  }
+
+  /* Quick-add notification animations */
+  @keyframes ao3-blocker-slideInRight {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes ao3-blocker-slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+  }
 `;
+
+  // Icon data URIs
+  const ICON_HIDE =
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.33%2C13.33%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C3.93-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
+
+  const ICON_EYE =
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Visible%22%20id%3D%22Eye_Visible%22%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.42%2C17.51%2C27.66%2C11%2C20%2C11S7.58%2C17.51%2C6.33%2C19.46a1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.58%2C22.49%2C12.34%2C29%2C20%2C29s12.42-6.51%2C13.67-8.46A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46ZM20%2C25a5%2C5%2C0%2C1%2C1%2C5-5A5%2C5%2C0%2C0%2C1%2C20%2C25Z%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
   // Load configuration from single object storage
   function loadConfig() {
@@ -364,7 +427,8 @@
       const parsedConfig = JSON.parse(stored);
 
       // Check if config needs sanitization (missing version or old version)
-      const needsSanitization = !parsedConfig._version || parsedConfig._version !== "2.9";
+      const needsSanitization =
+        !parsedConfig._version || parsedConfig._version !== "2.9";
 
       if (needsSanitization) {
         console.log("[AO3 Advanced Blocker] Updating config to v2.9");
@@ -449,7 +513,7 @@
   }
 
   // Extract tags by category using CSS class selectors
-  function getCategorizedTags(container) {
+  function getCategorizedAndFlatTags(container) {
     const tags = {
       ratings: [],
       warnings: [],
@@ -495,20 +559,21 @@
       tags.fandoms = selectTextsIn(container, ".fandoms a.tag");
     }
 
-    return tags;
-  }
-
-  // Convert categorized tags to flat array for filtering
-  function getAllTagsFlat(categorizedTags) {
-    return [
-      ...categorizedTags.ratings,
-      ...categorizedTags.warnings,
-      ...categorizedTags.categories,
-      ...categorizedTags.fandoms,
-      ...categorizedTags.relationships,
-      ...categorizedTags.characters,
-      ...categorizedTags.freeforms,
+    // Flatten in the same pass (no extra loop needed)
+    const flat = [
+      ...tags.ratings,
+      ...tags.warnings,
+      ...tags.categories,
+      ...tags.fandoms,
+      ...tags.relationships,
+      ...tags.characters,
+      ...tags.freeforms,
     ];
+
+    return {
+      categorized: tags,
+      flat: flat
+    };
   }
 
   // Normalize text by removing punctuation and standardizing whitespace
@@ -539,6 +604,233 @@
     }
     const match = text.match(regex);
     return match ? match[0] : null;
+  }
+
+  // Show temporary notification for quick-add actions with inherited styling
+  function showQuickAddNotification(message, type = "success") {
+    // Remove any existing notification
+    const existing = document.getElementById(
+      "ao3-blocker-quickadd-notification"
+    );
+    if (existing) existing.remove();
+
+    // Create temporary element to detect page styles
+    const testElement = document.createElement("input");
+    testElement.type = "text";
+    testElement.style.cssText =
+      "position: absolute; visibility: hidden; pointer-events: none;";
+    document.body.appendChild(testElement);
+
+    const computedStyles = window.getComputedStyle(testElement);
+    const pageBg = computedStyles.backgroundColor;
+    const pageColor = computedStyles.color;
+    const pageBorderRadius = computedStyles.borderRadius || "0.25em";
+
+    testElement.remove();
+
+    // Create notification
+    const notification = document.createElement("div");
+    notification.id = "ao3-blocker-quickadd-notification";
+
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: ${pageBg};
+      color: ${pageColor};
+      padding: 12px 20px;
+      border-radius: ${pageBorderRadius};
+      font-size: 0.95em;
+      font-weight: 500;
+      z-index: 10001;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-family: inherit;
+      max-width: 350px;
+      word-wrap: break-word;
+      animation: ao3-blocker-slideInRight 0.3s ease-out;
+      border: 1px solid currentColor;
+      opacity: 0.95;
+    `;
+
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    // Auto-remove after delay
+    setTimeout(() => {
+      notification.style.animation = "ao3-blocker-slideOutRight 0.3s ease-in";
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
+  }
+
+  // Handle Alt+Click quick-add for tags and authors
+  function handleQuickAdd(event) {
+    // Only proceed if Alt key is held
+    if (!event.altKey) return;
+
+    const target = event.target;
+    const config = loadConfig();
+
+    // Check if clicking on a tag
+    if (target.classList.contains("tag")) {
+      // More aggressive event prevention for tags
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      // Also prevent any default actions on parent elements
+      if (event.target.closest("a")) {
+        event.target.closest("a").style.pointerEvents = "none";
+        setTimeout(() => {
+          if (event.target.closest("a")) {
+            event.target.closest("a").style.pointerEvents = "";
+          }
+        }, 100);
+      }
+
+      const tagText = target.textContent.trim();
+
+      // Check if already in blacklist
+      const currentTags = config.tagBlacklist
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const normalizedTag = normalizeText(tagText);
+      const alreadyExists = currentTags.some(
+        (t) => normalizeText(t) === normalizedTag
+      );
+
+      if (alreadyExists) {
+        showQuickAddNotification(`"${tagText}" is already blacklisted`, "info");
+        return;
+      }
+
+      // Add to blacklist
+      const updatedTags =
+        currentTags.length > 0 ? config.tagBlacklist + ", " + tagText : tagText;
+
+      config.tagBlacklist = updatedTags;
+      saveConfig(config);
+
+      showQuickAddNotification(
+        `✓ Added "${tagText}" to tag blacklist`,
+        "success"
+      );
+
+      // Batch additions: collect for 3 seconds before reloading
+      if (!window.ao3BlockerQuickAddQueue) {
+        window.ao3BlockerQuickAddQueue = [];
+      }
+      window.ao3BlockerQuickAddQueue.push({ type: "tag", value: tagText });
+
+      // Debounce reloads - wait for more additions or reload after delay
+      if (window.ao3BlockerQuickAddTimeout) {
+        clearTimeout(window.ao3BlockerQuickAddTimeout);
+      }
+
+      window.ao3BlockerQuickAddTimeout = setTimeout(() => {
+        const queueLength = window.ao3BlockerQuickAddQueue?.length || 0;
+        if (queueLength > 0) {
+          showQuickAddNotification(
+            `✓ Added ${queueLength} item(s) to blacklist`,
+            "success"
+          );
+          window.ao3BlockerQuickAddQueue = [];
+          location.reload();
+        }
+      }, 3000); // Wait 3 seconds for batching
+
+      return;
+    }
+
+    // Check if clicking on an author
+    if (target.getAttribute("rel") === "author") {
+      // More aggressive event prevention for authors
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      // Also prevent any default actions on parent elements
+      if (event.target.closest("a")) {
+        event.target.closest("a").style.pointerEvents = "none";
+        setTimeout(() => {
+          if (event.target.closest("a")) {
+            event.target.closest("a").style.pointerEvents = "";
+          }
+        }, 100);
+      }
+
+      const authorText = target.textContent.trim();
+
+      // Don't allow blacklisting Anonymous (would block all anonymous works)
+      if (authorText.toLowerCase() === "anonymous") {
+        showQuickAddNotification(
+          'Cannot blacklist "Anonymous" (would block all anonymous works)',
+          "info"
+        );
+        return;
+      }
+
+      // Check if already in blacklist
+      const currentAuthors = config.authorBlacklist
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      const alreadyExists = currentAuthors.some(
+        (a) => a.toLowerCase() === authorText.toLowerCase()
+      );
+
+      if (alreadyExists) {
+        showQuickAddNotification(
+          `"${authorText}" is already blacklisted`,
+          "info"
+        );
+        return;
+      }
+
+      // Add to blacklist
+      const updatedAuthors =
+        currentAuthors.length > 0
+          ? config.authorBlacklist + ", " + authorText
+          : authorText;
+
+      config.authorBlacklist = updatedAuthors;
+      saveConfig(config);
+
+      showQuickAddNotification(
+        `✓ Added "${authorText}" to author blacklist`,
+        "success"
+      );
+
+      // Batch additions: collect for 2 seconds before reloading
+      if (!window.ao3BlockerQuickAddQueue) {
+        window.ao3BlockerQuickAddQueue = [];
+      }
+      window.ao3BlockerQuickAddQueue.push({
+        type: "author",
+        value: authorText,
+      });
+
+      // Debounce reloads - wait for more additions or reload after delay
+      if (window.ao3BlockerQuickAddTimeout) {
+        clearTimeout(window.ao3BlockerQuickAddTimeout);
+      }
+
+      window.ao3BlockerQuickAddTimeout = setTimeout(() => {
+        const queueLength = window.ao3BlockerQuickAddQueue?.length || 0;
+        if (queueLength > 0) {
+          showQuickAddNotification(
+            `✓ Added ${queueLength} item(s) to blacklist`,
+            "success"
+          );
+          window.ao3BlockerQuickAddQueue = [];
+          location.reload();
+        }
+      }, 5000); // Wait 5 seconds for batching
+
+      return;
+    }
   }
 
   // Initialize configuration processing directly
@@ -633,6 +925,21 @@
         const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
         return Number.isFinite(n) ? n : null;
       })(),
+      minChapters: (function () {
+        const v = config.minChapters;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
+      maxChapters: (function () {
+        const v = config.maxChapters;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
+      maxMonthsSinceUpdate: (function () {
+        const v = config.maxMonthsSinceUpdate;
+        const n = parseInt((v || "").toString().replace(/[,_\s]/g, ""), 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      })(),
       blockComplete: config.blockComplete,
       blockOngoing: config.blockOngoing,
       // Primary Pairing Config - normalize for case/punctuation insensitive matching
@@ -662,6 +969,7 @@
       })(),
       disableOnMyContent: !!config.disableOnMyContent,
       enableHighlightingOnMyContent: !!config.enableHighlightingOnMyContent,
+      pauseBlocking: !!config.pauseBlocking,
       username: config.username || null,
     };
 
@@ -672,6 +980,9 @@
       window.ao3Blocker.config.highlightColor || "#eb6f92"
     );
     checkWorks();
+
+    // Set up Alt+Click quick-add for tags and authors
+    document.addEventListener("click", handleQuickAdd, true); // Use capture phase
   }
 
   // Initialize when DOM is ready
@@ -714,17 +1025,52 @@
       headerMenu.insertBefore(newMenuContainer, searchItem);
     }
 
-    // Add Advanced Blocker menu item
+    // Get menu and current config
     const menu = document.querySelector("#scriptconfig .dropdown-menu");
     if (menu) {
-      const menuItem = document.createElement("li");
-      const menuLink = document.createElement("a");
-      menuLink.href = "javascript:void(0);";
-      menuLink.id = "opencfg_advanced_blocker";
-      menuLink.textContent = "Advanced Blocker";
-      menuLink.addEventListener("click", showBlockerMenu);
-      menuItem.appendChild(menuLink);
-      menu.appendChild(menuItem);
+      const config = loadConfig();
+
+      // Check if we should show pause toggle on this page
+      const username = config.username || detectUsername(config);
+      const isOnMyContent =
+        config.disableOnMyContent && username && isMyContentPage(username);
+
+      // Add settings menu item first
+      const settingsItem = document.createElement("li");
+      const settingsLink = document.createElement("a");
+      settingsLink.href = "javascript:void(0);";
+      settingsLink.id = "opencfg_advanced_blocker";
+      settingsLink.textContent = "Advanced Blocker";
+      settingsLink.addEventListener("click", showBlockerMenu);
+      settingsItem.appendChild(settingsLink);
+      menu.appendChild(settingsItem);
+
+      // Add pause toggle last, if NOT on "my content" pages
+      if (!isOnMyContent) {
+        // Add pause toggle as the last item
+        const pauseItem = document.createElement("li");
+        const pauseLink = document.createElement("a");
+        pauseLink.href = "javascript:void(0);";
+        pauseLink.id = "toggle-blocker-pause";
+
+        // Set text and icon based on state
+        if (config.pauseBlocking) {
+          pauseLink.innerHTML = `Advanced Blocker: Resume ▶`;
+        } else {
+          pauseLink.innerHTML = `Advanced Blocker: Pause ⏸`;
+        }
+
+        // Add click handler
+        pauseLink.addEventListener("click", function () {
+          const currentConfig = loadConfig();
+          currentConfig.pauseBlocking = !currentConfig.pauseBlocking;
+          saveConfig(currentConfig);
+          location.reload();
+        });
+
+        pauseItem.appendChild(pauseLink);
+        menu.appendChild(pauseItem);
+      }
     }
   }
 
@@ -879,61 +1225,98 @@
       <!-- 3. Work Filtering -->
       <div class="settings-section">
         <h4 class="section-title">Work Filtering 📝</h4>
+        
+        <!-- Full-width row for Languages -->
+        <div class="setting-group">
+          <label class="setting-label" for="allowed-languages-input">Allowed Languages
+            <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
+          </label>
+          <input id="allowed-languages-input" type="text"
+                 placeholder="English, Русский, 中文-普通话国语"
+                 value="${config.allowedLanguages || ""}"
+                 title="Only show these languages. Leave empty for all."
+                 style="width: 100%;">
+        </div>
+
+        <!-- Row 1: Max Fandoms and Max Months Since Update -->
         <div class="two-column">
-          <div>
-            <div class="setting-group">
-              <label class="setting-label" for="allowed-languages-input">Allowed Languages
-                <span class="symbol question" title="Only show these languages. Leave empty for all."><span>?</span></span>
-              </label>
-              <input id="allowed-languages-input" type="text"
-                     placeholder="English, Русский, 中文-普通话 國語"
-                     value="${config.allowedLanguages || ""}"
-                     title="Only show these languages. Leave empty for all.">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label" for="min-words-input">Min Words
-                <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
-              </label>
-              <input id="min-words-input" type="text" style="width:100%;" placeholder="1000" value="${
-                config.minWords || ""
-              }" title="Hide works under this many words.">
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label" for="block-ongoing-checkbox">
-                <input type="checkbox" id="block-ongoing-checkbox" ${
-                  config.blockOngoing ? "checked" : ""
-                }>
-                Block Ongoing Works
-                <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
-              </label>
-            </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-crossovers-input">Max Fandoms
+              <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
+            </label>
+            <input id="max-crossovers-input" type="number" min="1" step="1"
+                   value="${config.maxCrossovers || ""}"
+                   title="Hide works with more than this many fandoms.">
           </div>
-          <div>
-            <div class="setting-group">
-              <label class="setting-label" for="max-crossovers-input">Max Fandoms
-                <span class="symbol question" title="Hide works with more than this many fandoms."><span>?</span></span>
-              </label>
-              <input id="max-crossovers-input" type="number" min="1" step="1"
-                     value="${config.maxCrossovers || ""}"
-                     title="Hide works with more than this many fandoms.">
-            </div>
-            <div class="setting-group">
-              <label class="setting-label" for="max-words-input">Max Words
-                <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
-              </label>
-              <input id="max-words-input" type="text" style="width:100%;" placeholder="100000" value="${
-                config.maxWords || ""
-              }" title="Hide works over this many words.">
-            </div>
-            <div class="setting-group">
-              <label class="checkbox-label" for="block-complete-checkbox">
-                <input type="checkbox" id="block-complete-checkbox" ${
-                  config.blockComplete ? "checked" : ""
-                }>
-                Block Complete Works
-                <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
-              </label>
-            </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-months-since-update-input">Max Months Since Update
+              <span class="symbol question" title="Hide ongoing works not updated in X months. Only applies to ongoing works."><span>?</span></span>
+            </label>
+            <input id="max-months-since-update-input" type="number" min="1" step="1" 
+                   placeholder="6" value="${config.maxMonthsSinceUpdate || ""}" 
+                   title="Hide ongoing works not updated in this many months.">
+          </div>
+        </div>
+
+        <!-- Row 2: Word Count -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="setting-label" for="min-words-input">Min Words
+              <span class="symbol question" title="Hide works under this many words."><span>?</span></span>
+            </label>
+            <input id="min-words-input" type="text" style="width:100%;" placeholder="1000" value="${
+              config.minWords || ""
+            }" title="Hide works under this many words.">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-words-input">Max Words
+              <span class="symbol question" title="Hide works over this many words."><span>?</span></span>
+            </label>
+            <input id="max-words-input" type="text" style="width:100%;" placeholder="100000" value="${
+              config.maxWords || ""
+            }" title="Hide works over this many words.">
+          </div>
+        </div>
+
+        <!-- Row 3: Chapter Count -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="setting-label" for="min-chapters-input">Min Chapters
+              <span class="symbol question" title="Hide works with fewer chapters. Set to 2 to skip oneshots."><span>?</span></span>
+            </label>
+            <input id="min-chapters-input" type="number" min="1" step="1" 
+                   placeholder="2" value="${config.minChapters || ""}" 
+                   title="Hide works with fewer chapters. Set to 2 to skip oneshots.">
+          </div>
+          <div class="setting-group">
+            <label class="setting-label" for="max-chapters-input">Max Chapters
+              <span class="symbol question" title="Hide works with more chapters. Useful for avoiding epic-length works or drabble collections."><span>?</span></span>
+            </label>
+            <input id="max-chapters-input" type="number" min="1" step="1" 
+                   placeholder="200" value="${config.maxChapters || ""}" 
+                   title="Hide works with more chapters. Useful for avoiding epic-length works.">
+          </div>
+        </div>
+
+        <!-- Row 4: Completion Status Checkboxes -->
+        <div class="two-column">
+          <div class="setting-group">
+            <label class="checkbox-label" for="block-ongoing-checkbox">
+              <input type="checkbox" id="block-ongoing-checkbox" ${
+                config.blockOngoing ? "checked" : ""
+              }>
+              Block Ongoing Works
+              <span class="symbol question" title="Hide works that are ongoing."><span>?</span></span>
+            </label>
+          </div>
+          <div class="setting-group">
+            <label class="checkbox-label" for="block-complete-checkbox">
+              <input type="checkbox" id="block-complete-checkbox" ${
+                config.blockComplete ? "checked" : ""
+              }>
+              Block Complete Works
+              <span class="symbol question" title="Hide works that are marked as complete."><span>?</span></span>
+            </label>
           </div>
         </div>
       </div>
@@ -1019,6 +1402,13 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Quick-Add Tip -->
+      <div style="padding: 12px; margin: 15px 0; background: rgba(0,0,0,0.03); border-radius: 6px; border-left: 4px solid currentColor;">
+        <p style="margin: 0; font-size: 0.9em; opacity: 0.8;">
+          <strong>💡 Quick-Add Tip:</strong> Hold <kbd style="padding: 2px 6px; background: rgba(0,0,0,0.1); border-radius: 3px; font-family: monospace;">Alt</kbd> and click any tag or author name to instantly add them to your blacklist.
+        </p>
       </div>
 
       <!-- 6. Import/Export & Reset -->
@@ -1170,6 +1560,10 @@
           dialog.querySelector("#max-crossovers-input").value || "",
         minWords: dialog.querySelector("#min-words-input").value || "",
         maxWords: dialog.querySelector("#max-words-input").value || "",
+        minChapters: dialog.querySelector("#min-chapters-input").value || "",
+        maxChapters: dialog.querySelector("#max-chapters-input").value || "",
+        maxMonthsSinceUpdate:
+          dialog.querySelector("#max-months-since-update-input").value || "",
         blockComplete: dialog.querySelector("#block-complete-checkbox").checked,
         blockOngoing: dialog.querySelector("#block-ongoing-checkbox").checked,
         disableOnMyContent: dialog.querySelector(
@@ -1281,6 +1675,12 @@
         if (reason.wordCount) {
           parts.push(`<em>${reason.wordCount}</em>`);
         }
+        if (reason.chapterCount) {
+          parts.push(`<em>${reason.chapterCount}</em>`);
+        }
+        if (reason.staleUpdate) {
+          parts.push(`<em>${reason.staleUpdate}</em>`);
+        }
         if (reason.tags && reason.tags.length > 0) {
           parts.push(`<em>Tags: ${reason.tags.join(", ")}</em>`);
         }
@@ -1304,14 +1704,12 @@
         }
       });
       message = parts.join("; ");
-      const iconUrl =
-        "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
+      const iconUrl = ICON_HIDE;
       iconHtml = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconUrl}') no-repeat center/contain;-webkit-mask:url('${iconUrl}') no-repeat center/contain;"></span>`;
     } else if (reasons && reasons.length > 0) {
       // Fallback message when showReasons is false but work is blocked
       message = "<em>Hidden by filters.</em>";
-      const iconUrl =
-        "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
+      const iconUrl = ICON_HIDE;
       iconHtml = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconUrl}') no-repeat center/contain;-webkit-mask:url('${iconUrl}') no-repeat center/contain;"></span>`;
     }
 
@@ -1323,12 +1721,8 @@
   }
 
   function getToggleButton() {
-    const iconHide =
-      "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-hidden.svg";
-    const iconEye =
-      "https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/1de22a3e33d769774a828c9c0a03b667dcfd4999/assets/icon_show-hide-visible.svg";
-    const showIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;"></span>`;
-    const hideIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;"></span>`;
+    const showIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${ICON_EYE}') no-repeat center/contain;-webkit-mask:url('${ICON_EYE}') no-repeat center/contain;"></span>`;
+    const hideIcon = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.2em;background-color:currentColor;mask:url('${ICON_HIDE}') no-repeat center/contain;-webkit-mask:url('${ICON_HIDE}') no-repeat center/contain;"></span>`;
 
     const button = document.createElement("button");
     button.className = `${CSS_NAMESPACE}-toggle`;
@@ -1350,11 +1744,11 @@
 
       if (work.classList.contains(unhideClassFragment)) {
         work.classList.remove(unhideClassFragment);
-        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconHide}') no-repeat center/contain;-webkit-mask:url('${iconHide}') no-repeat center/contain;"></span>${message}`;
+        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${ICON_HIDE}') no-repeat center/contain;-webkit-mask:url('${ICON_HIDE}') no-repeat center/contain;"></span>${message}`;
         event.target.innerHTML = showIcon + "Show";
       } else {
         work.classList.add(unhideClassFragment);
-        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${iconEye}') no-repeat center/contain;-webkit-mask:url('${iconEye}') no-repeat center/contain;"></span>${message}`;
+        note.innerHTML = `<span class="${CSS_NAMESPACE}-icon" style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;margin-right:0.3em;background-color:currentColor;mask:url('${ICON_EYE}') no-repeat center/contain;-webkit-mask:url('${ICON_EYE}') no-repeat center/contain;"></span>${message}`;
         event.target.innerHTML = hideIcon + "Hide";
       }
     });
@@ -1488,8 +1882,51 @@
     return null;
   }
 
+  // Parse chapter information from work element
+  function getChapterInfo(workElement) {
+    const chaptersElement = workElement.querySelector("dd.chapters");
+    if (!chaptersElement) return null;
+
+    const text = chaptersElement.textContent.trim();
+    // Match patterns like "5/10", "12/12", "3/?"
+    const match = text.match(/^(\d+)\s*\/\s*([\d\?]+)/);
+
+    if (!match) return null;
+
+    const current = parseInt(match[1], 10);
+    const totalStr = match[2];
+    const total = totalStr === "?" ? null : parseInt(totalStr, 10);
+
+    return {
+      current: current,
+      total: total,
+      isComplete: totalStr !== "?" && current === total,
+      isOngoing: totalStr === "?" || current < total,
+    };
+  }
+
+  // Calculate months since work was last updated
+  function getMonthsSinceUpdate(workElement) {
+    const dateElement = workElement.querySelector(
+      "dd.updated .datetime, .datetime"
+    );
+    if (!dateElement) return null;
+
+    const dateText = dateElement.textContent.trim();
+    const updated = new Date(dateText);
+
+    // Validate date
+    if (isNaN(updated.getTime())) return null;
+
+    const now = Date.now();
+    // Average month = 30.4 days
+    const months = (now - updated.getTime()) / (30.4 * 24 * 60 * 60 * 1000);
+
+    return months;
+  }
+
   // Determine blocking reasons for a work based on all criteria
-  function getBlockReason(_ref, _ref2) {
+  function getBlockReason(_ref, _ref2, blurbElement) {
     const completionStatus = _ref.completionStatus;
 
     const authors = _ref.authors === undefined ? [] : _ref.authors,
@@ -1506,6 +1943,7 @@
               fandoms: [],
             }
           : _ref.categorizedTags,
+      tags = _ref.tags === undefined ? [] : _ref.tags,
       summary = _ref.summary === undefined ? "" : _ref.summary,
       language = _ref.language === undefined ? "" : _ref.language,
       fandomCount = _ref.fandomCount === undefined ? 0 : _ref.fandomCount,
@@ -1529,8 +1967,8 @@
     const blockOngoing =
       _ref2.blockOngoing === undefined ? false : _ref2.blockOngoing;
 
-    // Get flat array of all tags for blacklist/whitelist (same behavior as before)
-    const allTags = getAllTagsFlat(categorizedTags);
+    // Use flat array of all tags for blacklist/whitelist (same behavior as before)
+    const allTags = tags;
 
     // If whitelisted, don't block regardless of other conditions
     if (isTagWhitelisted(allTags, tagWhitelist)) {
@@ -1589,6 +2027,47 @@
         const wcStr = wc?.toLocaleString?.() ?? wc;
         reasons.push({
           wordCount: `Words: ${wcStr}`,
+        });
+      }
+    }
+
+    // Chapter count filter
+    if (_ref2.minChapters != null || _ref2.maxChapters != null) {
+      const chapterInfo = getChapterInfo(blurbElement);
+
+      if (chapterInfo && chapterInfo.current != null) {
+        const chapters = chapterInfo.current;
+        let blocked = false;
+
+        if (_ref2.minChapters != null && chapters < _ref2.minChapters) {
+          blocked = true;
+        }
+
+        if (_ref2.maxChapters != null && chapters > _ref2.maxChapters) {
+          blocked = true;
+        }
+
+        if (blocked) {
+          reasons.push({
+            chapterCount: `Chapters: ${chapters}`,
+          });
+        }
+      }
+    }
+
+    // Update recency filter (only for ongoing works)
+    if (_ref2.maxMonthsSinceUpdate != null && completionStatus === "ongoing") {
+      const monthsSinceUpdate = getMonthsSinceUpdate(blurbElement);
+
+      if (
+        monthsSinceUpdate != null &&
+        monthsSinceUpdate > _ref2.maxMonthsSinceUpdate
+      ) {
+        const monthsDisplay = Math.floor(monthsSinceUpdate);
+        reasons.push({
+          staleUpdate: `Updated ${monthsDisplay} month${
+            monthsDisplay !== 1 ? "s" : ""
+          } ago`,
         });
       }
     }
@@ -1704,13 +2183,13 @@
       completionStatus = parseChaptersStatus(chaptersText);
     }
 
-    // Use CSS class-based tag categorization
-    const categorizedTags = getCategorizedTags(blurbElement);
+    // Single call gets both structures
+    const tagData = getCategorizedAndFlatTags(blurbElement);
 
     return {
       authors: selectTextsIn(blurbElement, "a[rel=author]"),
-      categorizedTags: categorizedTags,
-      tags: getAllTagsFlat(categorizedTags),
+      categorizedTags: tagData.categorized,
+      tags: tagData.flat,  // No need for getAllTagsFlat anymore
       title: selectTextsIn(blurbElement, ".header .heading a:first-child")[0],
       summary: selectTextsIn(blurbElement, "blockquote.summary")[0],
       language: selectTextsIn(blurbElement, "dd.language")[0],
@@ -1726,6 +2205,14 @@
     let blocked = 0;
     let total = 0;
 
+    // Early exit if blocking is paused
+    if (config.pauseBlocking) {
+      if (debugMode) {
+        console.log("[Advanced Blocker] Paused - skipping all blocking");
+      }
+      return;
+    }
+
     if (debugMode) {
       console.groupCollapsed("Advanced Blocker");
       if (!config) {
@@ -1734,7 +2221,7 @@
       }
     }
 
-    // Check if we're on user's own content pages (dashboard, bookmarks, works, readings)
+    // Check if we're on user's own content pages
     let isOnMyContent = false;
     let username = config.username || detectUsername(config);
     if (config.disableOnMyContent && username) {
@@ -1743,12 +2230,8 @@
         if (debugMode) {
           console.info("Advanced Blocker: On user's own content page.");
           console.log("Path:", window.location.pathname);
-          console.log(
-            "Blocking disabled. Highlighting:",
-            config.enableHighlightingOnMyContent ? "enabled" : "disabled"
-          );
+          console.log("Blocking disabled. Highlighting:", config.enableHighlightingOnMyContent ? "enabled" : "disabled");
         }
-        // If highlighting is not enabled on user content, exit completely
         if (!config.enableHighlightingOnMyContent) {
           return;
         }
@@ -1756,71 +2239,62 @@
     }
 
     const blurbs = document.querySelectorAll("li.blurb");
+    
     blurbs.forEach((blurbEl) => {
-      const isWorkOrBookmark =
-        (blurbEl.classList.contains("work") ||
-          blurbEl.classList.contains("bookmark")) &&
-        !blurbEl.classList.contains("picture");
-      let reason = null;
-      let blockables = selectFromBlurb(blurbEl);
-
-      if (debugMode && isWorkOrBookmark) {
-        console.log(
-          `[Advanced Blocker][DEBUG] Work ID: ${blurbEl.id || "(no id)"}`
-        );
-        console.log(
-          `[Advanced Blocker][DEBUG] Parsed completionStatus:`,
-          blockables.completionStatus
-        );
-        console.log(
-          `[Advanced Blocker][DEBUG] blockComplete:`,
-          config.blockComplete,
-          `blockOngoing:`,
-          config.blockOngoing
-        );
-        console.log(`[Advanced Blocker][DEBUG] All blockables:`, blockables);
-      }
-
-      if (isWorkOrBookmark) {
-        // Only check for blocking if not on user's own content
-        if (!isOnMyContent) {
-          reason = getBlockReason(blockables, config);
-          total++;
+      const isWorkOrBookmark = (blurbEl.classList.contains("work") || blurbEl.classList.contains("bookmark")) && !blurbEl.classList.contains("picture");
+      
+      if (!isWorkOrBookmark) return;
+      
+      // --- SINGLE PASS: Extract all data once ---
+      const blockables = selectFromBlurb(blurbEl);
+      const allTags = blockables.tags;
+      
+      total++;
+      
+      // --- Check highlighting first (no DOM queries needed) ---
+      let shouldHighlight = false;
+      if (config.tagHighlights.length > 0) {
+        for (let i = 0; i < allTags.length; i++) {
+          for (let j = 0; j < config.tagHighlights.length; j++) {
+            if (matchPattern(allTags[i], config.tagHighlights[j], true)) {
+              shouldHighlight = true;
+              break;
+            }
+          }
+          if (shouldHighlight) break;
         }
       }
-
+      
+      // Apply highlighting
+      if (shouldHighlight) {
+        blurbEl.classList.add("ao3-blocker-highlight");
+        if (debugMode) {
+          console.groupCollapsed(`✨ highlighted ${blurbEl.id}`);
+          console.log(blurbEl.innerHTML);
+          console.groupEnd();
+        }
+      }
+      
+      // --- Check blocking (skip if on user content) ---
+      let reason = null;
+      if (!isOnMyContent) {
+        reason = getBlockReason(blockables, config, blurbEl);
+      }
+      
+      // Apply blocking
       if (reason) {
         blockWork(blurbEl, reason, config);
         blocked++;
         if (debugMode) {
-          console.groupCollapsed(`- blocked ${blurbEl.id}`);
+          console.groupCollapsed(`🚫 blocked ${blurbEl.id}`);
           console.log(blurbEl.innerHTML, reason);
           console.groupEnd();
         }
-      } else if (debugMode && isWorkOrBookmark) {
+      } else if (debugMode) {
         console.groupCollapsed(`  skipped ${blurbEl.id}`);
         console.log(blurbEl.innerHTML);
         console.groupEnd();
       }
-
-      // Highlighting uses exact tag matching with wildcard support
-      const allTags =
-        blockables.tags || getAllTagsFlat(blockables.categorizedTags || {});
-      allTags.forEach((tag) => {
-        // Check if tag matches any highlight pattern (supports wildcards)
-        if (
-          config.tagHighlights.some((highlightPattern) =>
-            matchPattern(tag, highlightPattern, true)
-          )
-        ) {
-          blurbEl.classList.add("ao3-blocker-highlight");
-          if (debugMode) {
-            console.groupCollapsed(`? highlighted ${blurbEl.id}`);
-            console.log(blurbEl.innerHTML);
-            console.groupEnd();
-          }
-        }
-      });
     });
 
     if (debugMode) {
