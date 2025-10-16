@@ -98,6 +98,21 @@
               color: inherit;
               box-sizing: border-box;
             }
+
+            /* Mobile: Full width with minimal padding */
+            @media (max-width: 768px) {
+              .ao3-menu-dialog {
+                width: 100%;
+                max-width: 100%;
+                height: 100vh;
+                max-height: 100vh;
+                top: 0;
+                left: 0;
+                transform: none;
+                border-radius: 0;
+                padding: 15px;
+              }
+            }
             
             .ao3-menu-dialog h3 {
               text-align: center;

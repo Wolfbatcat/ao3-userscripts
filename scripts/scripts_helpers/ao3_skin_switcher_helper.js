@@ -1,13 +1,13 @@
 // ==UserScript==
-// @name         AO3: Skin Switcher - Helper
-// @version      2.1
-// @description  Change site skins from anywhere without leaving the page.
-// @author       Blackbatcat
-// @match        *://archiveofourown.org/*
-// @license      MIT
-// @require      https://update.greasyfork.org/scripts/552743/1678803/AO3%3A%20Menu%20Helpers%20Library.js
-// @grant        none
-// @run-at       document-end
+// @name          AO3: Skin Switcher - Helper
+// @version       2.1
+// @description   Change site skins from anywhere without leaving the page.
+// @author        Blackbatcat
+// @match         *://archiveofourown.org/*
+// @license       MIT
+// @require       https://update.greasyfork.org/scripts/552743/1678821/AO3%3A%20Menu%20Helpers%20Library.js
+// @grant         none
+// @run-at        document-end
 // ==/UserScript==
 
 (function () {
