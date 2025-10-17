@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name        AO3: Reading Time & Quality Score - Helper
-// @version     2.9
+// @name        AO3: Reading Time & Quality Score
+// @version     3
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
 // @match       *://archiveofourown.org/
@@ -12,7 +12,7 @@
 // @match       *://archiveofourown.org/bookmarks*
 // @match       *://archiveofourown.org/series/*
 // @license     MIT
-// @require     https://update.greasyfork.org/scripts/552743/1678821/AO3%3A%20Menu%20Helpers%20Library.js
+// @require     https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant       none
 // ==/UserScript==
 
@@ -791,21 +791,26 @@
     const userMaxScoreGroup = window.AO3MenuHelpers.createSettingGroup();
     userMaxScoreGroup.id = "userMaxScoreContainer";
     userMaxScoreGroup.style.display = CONFIG.useNormalization ? "" : "none";
-    const userMaxScoreLabel = window.AO3MenuHelpers.createLabel(
-      "Best Possible Raw Score ",
-      "userMaxScore",
-      "The highest score you've seen in your fandom. Used to scale other scores to percentages."
-    );
+
+    const userMaxScoreLabel = document.createElement("label");
+    userMaxScoreLabel.className = "setting-label";
+    userMaxScoreLabel.setAttribute("for", "userMaxScore");
+    userMaxScoreLabel.textContent = "Best Possible Raw Score ";
+
     const normalizationLabel = document.createElement("span");
     normalizationLabel.id = "normalizationLabel";
     normalizationLabel.textContent = CONFIG.useNormalization
       ? "(for 100%)"
       : "";
     userMaxScoreLabel.appendChild(normalizationLabel);
-    const tooltip = userMaxScoreLabel.querySelector(".symbol.question");
-    if (tooltip) {
-      userMaxScoreLabel.appendChild(tooltip);
-    }
+
+    userMaxScoreLabel.appendChild(document.createTextNode(" "));
+    userMaxScoreLabel.appendChild(
+      window.AO3MenuHelpers.createTooltip(
+        "The highest score you've seen in your fandom. Used to scale other scores to percentages."
+      )
+    );
+
     userMaxScoreGroup.appendChild(userMaxScoreLabel);
     userMaxScoreGroup.appendChild(
       window.AO3MenuHelpers.createNumberInput({
@@ -820,19 +825,24 @@
     qualityScoreSubsettings.appendChild(normalizationGroup);
 
     const colorThresholdLowGroup = window.AO3MenuHelpers.createSettingGroup();
-    const thresholdLowLabel = window.AO3MenuHelpers.createLabel(
-      "Good Score ",
-      "colorThresholdLow",
-      "Scores at or above this threshold will be colored yellow"
-    );
+
+    const thresholdLowLabel = document.createElement("label");
+    thresholdLowLabel.className = "setting-label";
+    thresholdLowLabel.setAttribute("for", "colorThresholdLow");
+    thresholdLowLabel.textContent = "Good Score ";
+
     const thresholdLowLabelSpan = document.createElement("span");
     thresholdLowLabelSpan.id = "thresholdLowLabel";
     thresholdLowLabelSpan.textContent = CONFIG.useNormalization ? "(%)" : "";
     thresholdLowLabel.appendChild(thresholdLowLabelSpan);
-    const tooltipLow = thresholdLowLabel.querySelector(".symbol.question");
-    if (tooltipLow) {
-      thresholdLowLabel.appendChild(tooltipLow);
-    }
+
+    thresholdLowLabel.appendChild(document.createTextNode(" "));
+    thresholdLowLabel.appendChild(
+      window.AO3MenuHelpers.createTooltip(
+        "Scores at or above this threshold will be colored yellow"
+      )
+    );
+
     colorThresholdLowGroup.appendChild(thresholdLowLabel);
     colorThresholdLowGroup.appendChild(
       window.AO3MenuHelpers.createNumberInput({
@@ -846,19 +856,24 @@
     qualityScoreSubsettings.appendChild(colorThresholdLowGroup);
 
     const colorThresholdHighGroup = window.AO3MenuHelpers.createSettingGroup();
-    const thresholdHighLabel = window.AO3MenuHelpers.createLabel(
-      "Excellent Score ",
-      "colorThresholdHigh",
-      "Scores at or above this threshold will be colored green"
-    );
+
+    const thresholdHighLabel = document.createElement("label");
+    thresholdHighLabel.className = "setting-label";
+    thresholdHighLabel.setAttribute("for", "colorThresholdHigh");
+    thresholdHighLabel.textContent = "Excellent Score ";
+
     const thresholdHighLabelSpan = document.createElement("span");
     thresholdHighLabelSpan.id = "thresholdHighLabel";
     thresholdHighLabelSpan.textContent = CONFIG.useNormalization ? "(%)" : "";
     thresholdHighLabel.appendChild(thresholdHighLabelSpan);
-    const tooltipHigh = thresholdHighLabel.querySelector(".symbol.question");
-    if (tooltipHigh) {
-      thresholdHighLabel.appendChild(tooltipHigh);
-    }
+
+    thresholdHighLabel.appendChild(document.createTextNode(" "));
+    thresholdHighLabel.appendChild(
+      window.AO3MenuHelpers.createTooltip(
+        "Scores at or above this threshold will be colored green"
+      )
+    );
+
     colorThresholdHighGroup.appendChild(thresholdHighLabel);
     colorThresholdHighGroup.appendChild(
       window.AO3MenuHelpers.createNumberInput({

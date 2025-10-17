@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      1.0.5
+// @version      1.0.6
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -22,7 +22,7 @@
   let stylesInjected = false;
 
   window.AO3MenuHelpers = {
-    version: "1.0.5",
+    version: "1.0.6",
 
     /**
      * Detects AO3's input field background color from current theme
@@ -102,15 +102,15 @@
             /* Mobile: Full width with minimal padding */
             @media (max-width: 768px) {
               .ao3-menu-dialog {
-                width: 100%;
-                max-width: 100%;
-                height: 100vh;
-                max-height: 100vh;
-                top: 0;
-                left: 0;
-                transform: none;
-                border-radius: 0;
-                padding: 15px;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                top: 0 !important;
+                left: 0 !important;
+                transform: none !important;
+                border-radius: 0 !important;
+                padding: 15px !important;
               }
             }
             
@@ -1393,7 +1393,7 @@
       style.id = "ao3-list-item-styles";
       style.textContent = `
             .menu-list-item:hover {
-              background: rgba(0,0,0,0.08) !important;
+              background: rgba(0,0,0,0.1) !important;
             }
             
             .ao3-menu-dialog a:hover {

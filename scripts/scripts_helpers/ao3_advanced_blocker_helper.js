@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name          AO3: Advanced Blocker - Helper
+// @name          AO3: Advanced Blocker
 // @version       3.0
 // @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
 // @author        BlackBatCat
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1678821/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==

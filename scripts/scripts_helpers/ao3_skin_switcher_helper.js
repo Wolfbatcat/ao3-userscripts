@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name          AO3: Skin Switcher - Helper
-// @version       2.1
+// @name          AO3: Skin Switcher
+// @version       2
 // @description   Change site skins from anywhere without leaving the page.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1678821/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -422,23 +422,13 @@
     }
   };
 
-  // Initialize badge styles cache after DOM is ready
-  function initBadgeStyles() {
-    if (window.AO3MenuHelpers) {
-      cachedBadgeStyles = window.AO3MenuHelpers.sampleElementStyles(".unread", [
-        "borderWidth",
-        "borderStyle",
-        "borderColor",
-        "borderRadius",
-        "padding",
-        "fontSize",
-        "backgroundColor",
-        "color",
-      ]);
-    }
-  }
-
   console.log("[AO3: Skin Switcher] loaded.");
+
+  function injectMenuListItemHoverOverride() {
+    const overrideStyle = document.createElement("style");
+    overrideStyle.textContent = `.menu-list-item:hover { background: rgba(0,0,0,0.1) !important; }`;
+    document.head.appendChild(overrideStyle);
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
@@ -460,6 +450,7 @@
           ]
         );
       }
+      injectMenuListItemHoverOverride();
     });
   } else {
     initSharedMenu();
@@ -477,5 +468,6 @@
         "color",
       ]);
     }
+    injectMenuListItemHoverOverride();
   }
 })();
