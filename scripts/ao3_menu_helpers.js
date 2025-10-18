@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      1.0.6
+// @version      1.0.7
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -22,7 +22,7 @@
   let stylesInjected = false;
 
   window.AO3MenuHelpers = {
-    version: "1.0.6",
+    version: "1.0.7",
 
     /**
      * Detects AO3's input field background color from current theme
@@ -940,30 +940,35 @@
             border-left: 4px solid currentColor;
           `;
 
-      const p = document.createElement("p");
-      p.style.cssText = "margin: 0; font-size: 0.9em; opacity: 0.8;";
+      const contentDiv = document.createElement("div");
+      contentDiv.style.cssText = "display: flex; align-items: flex-start; gap: 8px; font-size: 0.9em; opacity: 0.8;";
 
-      let html = "";
+      if (icon) {
+        const iconSpan = document.createElement("span");
+        iconSpan.textContent = icon;
+        iconSpan.style.cssText = "flex-shrink: 0;";
+        contentDiv.appendChild(iconSpan);
+      }
+
+      const textDiv = document.createElement("div");
+      textDiv.style.cssText = "flex: 1; line-height: 1.4;";
+
       if (title) {
-        html += `<strong>${icon} ${title}:</strong> `;
-      } else if (icon) {
-        html += `${icon} `;
+        const titleSpan = document.createElement("strong");
+        titleSpan.textContent = `${title}: `;
+        textDiv.appendChild(titleSpan);
       }
 
       if (typeof content === "string") {
-        p.innerHTML = html + content;
+        textDiv.appendChild(document.createTextNode(content));
       } else if (content instanceof HTMLElement) {
-        if (html) {
-          const span = document.createElement("span");
-          span.innerHTML = html;
-          p.appendChild(span);
-        }
-        p.appendChild(content);
+        textDiv.appendChild(content);
       } else {
-        p.innerHTML = html + String(content);
+        textDiv.appendChild(document.createTextNode(String(content)));
       }
 
-      box.appendChild(p);
+      contentDiv.appendChild(textDiv);
+      box.appendChild(contentDiv);
       return box;
     },
 
