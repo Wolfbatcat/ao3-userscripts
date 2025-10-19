@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
-// @version       2
+// @version       2.1
 // @description   Change site skins from anywhere without leaving the page.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
@@ -20,9 +20,6 @@
   let cachedUsername = null;
   let config = loadConfig();
   let isLoadingMenu = false;
-
-  // Cache badge styles at script load
-  let cachedBadgeStyles = {};
 
   function loadConfig() {
     try {
@@ -345,8 +342,19 @@
             dataValue: skin.id,
             icon: checkmark,
             badge: badge,
-            badgeStyles: cachedBadgeStyles,
+            badgeStyles: {}, // Pass empty object - we'll add the class manually
           });
+
+          // If there's a badge, add the .unread class to inherit skin styling
+          if (badge) {
+            const badgeElement = skinItem.querySelector(".item-badge");
+            if (badgeElement) {
+              badgeElement.classList.add("unread");
+              // Remove inline styles that override the skin's CSS, but keep essential layout
+              badgeElement.style.cssText =
+                "margin-left: 8px; white-space: nowrap; display: inline-block; font-size: 0.7em;";
+            }
+          }
 
           contentContainer.appendChild(skinItem);
         });
@@ -434,40 +442,11 @@
     document.addEventListener("DOMContentLoaded", () => {
       initSharedMenu();
       hidePreferenceFlash();
-      // Initialize badge styles cache
-      if (window.AO3MenuHelpers) {
-        cachedBadgeStyles = window.AO3MenuHelpers.sampleElementStyles(
-          ".unread",
-          [
-            "borderWidth",
-            "borderStyle",
-            "borderColor",
-            "borderRadius",
-            "padding",
-            "fontSize",
-            "backgroundColor",
-            "color",
-          ]
-        );
-      }
       injectMenuListItemHoverOverride();
     });
   } else {
     initSharedMenu();
     hidePreferenceFlash();
-    // Initialize badge styles cache
-    if (window.AO3MenuHelpers) {
-      cachedBadgeStyles = window.AO3MenuHelpers.sampleElementStyles(".unread", [
-        "borderWidth",
-        "borderStyle",
-        "borderColor",
-        "borderRadius",
-        "padding",
-        "fontSize",
-        "backgroundColor",
-        "color",
-      ]);
-    }
     injectMenuListItemHoverOverride();
   }
 })();

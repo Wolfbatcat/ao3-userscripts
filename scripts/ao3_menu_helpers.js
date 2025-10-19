@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      1.0.7
+// @version      1.1.1
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -22,7 +22,7 @@
   let stylesInjected = false;
 
   window.AO3MenuHelpers = {
-    version: "1.0.7",
+    version: "1.1.1",
 
     /**
      * Detects AO3's input field background color from current theme
@@ -125,7 +125,7 @@
             .ao3-menu-dialog .settings-section {
               background: rgba(0,0,0,0.03);
               border-radius: 6px;
-              padding: 15px;
+              padding: 15px 15px 10px 15px;
               margin-bottom: 20px;
               border-left: 4px solid currentColor;
             }
@@ -222,13 +222,13 @@
             /* Form Inputs */
             .ao3-menu-dialog input[type="text"],
             .ao3-menu-dialog input[type="number"],
-            .ao3-menu-dialog input[type="color"],
             .ao3-menu-dialog select,
             .ao3-menu-dialog textarea {
               width: 100%;
               box-sizing: border-box;
+              padding-left: 8px;
             }
-            
+
             .ao3-menu-dialog textarea {
               min-height: 100px;
               resize: vertical;
@@ -267,6 +267,7 @@
             .ao3-menu-dialog .reset-link {
               text-align: center;
               margin-top: 10px;
+              font-size: 0.9em;
               color: inherit;
               opacity: 0.7;
             }
@@ -1076,7 +1077,6 @@
         return isNaN(val) ? null : val;
       } else if (element.type === "radio") {
         const name = element.name || "";
-        // Use getElementById with checked property instead of querySelector for safety
         const radios = document.querySelectorAll(
           `input[type="radio"][name="${name}"]`
         );
@@ -1111,7 +1111,6 @@
         element.value = value;
       }
 
-      // Trigger change/input events
       element.dispatchEvent(new Event("input", { bubbles: true }));
       element.dispatchEvent(new Event("change", { bubbles: true }));
 
@@ -1127,7 +1126,8 @@
      * @param {string} [config.dataValue=''] - Data attribute value
      * @param {string} [config.icon=''] - Optional icon/emoji to display
      * @param {string} [config.badge=''] - Optional badge text
-     * @param {Object} [config.badgeStyles={}] - Custom badge styling
+     * @param {string} [config.badgeClass='unread'] - CSS class to apply to badge (default: 'unread')
+     * @param {string} [config.badgeSize='0.7em'] - Badge font size
      * @returns {HTMLElement} Styled list item
      */
     createListItem(config) {
@@ -1138,7 +1138,8 @@
         dataValue = "",
         icon = "",
         badge = "",
-        badgeStyles = {},
+        badgeClass = "unread",
+        badgeSize = "0.7em",
       } = config;
 
       const item = document.createElement("div");
@@ -1168,38 +1169,23 @@
       textSpan.textContent = text;
       contentDiv.appendChild(textSpan);
 
-      // Add badge if provided
       if (badge) {
         const badgeElement = document.createElement("span");
-        badgeElement.className = "item-badge";
+        badgeElement.className = `item-badge ${badgeClass}`;
         badgeElement.textContent = badge;
 
-        const defaultBadgeStyles = {
-          marginLeft: "8px",
-          whiteSpace: "nowrap",
-          display: "inline-block",
-          padding: "2px 6px",
-          fontSize: "0.75em",
-          borderWidth: "1px",
-          borderStyle: "solid",
-          borderColor: "#bbb",
-          borderRadius: "3px",
-        };
-
-        const finalStyles = { ...defaultBadgeStyles, ...badgeStyles };
-        badgeElement.style.cssText = Object.entries(finalStyles)
-          .map(([key, value]) => {
-            const cssKey = key.replace(/([A-Z])/g, "-$1").toLowerCase();
-            return `${cssKey}: ${value}`;
-          })
-          .join("; ");
+        badgeElement.style.cssText = `
+          margin-left: 8px;
+          white-space: nowrap;
+          display: inline-block;
+          font-size: ${badgeSize};
+        `;
 
         contentDiv.appendChild(badgeElement);
       }
 
       item.appendChild(contentDiv);
 
-      // Add icon section if provided
       if (icon) {
         const iconDiv = document.createElement("div");
         iconDiv.style.cssText = "display: flex; align-items: center; gap: 8px;";
@@ -1244,7 +1230,6 @@
         gap: 10px;
       `;
 
-      // Add custom action buttons
       actions.forEach((action) => {
         const button = document.createElement("button");
         if (action.id) button.id = action.id;
@@ -1266,7 +1251,6 @@
         actionsContainer.appendChild(button);
       });
 
-      // Add close button
       if (includeCloseButton) {
         const closeBtn = document.createElement("button");
         closeBtn.id = "dialog-close-btn";
@@ -1366,7 +1350,6 @@
             color: inherit;
           `;
 
-      // Create header
       const header = this.createDialogHeader({
         title,
         actions: headerActions,
@@ -1374,17 +1357,14 @@
       });
       dialog.appendChild(header);
 
-      // Create scrollable content
       const scrollable = this.createScrollableContent(content);
       dialog.appendChild(scrollable);
 
-      // Add close functionality
       const closeBtn = dialog.querySelector("#dialog-close-btn");
       if (closeBtn) {
         closeBtn.addEventListener("click", () => dialog.remove());
       }
 
-      // Close on background click
       dialog.addEventListener("click", (e) => {
         if (e.target === dialog) dialog.remove();
       });
@@ -1578,7 +1558,6 @@
         return false;
       }
 
-      // Create menu container if needed
       let menuContainer = document.getElementById("scriptconfig");
       if (!menuContainer) {
         const headerMenu = document.querySelector(
@@ -1599,7 +1578,6 @@
         headerMenu.insertBefore(menuContainer, searchItem);
       }
 
-      // Add menu item if it doesn't already exist
       const menu = menuContainer.querySelector(".dropdown-menu");
       if (menu && !menu.querySelector(`#${id}`)) {
         const menuItem = document.createElement("li");
