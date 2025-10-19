@@ -129,7 +129,12 @@
               margin-bottom: 20px;
               border-left: 4px solid currentColor;
             }
-            
+
+            .ao3-menu-dialog .settings-section > *:last-child,
+            .ao3-menu-dialog .settings-section > *:last-child > *:last-child {
+              margin-bottom: 0 !important;
+            }            
+
             .ao3-menu-dialog .section-title {
               margin-top: 0;
               margin-bottom: 15px;
@@ -941,7 +946,8 @@
           `;
 
       const contentDiv = document.createElement("div");
-      contentDiv.style.cssText = "display: flex; align-items: flex-start; gap: 8px; font-size: 0.9em; opacity: 0.8;";
+      contentDiv.style.cssText =
+        "display: flex; align-items: flex-start; gap: 8px; font-size: 0.9em; opacity: 0.8;";
 
       if (icon) {
         const iconSpan = document.createElement("span");

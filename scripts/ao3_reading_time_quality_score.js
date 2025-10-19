@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     3.1
+// @version     3.2
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
 // @match       *://archiveofourown.org/
@@ -31,8 +31,11 @@
     alwaysCountQualityScore: true,
     alwaysSortQualityScore: false,
     excludeMyContentFromSort: false,
-    hideHitcount: false,
-    hideKudosCount: false,
+    hideMetrics: false,
+    hideHits: false,
+    hideKudos: false,
+    hideBookmarks: false,
+    hideComments: false,
     useNormalization: false,
     userMaxScore: 32,
     minKudosToShowScore: 100,
@@ -413,11 +416,19 @@
         const kudos = getNumberFromElement(kudosElement);
         const words = getNumberFromElement(wordsElement);
         if (isNaN(hits) || isNaN(kudos) || isNaN(words)) return;
-        if (CONFIG.hideHitcount && !statsPage && hitsElement) {
+        if (CONFIG.hideHits && !statsPage && hitsElement) {
           hitsElement.style.display = "none";
         }
-        if (CONFIG.hideKudosCount && !statsPage && kudosElement) {
+        if (CONFIG.hideKudos && !statsPage && kudosElement) {
           kudosElement.style.display = "none";
+        }
+        const bookmarksElement = $1("dd.bookmarks", statsElement);
+        if (CONFIG.hideBookmarks && !statsPage && bookmarksElement) {
+          bookmarksElement.style.display = "none";
+        }
+        const commentsElement = $1("dd.comments", statsElement);
+        if (CONFIG.hideComments && !statsPage && commentsElement) {
+          commentsElement.style.display = "none";
         }
         if (kudos < CONFIG.minKudosToShowScore) {
           if (statsElement.querySelector("dt.kudoshits"))
@@ -684,7 +695,7 @@
           "Average reading speed is 200-300 wpm. 375 is for faster readers.",
       })
     );
-    readingTimeSubsettings.appendChild(
+    const readingTimeTwoColumn = window.AO3MenuHelpers.createTwoColumnLayout(
       window.AO3MenuHelpers.createNumberInput({
         id: "readingTimeLvl1",
         label: "Yellow threshold (minutes)",
@@ -694,9 +705,7 @@
         step: 5,
         tooltip:
           "Works taking less than this many minutes will be colored green",
-      })
-    );
-    readingTimeSubsettings.appendChild(
+      }),
       window.AO3MenuHelpers.createNumberInput({
         id: "readingTimeLvl2",
         label: "Red threshold (minutes)",
@@ -707,6 +716,8 @@
         tooltip: "Works taking more than this many minutes will be colored red",
       })
     );
+    readingTimeTwoColumn.style.marginBottom = "0";
+    readingTimeSubsettings.appendChild(readingTimeTwoColumn);
     readingTimeGroup.appendChild(readingTimeSubsettings);
     readingTimeSection.appendChild(readingTimeGroup);
     dialog.appendChild(readingTimeSection);
@@ -762,21 +773,6 @@
     );
     alwaysSortGroup.appendChild(excludeMyContentSubsetting);
     qualityScoreSubsettings.appendChild(alwaysSortGroup);
-
-    qualityScoreSubsettings.appendChild(
-      window.AO3MenuHelpers.createCheckbox({
-        id: "hideHitcount",
-        label: "Hide hit count",
-        checked: CONFIG.hideHitcount,
-      })
-    );
-    qualityScoreSubsettings.appendChild(
-      window.AO3MenuHelpers.createCheckbox({
-        id: "hideKudosCount",
-        label: "Hide kudos count",
-        checked: CONFIG.hideKudosCount,
-      })
-    );
     qualityScoreSubsettings.appendChild(
       window.AO3MenuHelpers.createNumberInput({
         id: "minKudosToShowScore",
@@ -835,8 +831,6 @@
     normalizationGroup.appendChild(userMaxScoreGroup);
     qualityScoreSubsettings.appendChild(normalizationGroup);
 
-    const colorThresholdLowGroup = window.AO3MenuHelpers.createSettingGroup();
-
     const thresholdLowLabel = document.createElement("label");
     thresholdLowLabel.className = "setting-label";
     thresholdLowLabel.setAttribute("for", "colorThresholdLow");
@@ -853,20 +847,6 @@
         "Scores at or above this threshold will be colored yellow"
       )
     );
-
-    colorThresholdLowGroup.appendChild(thresholdLowLabel);
-    colorThresholdLowGroup.appendChild(
-      window.AO3MenuHelpers.createNumberInput({
-        id: "colorThresholdLow",
-        value: displayThresholdLow,
-        min: 0.1,
-        max: 100,
-        step: 0.1,
-      })
-    );
-    qualityScoreSubsettings.appendChild(colorThresholdLowGroup);
-
-    const colorThresholdHighGroup = window.AO3MenuHelpers.createSettingGroup();
 
     const thresholdHighLabel = document.createElement("label");
     thresholdHighLabel.className = "setting-label";
@@ -885,17 +865,43 @@
       )
     );
 
-    colorThresholdHighGroup.appendChild(thresholdHighLabel);
-    colorThresholdHighGroup.appendChild(
+    // Create the Good Score input
+    const colorThresholdLowInput = document.createElement("div");
+    colorThresholdLowInput.className = "setting-group";
+    colorThresholdLowInput.style.marginBottom = "0";
+    colorThresholdLowInput.appendChild(thresholdLowLabel);
+    colorThresholdLowInput.appendChild(
+      window.AO3MenuHelpers.createNumberInput({
+        id: "colorThresholdLow",
+        value: displayThresholdLow,
+        min: 0.1,
+        max: 100,
+        step: 0.1,
+      }).querySelector("input") // Extract just the input, not the wrapper
+    );
+
+    // Create the Excellent Score input
+    const colorThresholdHighInput = document.createElement("div");
+    colorThresholdHighInput.className = "setting-group";
+    colorThresholdHighInput.style.marginBottom = "0";
+    colorThresholdHighInput.appendChild(thresholdHighLabel);
+    colorThresholdHighInput.appendChild(
       window.AO3MenuHelpers.createNumberInput({
         id: "colorThresholdHigh",
         value: displayThresholdHigh,
         min: 0.1,
         max: 100,
         step: 0.1,
-      })
+      }).querySelector("input") // Extract just the input, not the wrapper
     );
-    qualityScoreSubsettings.appendChild(colorThresholdHighGroup);
+
+    // Create two-column layout
+    const thresholdTwoColumn = window.AO3MenuHelpers.createTwoColumnLayout(
+      colorThresholdLowInput,
+      colorThresholdHighInput
+    );
+    thresholdTwoColumn.style.marginBottom = "0";
+    qualityScoreSubsettings.appendChild(thresholdTwoColumn);
 
     qualityScoreGroup.appendChild(qualityScoreSubsettings);
     qualityScoreSection.appendChild(qualityScoreGroup);
@@ -905,59 +911,61 @@
     const visualSection =
       window.AO3MenuHelpers.createSection("🎨 Visual Styling");
 
-    const chapterTimeStyleGroup = window.AO3MenuHelpers.createSettingGroup();
+    const twoColumnLayout = document.createElement("div");
+    twoColumnLayout.className = "two-column";
+
+    twoColumnLayout.appendChild(
+      window.AO3MenuHelpers.createSelect({
+        id: "colorStyle",
+        label: "Visual Style:",
+        options: [
+          {
+            value: "none",
+            label: "Default",
+            selected: CONFIG.colorStyle === "none",
+          },
+          {
+            value: "text",
+            label: "Colored",
+            selected: CONFIG.colorStyle === "text",
+          },
+          {
+            value: "background",
+            label: "Bars",
+            selected: CONFIG.colorStyle === "background",
+          },
+        ],
+      })
+    );
+
+    const chapterTimeStyleGroup = window.AO3MenuHelpers.createSelect({
+      id: "chapterTimeStyle",
+      label: "Chapter Time Style:",
+      options: [
+        {
+          value: "default",
+          label: "Default",
+          selected: CONFIG.chapterTimeStyle === "default",
+        },
+        {
+          value: "colored",
+          label: "Notice",
+          selected: CONFIG.chapterTimeStyle === "colored",
+        },
+        {
+          value: "timeonly",
+          label: "Time Only",
+          selected: CONFIG.chapterTimeStyle === "timeonly",
+        },
+      ],
+    });
     chapterTimeStyleGroup.id = "chapterTimeStyleSettings";
     chapterTimeStyleGroup.style.display = CONFIG.enableChapterStats
       ? ""
       : "none";
-    chapterTimeStyleGroup.appendChild(
-      window.AO3MenuHelpers.createRadioGroup({
-        name: "chapterTimeStyle",
-        label: "Chapter Reading Time Style:",
-        options: [
-          {
-            value: "default",
-            label: "Default",
-            checked: CONFIG.chapterTimeStyle === "default",
-          },
-          {
-            value: "colored",
-            label: "Notice",
-            checked: CONFIG.chapterTimeStyle === "colored",
-          },
-          {
-            value: "timeonly",
-            label: "Time Only",
-            checked: CONFIG.chapterTimeStyle === "timeonly",
-          },
-        ],
-      })
-    );
-    visualSection.appendChild(chapterTimeStyleGroup);
+    twoColumnLayout.appendChild(chapterTimeStyleGroup);
 
-    visualSection.appendChild(
-      window.AO3MenuHelpers.createRadioGroup({
-        name: "colorStyle",
-        label: "Color Style:",
-        options: [
-          {
-            value: "none",
-            label: "Default text",
-            checked: CONFIG.colorStyle === "none",
-          },
-          {
-            value: "text",
-            label: "Colored text",
-            checked: CONFIG.colorStyle === "text",
-          },
-          {
-            value: "background",
-            label: "Colored backgrounds",
-            checked: CONFIG.colorStyle === "background",
-          },
-        ],
-      })
-    );
+    visualSection.appendChild(twoColumnLayout);
 
     const colorPickerSettings = window.AO3MenuHelpers.createSubsettings();
     colorPickerSettings.id = "colorPickerSettings";
@@ -966,6 +974,7 @@
 
     const twoColumnColors = document.createElement("div");
     twoColumnColors.className = "two-column";
+    twoColumnLayout.style.marginBottom = "0";
     twoColumnColors.appendChild(
       window.AO3MenuHelpers.createColorPicker({
         id: "colorGreen",
@@ -1005,13 +1014,6 @@
     visualSection.appendChild(colorPickerSettings);
 
     const useIconsGroup = window.AO3MenuHelpers.createSettingGroup();
-    const iconsLabel = window.AO3MenuHelpers.createLabel(
-      "Icons:",
-      "",
-      "",
-      "setting-label"
-    );
-    useIconsGroup.appendChild(iconsLabel);
     const useIconsCheckbox = window.AO3MenuHelpers.createCheckbox({
       id: "useIcons",
       label: "Use icons instead of text labels",
@@ -1020,7 +1022,6 @@
       inGroup: false,
     });
     useIconsGroup.appendChild(useIconsCheckbox);
-    visualSection.appendChild(useIconsGroup);
 
     const iconColorSettings = window.AO3MenuHelpers.createSubsettings();
     iconColorSettings.id = "iconColorSettings";
@@ -1046,7 +1047,58 @@
       })
     );
     iconColorSettings.appendChild(customIconColorPicker);
-    visualSection.appendChild(iconColorSettings);
+    useIconsGroup.appendChild(iconColorSettings);
+    visualSection.appendChild(useIconsGroup);
+
+    const hideMetricsGroup = window.AO3MenuHelpers.createSettingGroup();
+    const hideMetricsCheckbox = window.AO3MenuHelpers.createCheckbox({
+      id: "hideMetrics",
+      label: "Hide metrics",
+      checked: CONFIG.hideMetrics,
+      tooltip: "Hide metrics (hits, kudos, bookmarkers, comments) from blurbs",
+      inGroup: false,
+    });
+    hideMetricsGroup.appendChild(hideMetricsCheckbox);
+
+    const hideMetricsSubsettings = window.AO3MenuHelpers.createSubsettings();
+    hideMetricsSubsettings.id = "hideMetricsSubsettings";
+    hideMetricsSubsettings.style.display = CONFIG.hideMetrics ? "" : "none";
+
+    const hideHitsKudosRow = window.AO3MenuHelpers.createTwoColumnLayout(
+      window.AO3MenuHelpers.createCheckbox({
+        id: "hideHits",
+        label: "Hits",
+        checked: CONFIG.hideHits,
+        inGroup: false,
+      }),
+      window.AO3MenuHelpers.createCheckbox({
+        id: "hideKudos",
+        label: "Kudos",
+        checked: CONFIG.hideKudos,
+        inGroup: false,
+      })
+    );
+    hideMetricsSubsettings.appendChild(hideHitsKudosRow);
+
+    const hideBookmarksCommentsRow =
+      window.AO3MenuHelpers.createTwoColumnLayout(
+        window.AO3MenuHelpers.createCheckbox({
+          id: "hideBookmarks",
+          label: "Bookmarks",
+          checked: CONFIG.hideBookmarks,
+          inGroup: false,
+        }),
+        window.AO3MenuHelpers.createCheckbox({
+          id: "hideComments",
+          label: "Comments",
+          checked: CONFIG.hideComments,
+          inGroup: false,
+        })
+      );
+    hideMetricsSubsettings.appendChild(hideBookmarksCommentsRow);
+    hideMetricsGroup.appendChild(hideMetricsSubsettings);
+    visualSection.appendChild(hideMetricsGroup);
+
     dialog.appendChild(visualSection);
 
     // Buttons
@@ -1090,16 +1142,13 @@
           : "none";
       });
 
-    dialog.querySelectorAll('input[name="colorStyle"]').forEach((radio) => {
-      radio.addEventListener("change", () => {
-        const selectedStyle = dialog.querySelector(
-          'input[name="colorStyle"]:checked'
-        ).value;
-        colorPickerSettings.style.display =
-          selectedStyle !== "none" ? "" : "none";
-        textColorContainer.style.display =
-          selectedStyle === "background" ? "" : "none";
-      });
+    const colorStyleSelect = dialog.querySelector("#colorStyle");
+    colorStyleSelect.addEventListener("change", () => {
+      const selectedStyle = colorStyleSelect.value;
+      colorPickerSettings.style.display =
+        selectedStyle !== "none" ? "" : "none";
+      textColorContainer.style.display =
+        selectedStyle === "background" ? "" : "none";
     });
 
     dialog.querySelector("#useIcons").addEventListener("change", (e) => {
@@ -1157,6 +1206,10 @@
         }
       });
 
+    dialog.querySelector("#hideMetrics").addEventListener("change", (e) => {
+      hideMetricsSubsettings.style.display = e.target.checked ? "" : "none";
+    });
+
     dialog.querySelector("#closeButton").addEventListener("click", () => {
       dialog.remove();
     });
@@ -1205,8 +1258,11 @@
       ).checked;
       CONFIG.excludeMyContentFromSort =
         dialog.querySelector("#excludeMyContentFromSort")?.checked || false;
-      CONFIG.hideHitcount = dialog.querySelector("#hideHitcount").checked;
-      CONFIG.hideKudosCount = dialog.querySelector("#hideKudosCount").checked;
+      CONFIG.hideMetrics = dialog.querySelector("#hideMetrics").checked;
+      CONFIG.hideHits = dialog.querySelector("#hideHits").checked;
+      CONFIG.hideKudos = dialog.querySelector("#hideKudos").checked;
+      CONFIG.hideBookmarks = dialog.querySelector("#hideBookmarks").checked;
+      CONFIG.hideComments = dialog.querySelector("#hideComments").checked;
       CONFIG.minKudosToShowScore = parseInt(
         dialog.querySelector("#minKudosToShowScore").value
       );
@@ -1214,9 +1270,7 @@
       CONFIG.userMaxScore = userMaxScoreValue;
       CONFIG.colorThresholdLow = thresholdLowValue;
       CONFIG.colorThresholdHigh = thresholdHighValue;
-      CONFIG.colorStyle = dialog.querySelector(
-        'input[name="colorStyle"]:checked'
-      ).value;
+      CONFIG.colorStyle = dialog.querySelector("#colorStyle").value;
       CONFIG.colorGreen = dialog.querySelector("#colorGreen").value;
       CONFIG.colorYellow = dialog.querySelector("#colorYellow").value;
       CONFIG.colorRed = dialog.querySelector("#colorRed").value;
@@ -1225,9 +1279,7 @@
       CONFIG.iconColor = dialog.querySelector("#useCustomIconColor").checked
         ? dialog.querySelector("#iconColor").value
         : "";
-      CONFIG.chapterTimeStyle = dialog.querySelector(
-        'input[name="chapterTimeStyle"]:checked'
-      ).value;
+      CONFIG.chapterTimeStyle = dialog.querySelector("#chapterTimeStyle").value;
 
       saveAllSettings();
       dialog.remove();
