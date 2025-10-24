@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
-// @version       3
+// @version       3.3
 // @description   Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1680254/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // @run-at        document-start
 // ==/UserScript==
@@ -309,17 +309,51 @@
 
   // --- PARAGRAPH SPACING FIX ---
   const fixParagraphSpacing = (() => {
-    function stripBrs(el, leading = true, trailing = true) {
-      if (leading) {
-        while (el.firstChild?.tagName === "BR") {
-          el.firstChild.remove();
+    function removeLeadingBrs(userstuff) {
+      userstuff.querySelectorAll("p").forEach((p) => {
+        let changed = true;
+        while (changed) {
+          changed = false;
+          if (p.firstChild?.tagName === "BR") {
+            p.firstChild.remove();
+            changed = true;
+          } else if (
+            p.firstChild?.nodeType === Node.TEXT_NODE &&
+            !p.firstChild.textContent.trim()
+          ) {
+            p.firstChild.remove();
+            changed = true;
+          }
         }
-      }
-      if (trailing) {
-        while (el.lastChild?.tagName === "BR") {
-          el.lastChild.remove();
+      });
+    }
+
+    function removeTrailingBrs(userstuff) {
+      userstuff.querySelectorAll("p").forEach((p) => {
+        let changed = true;
+        while (changed) {
+          changed = false;
+          if (p.lastChild?.tagName === "BR") {
+            p.lastChild.remove();
+            changed = true;
+          } else if (
+            p.lastChild?.nodeType === Node.TEXT_NODE &&
+            !p.lastChild.textContent.trim()
+          ) {
+            p.lastChild.remove();
+            changed = true;
+          }
         }
-      }
+      });
+    }
+
+    function removeEmptyParagraphs(userstuff) {
+      userstuff.querySelectorAll("p").forEach((p) => {
+        const content = p.textContent?.replace(/\u00A0/g, "").trim();
+        if (!content && !p.querySelector("img, embed, iframe, video, br")) {
+          p.remove();
+        }
+      });
     }
 
     function removeEmptyElement(el) {
@@ -335,26 +369,56 @@
     }
 
     function reduceBrs(userstuff) {
-      let el = userstuff.querySelector("br + br + br");
-      while (el) {
-        el.remove();
-        el = userstuff.querySelector("br + br + br");
+      const brs = Array.from(userstuff.querySelectorAll("br"));
+
+      for (let i = 0; i < brs.length; i++) {
+        const br = brs[i];
+        let consecutiveCount = 1;
+        let nextNode = br.nextSibling;
+
+        while (nextNode) {
+          if (
+            nextNode.nodeType === Node.ELEMENT_NODE &&
+            nextNode.tagName === "BR"
+          ) {
+            consecutiveCount++;
+            nextNode = nextNode.nextSibling;
+          } else if (
+            nextNode.nodeType === Node.TEXT_NODE &&
+            !nextNode.textContent.trim()
+          ) {
+            nextNode = nextNode.nextSibling;
+          } else {
+            break;
+          }
+        }
+
+        if (consecutiveCount >= 3) {
+          let toRemove = consecutiveCount - 2;
+          nextNode = br.nextSibling;
+
+          while (toRemove > 0 && nextNode) {
+            const current = nextNode;
+            nextNode = nextNode.nextSibling;
+
+            if (
+              current.nodeType === Node.ELEMENT_NODE &&
+              current.tagName === "BR"
+            ) {
+              current.remove();
+              toRemove--;
+            }
+          }
+        }
       }
     }
 
-    const ALLOWED_TAGS = [
-      "p",
+    const BLOCK_TAGS = [
       "div",
-      "span",
       "blockquote",
-      "pre",
-      "li",
       "ul",
       "ol",
       "table",
-      "tr",
-      "td",
-      "th",
       "h1",
       "h2",
       "h3",
@@ -373,12 +437,16 @@
         .forEach((userstuff) => {
           userstuff.setAttribute("data-formatter-spacing-fixed", "true");
 
-          ALLOWED_TAGS.forEach((tag) => {
+          removeLeadingBrs(userstuff);
+          removeTrailingBrs(userstuff);
+          removeEmptyParagraphs(userstuff);
+
+          BLOCK_TAGS.forEach((tag) => {
             userstuff.querySelectorAll(tag).forEach((child) => {
-              stripBrs(child);
               removeEmptyElement(child);
             });
           });
+
           reduceBrs(userstuff);
         });
     };

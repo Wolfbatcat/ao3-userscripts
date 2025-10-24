@@ -5,7 +5,7 @@
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1680254/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==

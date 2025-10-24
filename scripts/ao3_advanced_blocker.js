@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       3.1
-// @description   [In Development] Block works based off of tags, authors, word counts, languages, completion status and more. Now with primary pairing filtering!
+// @version       3.2
+// @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*/works*
 // @match         *://archiveofourown.org/works
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1680254/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -76,9 +76,8 @@
     summaryBlacklist: "",
     showReasons: true,
     showPlaceholders: true,
-    debugMode: false,
     allowedLanguages: "",
-    maxCrossovers: "3",
+    maxCrossovers: "6",
     disableOnMyContent: true,
     enableHighlightingOnMyContent: false,
     username: null,
@@ -87,7 +86,7 @@
     primaryRelpad: "1",
     primaryCharpad: "5",
     pauseBlocking: false,
-    _version: "3.0",
+    _version: "3.2",
   };
 
   const STORAGE_KEY = "ao3_advanced_blocker_config";
@@ -129,7 +128,6 @@
       "blockOngoing",
       "showReasons",
       "showPlaceholders",
-      "debugMode",
       "disableOnMyContent",
       "enableHighlightingOnMyContent",
       "pauseBlocking",
@@ -210,7 +208,6 @@
       const needsSanitization =
         !parsedConfig._version || parsedConfig._version !== "3.0";
       if (needsSanitization) {
-        console.log("[AO3 Advanced Blocker] Updating config to v3.0");
         const sanitized = sanitizeConfig({ ...DEFAULTS, ...parsedConfig });
         saveConfig(sanitized);
         return sanitized;
@@ -530,7 +527,6 @@
         .filter(Boolean)
         .map(compilePattern),
       highlightColor: config.highlightColor,
-      debugMode: config.debugMode,
       allowedLanguages: config.allowedLanguages
         .toLowerCase()
         .split(/,(?:\s)?/g)
@@ -705,7 +701,8 @@
       id: "tag-blacklist-input",
       label: "Blacklist Tags",
       value: config.tagBlacklist,
-      placeholder: "Abandoned*, Reader, Podfic, Genderswap",
+      placeholder:
+        "Explicit, Major Character Death, Multi, Abandoned*, Dead Dove: Do Not Eat",
       description:
         "Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms. * for wildcards.",
     });
@@ -714,7 +711,7 @@
       id: "tag-whitelist-input",
       label: "Whitelist Tags",
       value: config.tagWhitelist,
-      placeholder: "*Happy Ending*, Fluff",
+      placeholder: "*Happy Ending*, Temporary Character Death, Fluff",
       description:
         "Always shows the work even if it matches the blacklist. * for wildcards.",
     });
@@ -746,7 +743,7 @@
       label: "Primary Relationships",
       value: config.primaryRelationships,
       placeholder:
-        "Luo Binghe/Shen Yuan | Shen Qingqiu, Lan Zhan | Lan Wangji/Wei Ying | Wei Wuxian",
+        "Hua Cheng/Xie Lian (Tian Guan Ci Fu), Kim Dokja/Yoo Joonghyuk",
       tooltip:
         "Only show works where these relationships are in the first few relationship tags.",
     });
@@ -755,7 +752,7 @@
       id: "primary-characters-input",
       label: "Primary Characters",
       value: config.primaryCharacters,
-      placeholder: "Shen Yuan | Shen Qingqiu, Luo Binghe",
+      placeholder: "Hua Cheng (Tian Guan Ci Fu), Kim Dokja",
       tooltip:
         "Only show works where these characters are in the first few character tags.",
     });
@@ -891,7 +888,7 @@
       label: "Blacklist Titles",
       value: config.titleBlacklist,
       placeholder: "oneshot, prompt, 2025",
-      tooltip: "Blocks if the title contains your text. * works.",
+      tooltip: "Blocks if the title contains your text.",
     });
     const authorRow = window.AO3MenuHelpers.createTwoColumnLayout(
       authorBlacklist,
@@ -904,7 +901,7 @@
       value: config.summaryBlacklist,
       placeholder: "oneshot, prompt, 2025",
       tooltip:
-        "Blocks if the summary has these words/phrases. * for wildcards.",
+        "Blocks if the summary has these words/phrases.",
     });
     authorSection.appendChild(summaryBlacklist);
     dialog.appendChild(authorSection);
@@ -1070,7 +1067,6 @@
         showPlaceholders: window.AO3MenuHelpers.getValue(
           "show-placeholders-checkbox"
         ),
-        debugMode: config.debugMode,
         highlightColor:
           window.AO3MenuHelpers.getValue("highlight-color-input") ||
           DEFAULTS.highlightColor,
@@ -1164,14 +1160,64 @@
         if (reason.wordCount) parts.push(`<em>${reason.wordCount}</em>`);
         if (reason.chapterCount) parts.push(`<em>${reason.chapterCount}</em>`);
         if (reason.staleUpdate) parts.push(`<em>${reason.staleUpdate}</em>`);
-        if (reason.tags && reason.tags.length > 0)
-          parts.push(`<em>Tags: ${reason.tags.join(", ")}</em>`);
-        if (reason.authors && reason.authors.length > 0)
-          parts.push(`<em>Author: ${reason.authors.join(", ")}</em>`);
+        if (reason.tags && reason.tags.length > 0) {
+          const categoryTags = new Set([
+            "M/M",
+            "Gen",
+            "Multi",
+            "F/F",
+            "F/M",
+            "Other",
+          ]);
+          const ratingTags = new Set([
+            "Teen And Up Audiences",
+            "Explicit",
+            "General Audiences",
+            "Mature",
+            "Not Rated",
+          ]);
+          const warningTags = new Set([
+            "No Archive Warnings Apply",
+            "Creator Chose Not To Use Archive Warnings",
+            "Graphic Depictions Of Violence",
+            "Major Character Death",
+            "Rape/Non-Con",
+            "Underage Sex",
+          ]);
+          const categories = reason.tags.filter((tag) => categoryTags.has(tag));
+          const ratings = reason.tags.filter((tag) => ratingTags.has(tag));
+          const warnings = reason.tags.filter((tag) => warningTags.has(tag));
+          const otherTags = reason.tags.filter(
+            (tag) =>
+              !categoryTags.has(tag) &&
+              !ratingTags.has(tag) &&
+              !warningTags.has(tag)
+          );
+          if (categories.length > 0) {
+            const label = categories.length === 1 ? "Category:" : "Categories:";
+            parts.push(`<em>${label} ${categories.join(", ")}</em>`);
+          }
+          if (ratings.length > 0) {
+            const label = ratings.length === 1 ? "Rating:" : "Ratings:";
+            parts.push(`<em>${label} ${ratings.join(", ")}</em>`);
+          }
+          if (warnings.length > 0) {
+            const label = warnings.length === 1 ? "Warning:" : "Warnings:";
+            parts.push(`<em>${label} ${warnings.join(", ")}</em>`);
+          }
+          if (otherTags.length > 0) {
+            const label = otherTags.length === 1 ? "Tag:" : "Tags:";
+            parts.push(`<em>${label} ${otherTags.join(", ")}</em>`);
+          }
+        }
+        if (reason.authors && reason.authors.length > 0) {
+          const label = reason.authors.length === 1 ? "Author:" : "Authors:";
+          parts.push(`<em>${label} ${reason.authors.join(", ")}</em>`);
+        }
         if (reason.titles && reason.titles.length > 0)
-          parts.push(`<em>Title: ${reason.titles.join(", ")}</em>`);
+          parts.push(`<em>Title: ${reason.titles[0]}</em>`);
         if (reason.summaryTerms && reason.summaryTerms.length > 0)
-          parts.push(`<em>Summary: ${reason.summaryTerms.join(", ")}</em>`);
+          parts.push(`<em>Summary: ${reason.summaryTerms[0]}</em>`);
         if (reason.language)
           parts.push(`<em>Language: ${reason.language}</em>`);
         if (reason.crossovers !== undefined)
@@ -1524,37 +1570,20 @@
   }
 
   function checkWorks() {
-    const debugMode = window.ao3Blocker.config.debugMode;
     const config = window.ao3Blocker.config;
     let blocked = 0;
     let total = 0;
     if (config.pauseBlocking) {
-      if (debugMode)
-        console.log("[Advanced Blocker] Paused - skipping all blocking");
       return;
     }
-    if (debugMode) {
-      console.groupCollapsed("Advanced Blocker");
-      if (!config) {
-        console.warn("Exiting due to missing config.");
-        return;
-      }
+    if (!config) {
+      return;
     }
     let isOnMyContent = false;
     let username = config.username || detectUsername(config);
     if (config.disableOnMyContent && username) {
       isOnMyContent = isMyContentPage(username);
-      if (isOnMyContent) {
-        if (debugMode) {
-          console.info("Advanced Blocker: On user's own content page.");
-          console.log("Path:", window.location.pathname);
-          console.log(
-            "Blocking disabled. Highlighting:",
-            config.enableHighlightingOnMyContent ? "enabled" : "disabled"
-          );
-        }
-        if (!config.enableHighlightingOnMyContent) return;
-      }
+      if (isOnMyContent && !config.enableHighlightingOnMyContent) return;
     }
     const blurbs = document.querySelectorAll("li.blurb");
     blurbs.forEach((blurbEl) => {
@@ -1580,31 +1609,13 @@
       }
       if (shouldHighlight) {
         blurbEl.classList.add("ao3-blocker-highlight");
-        if (debugMode) {
-          console.groupCollapsed(`✨ highlighted ${blurbEl.id}`);
-          console.log(blurbEl.innerHTML);
-          console.groupEnd();
-        }
       }
       let reason = null;
       if (!isOnMyContent) reason = getBlockReason(blockables, config, blurbEl);
       if (reason) {
         blockWork(blurbEl, reason, config);
         blocked++;
-        if (debugMode) {
-          console.groupCollapsed(`🚫 blocked ${blurbEl.id}`);
-          console.log(blurbEl.innerHTML, reason);
-          console.groupEnd();
-        }
-      } else if (debugMode) {
-        console.groupCollapsed(`  skipped ${blurbEl.id}`);
-        console.log(blurbEl.innerHTML);
-        console.groupEnd();
       }
     });
-    if (debugMode) {
-      console.log(`Blocked ${blocked} out of ${total} works`);
-      console.groupEnd();
-    }
   }
 })();
