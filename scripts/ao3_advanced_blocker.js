@@ -241,6 +241,11 @@
     const params = new URLSearchParams(window.location.search);
     const userId = params.get("user_id");
     if (userId && userId.toLowerCase() === username.toLowerCase()) return true;
+    // Check for individual bookmark pages
+    if (path.match(/^\/bookmarks\/\d+$/)) {
+      const userLink = document.querySelector(`a[href="/users/${username}"]`);
+      if (userLink) return true;
+    }
     return false;
   }
 
@@ -900,8 +905,7 @@
       label: "Blacklist Summary",
       value: config.summaryBlacklist,
       placeholder: "oneshot, prompt, 2025",
-      tooltip:
-        "Blocks if the summary has these words/phrases.",
+      tooltip: "Blocks if the summary has these words/phrases.",
     });
     authorSection.appendChild(summaryBlacklist);
     dialog.appendChild(authorSection);

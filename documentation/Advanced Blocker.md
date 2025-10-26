@@ -2,7 +2,7 @@
 
 Block works on AO3 based on tags, authors, titles, word counts, and more. Filter by completion status, language, reading time, and primary pairings. Customize what you see—or don't see.
 
-![Advanced Blocker](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/ao3-advanced-blocker-demo.png "Advanced Blocker in action")
+![Advanced Blocker](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-1.png "Advanced Blocker in action" =400x)
 
 ---
 
@@ -15,9 +15,9 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Wildcard Support** – Use `*` to match partial tags. For example: `Abandoned*` matches "Abandoned Work" and "Abandoned WIP."
 
 ### **Content Filtering**
-- **Author Blacklist** – Block works by specific authors (exact name match).
-- **Title Blacklist** – Hide works whose titles contain specific words or phrases. Supports wildcards.
-- **Summary Blacklist** – Hide works whose summaries contain specific words or phrases. Supports wildcards.
+- **Author Blacklist** – Block works by specific authors.
+- **Title Blacklist** – Hide works whose titles contain specific words or phrases.
+- **Summary Blacklist** – Hide works whose summaries contain specific words or phrases.
 
 ### **Work Metadata Filtering**
 - **Word Count Limits** – Set minimum and maximum word counts.
@@ -42,7 +42,6 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Quick-Add** – Hold **Alt** and click any tag or author name to instantly add them to your blacklist.
 - **Pause Blocking** – Temporarily disable filtering without changing settings.
 - **Import/Export Settings** – Save and restore your configuration across devices or browsers.
-- **Customizable Highlight Color** – Choose any color for tag highlights.
 
 ---
 
@@ -79,7 +78,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 
 **Tag vs. Title/Summary Matching**
 - **Tags** use exact matching but are case-insensitive: `romance` will match 'Romance' but not `Slow Burn Romance`.
-- **Titles & Summaries** use partial matching (use wildcards for fuzzy matching).
+- **Titles & Summaries** use partial matching automatically—they'll find your text anywhere in the title or summary. Example: blocking `prompt` catches "prompt fill," "writing prompt," and "story prompt." Wildcards are rarely needed here.
 - **Authors** require exact name matches.
 
 **Primary Relationships & Characters**
