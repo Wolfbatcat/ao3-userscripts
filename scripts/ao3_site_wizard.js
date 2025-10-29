@@ -683,7 +683,7 @@
 
     // Buttons
     const buttons = window.AO3MenuHelpers.createButtonGroup([
-      { text: "Apply Settings", id: "formatter-save" },
+      { text: "Save", id: "formatter-save" },
       { text: "Cancel", id: "formatter-cancel" },
     ]);
     dialog.appendChild(buttons);

@@ -1105,7 +1105,7 @@
     dialog.appendChild(
       window.AO3MenuHelpers.createButtonGroup([
         { text: "Save", id: "saveButton" },
-        { text: "Close", id: "closeButton" },
+        { text: "Cancel", id: "closeButton" },
       ])
     );
     dialog.appendChild(

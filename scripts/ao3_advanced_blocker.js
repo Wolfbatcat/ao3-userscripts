@@ -74,8 +74,8 @@
     authorBlacklist: "",
     titleBlacklist: "",
     summaryBlacklist: "",
+    workBlacklist: "",
     showReasons: true,
-    showPlaceholders: true,
     allowedLanguages: "",
     maxCrossovers: "6",
     disableOnMyContent: true,
@@ -86,6 +86,7 @@
     primaryRelpad: "1",
     primaryCharpad: "5",
     pauseBlocking: false,
+    hideCompletelyRules: {},
     _version: "3.2",
   };
 
@@ -100,6 +101,7 @@
       "authorBlacklist",
       "titleBlacklist",
       "summaryBlacklist",
+      "workBlacklist",
       "allowedLanguages",
       "primaryRelationships",
       "primaryCharacters",
@@ -127,7 +129,6 @@
       "blockComplete",
       "blockOngoing",
       "showReasons",
-      "showPlaceholders",
       "disableOnMyContent",
       "enableHighlightingOnMyContent",
       "pauseBlocking",
@@ -136,7 +137,21 @@
       sanitized[field] =
         typeof config[field] === "boolean" ? config[field] : DEFAULTS[field];
     });
-    sanitized._version = "3.0";
+    sanitized.hideCompletelyRules = {};
+    if (config.hideCompletelyRules && typeof config.hideCompletelyRules === "object") {
+      const validKeys = [
+        "minWords", "maxWords", "minChapters", "maxChapters", "blockComplete", "blockOngoing",
+        "maxMonthsSinceUpdate", "maxCrossovers", "language", "tagBlacklist", "tagWhitelist",
+        "authorBlacklist", "titleBlacklist", "summaryBlacklist", "workBlacklist",
+        "primaryRelationships", "primaryCharacters"
+      ];
+      validKeys.forEach(key => {
+        if (typeof config.hideCompletelyRules[key] === "boolean") {
+          sanitized.hideCompletelyRules[key] = config.hideCompletelyRules[key];
+        }
+      });
+    }
+    sanitized._version = "3.2";
     return sanitized;
   }
 
@@ -153,7 +168,7 @@
   }
   .ao3-blocker-unhide .ao3-blocker-fold {
     border-bottom: 1px dashed; border-bottom-color: inherit;
-    margin-bottom: 15px; padding-bottom: 5px;
+    margin-bottom: 15px; padding-bottom: inherit;
   }
   button.ao3-blocker-toggle {
     margin-left: auto; min-width: inherit; min-height: inherit; display: flex;
@@ -163,11 +178,11 @@
   }
   .ao3-blocker-note {
     flex: 1 !important; min-width: 0 !important; word-wrap: break-word !important;
-    overflow-wrap: break-word !important; margin-left: 2em !important;
+    overflow-wrap: break-word !important; margin-left: 2.5em !important;
     position: relative !important; display: block !important;
   }
   .ao3-blocker-fold .ao3-blocker-note .ao3-blocker-icon {
-    position: absolute !important; left: -1.5em !important; margin-right: 0 !important;
+    position: absolute !important; left: -2.0em !important; top: 50% !important; transform: translateY(-50%) !important; margin-right: 0 !important;
     display: block !important; float: none !important; vertical-align: top !important;
     width: 1.2em !important; height: 1.2em !important;
   }
@@ -175,6 +190,13 @@
     width: 1em !important; height: 1em !important; display: inline-block;
     vertical-align: -0.15em; margin-right: 0.2em; background-color: currentColor;
   }
+  .ao3-blocker-eye-toggle {
+    display: inline-block; width: 1.2em; height: 1.2em; margin-left: 0.3em; margin-right: 0.3em;
+    vertical-align: -0.15em; background-color: currentColor; opacity: 0.5; transition: opacity 0.2s ease;
+    border: none; padding: 0; cursor: pointer; background: none;
+  }
+  .ao3-blocker-eye-toggle:hover { opacity: 1.0; }
+  .ao3-blocker-eye-toggle:focus { outline: 2px solid currentColor; outline-offset: 2px; }
   .ao3-blocker-highlight { position: relative !important; }
   .ao3-blocker-highlight::before {
     content: '' !important; position: absolute !important; left: 0 !important;
@@ -195,10 +217,63 @@
   }
   `;
 
+  function createEyeToggle(filterId, initialState) {
+    const button = document.createElement("button");
+    button.className = "ao3-blocker-eye-toggle";
+    button.setAttribute("data-filter-id", filterId);
+    button.setAttribute("aria-label", `Toggle hide completely for ${filterId}`);
+    button.setAttribute("aria-pressed", initialState ? "true" : "false");
+    button.innerHTML = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;background-color:currentColor;mask:url('${initialState ? ICON_HIDE : ICON_EYE}') no-repeat center/contain;-webkit-mask:url('${initialState ? ICON_HIDE : ICON_EYE}') no-repeat center/contain;"></span>`;
+    button.addEventListener("click", () => {
+      const currentPressed = button.getAttribute("aria-pressed") === "true";
+      const newPressed = !currentPressed;
+      button.setAttribute("aria-pressed", newPressed ? "true" : "false");
+      const span = button.querySelector("span");
+      span.style.mask = `url('${newPressed ? ICON_HIDE : ICON_EYE}') no-repeat center/contain`;
+      span.style.webkitMask = `url('${newPressed ? ICON_HIDE : ICON_EYE}') no-repeat center/contain`;
+    });
+    return button;
+  }
+
+  function createInputWithEyeToggle(element, filterId, config) {
+    const label = element.querySelector("label");
+    if (label) {
+      const eyeToggle = createEyeToggle(filterId, config.hideCompletelyRules[filterId] || false);
+      // Insert after label text but before tooltip
+      const tooltip = label.querySelector(".ao3mh-tooltip");
+      if (tooltip) {
+        label.insertBefore(eyeToggle, tooltip);
+      } else {
+        label.appendChild(eyeToggle);
+      }
+    }
+    return element;
+  }
+
   const ICON_HIDE =
     "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.33%2C13.33%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C3.93-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
   const ICON_EYE =
     "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Visible%22%20id%3D%22Eye_Visible%22%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.42%2C17.51%2C27.66%2C11%2C20%2C11S7.58%2C17.51%2C6.33%2C19.46a1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.58%2C22.49%2C12.34%2C29%2C20%2C29s12.42-6.51%2C13.67-8.46A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46ZM20%2C25a5%2C5%2C0%2C1%2C1%2C5-5A5%2C5%2C0%2C0%2C1%2C20%2C25Z%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
+
+  function compilePattern(pattern) {
+    const hasWildcard = pattern.includes("*");
+    if (hasWildcard) {
+      const parts = pattern.split("*").map((part) => {
+        const normalized = normalizeText(part);
+        return normalized.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+      });
+      const regexPattern = parts.join(".*");
+      const normalized = normalizeText(pattern.replace(/\*/g, ""));
+      return {
+        originalText: pattern,
+        text: normalized,
+        regex: new RegExp(regexPattern, "i"),
+        hasWildcard: true,
+      };
+    }
+    const normalized = normalizeText(pattern);
+    return { originalText: pattern, text: normalized, hasWildcard: false };
+  }
 
   function loadConfig() {
     try {
@@ -371,6 +446,57 @@
     }, 2000);
   }
 
+  function checkWorks() {
+    const config = window.ao3Blocker.config;
+    let blocked = 0;
+    let total = 0;
+    if (config.pauseBlocking) {
+      return;
+    }
+    if (!config) {
+      return;
+    }
+    let isOnMyContent = false;
+    let username = config.username || detectUsername(config);
+    if (config.disableOnMyContent && username) {
+      isOnMyContent = isMyContentPage(username);
+      if (isOnMyContent && !config.enableHighlightingOnMyContent) return;
+    }
+    const blurbs = document.querySelectorAll("li.blurb");
+    blurbs.forEach((blurbEl) => {
+      const isWorkOrBookmark =
+        (blurbEl.classList.contains("work") ||
+          blurbEl.classList.contains("bookmark")) &&
+        !blurbEl.classList.contains("picture");
+      if (!isWorkOrBookmark) return;
+      if (blurbEl.classList.contains(`${CSS_NAMESPACE}-hidden`) || blurbEl.classList.contains(`${CSS_NAMESPACE}-work`)) return;
+      const blockables = selectFromBlurb(blurbEl);
+      const allTags = blockables.tags;
+      total++;
+      let shouldHighlight = false;
+      if (config.tagHighlights.length > 0) {
+        for (let i = 0; i < allTags.length; i++) {
+          for (let j = 0; j < config.tagHighlights.length; j++) {
+            if (matchPattern(allTags[i], config.tagHighlights[j], true)) {
+              shouldHighlight = true;
+              break;
+            }
+          }
+          if (shouldHighlight) break;
+        }
+      }
+      if (shouldHighlight) {
+        blurbEl.classList.add("ao3-blocker-highlight");
+      }
+      let reason = null;
+      if (!isOnMyContent) reason = getBlockReason(blockables, config, blurbEl);
+      if (reason) {
+        blockWork(blurbEl, reason, config);
+        blocked++;
+      }
+    });
+  }
+
   function handleQuickAdd(event) {
     if (!event.altKey) return;
     const target = event.target;
@@ -403,21 +529,9 @@
         currentTags.length > 0 ? config.tagBlacklist + ", " + tagText : tagText;
       config.tagBlacklist = updatedTags;
       saveConfig(config);
+      window.ao3Blocker.config.tagBlacklist = updatedTags.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern);
+      checkWorks();
       showQuickAddNotification(`✓ Added "${tagText}" to tag blacklist`);
-      if (!window.ao3BlockerQuickAddQueue) window.ao3BlockerQuickAddQueue = [];
-      window.ao3BlockerQuickAddQueue.push({ type: "tag", value: tagText });
-      if (window.ao3BlockerQuickAddTimeout)
-        clearTimeout(window.ao3BlockerQuickAddTimeout);
-      window.ao3BlockerQuickAddTimeout = setTimeout(() => {
-        const queueLength = window.ao3BlockerQuickAddQueue?.length || 0;
-        if (queueLength > 0) {
-          showQuickAddNotification(
-            `✓ Added ${queueLength} item(s) to blacklist`
-          );
-          window.ao3BlockerQuickAddQueue = [];
-          location.reload();
-        }
-      }, 3000);
       return;
     }
     if (target.getAttribute("rel") === "author") {
@@ -455,52 +569,49 @@
           : authorText;
       config.authorBlacklist = updatedAuthors;
       saveConfig(config);
+      window.ao3Blocker.config.authorBlacklist = updatedAuthors.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean);
+      checkWorks();
       showQuickAddNotification(`✓ Added "${authorText}" to author blacklist`);
-      if (!window.ao3BlockerQuickAddQueue) window.ao3BlockerQuickAddQueue = [];
-      window.ao3BlockerQuickAddQueue.push({
-        type: "author",
-        value: authorText,
-      });
-      if (window.ao3BlockerQuickAddTimeout)
-        clearTimeout(window.ao3BlockerQuickAddTimeout);
-      window.ao3BlockerQuickAddTimeout = setTimeout(() => {
-        const queueLength = window.ao3BlockerQuickAddQueue?.length || 0;
-        if (queueLength > 0) {
-          showQuickAddNotification(
-            `✓ Added ${queueLength} item(s) to blacklist`
-          );
-          window.ao3BlockerQuickAddQueue = [];
-          location.reload();
-        }
-      }, 5000);
+      return;
+    }
+    if (target.tagName === "A" && target.href && target.href.match(/\/works\/\d+/)) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (event.target.closest("a")) {
+        event.target.closest("a").style.pointerEvents = "none";
+        setTimeout(() => {
+          if (event.target.closest("a"))
+            event.target.closest("a").style.pointerEvents = "";
+        }, 100);
+      }
+      const workIdMatch = target.href.match(/\/works\/(\d+)/);
+      if (!workIdMatch) return;
+      const workId = workIdMatch[1];
+      const currentWorks = config.workBlacklist
+        .split(",")
+        .map((w) => w.trim())
+        .filter(Boolean);
+      const alreadyExists = currentWorks.some((w) => w === workId);
+      if (alreadyExists) {
+        showQuickAddNotification(`"${workId}" is already blacklisted`);
+        return;
+      }
+      const updatedWorks =
+        currentWorks.length > 0 ? config.workBlacklist + ", " + workId : workId;
+      config.workBlacklist = updatedWorks;
+      saveConfig(config);
+      window.ao3Blocker.config.workBlacklist = updatedWorks.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean);
+      checkWorks();
+      showQuickAddNotification(`✓ Added "${workId}" to work blacklist`);
       return;
     }
   }
 
   function initConfig() {
     const config = loadConfig();
-    const compilePattern = (pattern) => {
-      const hasWildcard = pattern.includes("*");
-      if (hasWildcard) {
-        const parts = pattern.split("*").map((part) => {
-          const normalized = normalizeText(part);
-          return normalized.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-        });
-        const regexPattern = parts.join(".*");
-        const normalized = normalizeText(pattern.replace(/\*/g, ""));
-        return {
-          originalText: pattern,
-          text: normalized,
-          regex: new RegExp(regexPattern, "i"),
-          hasWildcard: true,
-        };
-      }
-      const normalized = normalizeText(pattern);
-      return { originalText: pattern, text: normalized, hasWildcard: false };
-    };
     window.ao3Blocker.config = {
       showReasons: config.showReasons,
-      showPlaceholders: config.showPlaceholders,
       authorBlacklist: config.authorBlacklist
         .toLowerCase()
         .split(/,(?:\s)?/g)
@@ -531,6 +642,11 @@
         .map((i) => i.trim())
         .filter(Boolean)
         .map(compilePattern),
+      workBlacklist: config.workBlacklist
+        .toLowerCase()
+        .split(/,(?:\s)?/g)
+        .map((i) => i.trim())
+        .filter(Boolean),
       highlightColor: config.highlightColor,
       allowedLanguages: config.allowedLanguages
         .toLowerCase()
@@ -598,6 +714,7 @@
       disableOnMyContent: !!config.disableOnMyContent,
       enableHighlightingOnMyContent: !!config.enableHighlightingOnMyContent,
       pauseBlocking: !!config.pauseBlocking,
+      hideCompletelyRules: config.hideCompletelyRules || {},
       username: config.username || null,
     };
     addStyle();
@@ -702,24 +819,32 @@
     );
 
     const tagSection = window.AO3MenuHelpers.createSection("Tag Filtering 📖");
-    const tagBlacklist = window.AO3MenuHelpers.createTextarea({
-      id: "tag-blacklist-input",
-      label: "Blacklist Tags",
-      value: config.tagBlacklist,
-      placeholder:
-        "Explicit, Major Character Death, Multi, Abandoned*, Dead Dove: Do Not Eat",
-      description:
-        "Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms. * for wildcards.",
-    });
+    const tagBlacklist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "tag-blacklist-input",
+        label: "Blacklist Tags",
+        value: config.tagBlacklist,
+        placeholder:
+          "Explicit, Major Character Death, Multi, Abandoned*, Dead Dove: Do Not Eat",
+        description:
+          "Matches any AO3 tag: ratings, warnings, fandoms, ships, characters, freeforms. * for wildcards.",
+      }),
+      "tagBlacklist",
+      config
+    );
     tagSection.appendChild(tagBlacklist);
-    const tagWhitelist = window.AO3MenuHelpers.createTextarea({
-      id: "tag-whitelist-input",
-      label: "Whitelist Tags",
-      value: config.tagWhitelist,
-      placeholder: "*Happy Ending*, Temporary Character Death, Fluff",
-      description:
-        "Always shows the work even if it matches the blacklist. * for wildcards.",
-    });
+    const tagWhitelist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "tag-whitelist-input",
+        label: "Whitelist Tags",
+        value: config.tagWhitelist,
+        placeholder: "*Happy Ending*, Temporary Character Death, Fluff",
+        description:
+          "Always shows the work even if it matches the blacklist. * for wildcards.",
+      }),
+      "tagWhitelist",
+      config
+    );
     tagSection.appendChild(tagWhitelist);
     const tagHighlightsInput = window.AO3MenuHelpers.createTextarea({
       id: "tag-highlights-input",
@@ -743,24 +868,32 @@
     const pairingSection = window.AO3MenuHelpers.createSection(
       "Primary Pairing Filtering 💕"
     );
-    const primaryRel = window.AO3MenuHelpers.createTextarea({
-      id: "primary-relationships-input",
-      label: "Primary Relationships",
-      value: config.primaryRelationships,
-      placeholder:
-        "Hua Cheng/Xie Lian (Tian Guan Ci Fu), Kim Dokja/Yoo Joonghyuk",
-      tooltip:
-        "Only show works where these relationships are in the first few relationship tags.",
-    });
+    const primaryRel = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "primary-relationships-input",
+        label: "Primary Relationships",
+        value: config.primaryRelationships,
+        placeholder:
+          "Hua Cheng/Xie Lian (Tian Guan Ci Fu), Kim Dokja/Yoo Joonghyuk",
+        tooltip:
+          "Only show works where these relationships are in the first few relationship tags.",
+      }),
+      "primaryRelationships",
+      config
+    );
     pairingSection.appendChild(primaryRel);
-    const primaryChar = window.AO3MenuHelpers.createTextarea({
-      id: "primary-characters-input",
-      label: "Primary Characters",
-      value: config.primaryCharacters,
-      placeholder: "Hua Cheng (Tian Guan Ci Fu), Kim Dokja",
-      tooltip:
-        "Only show works where these characters are in the first few character tags.",
-    });
+    const primaryChar = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "primary-characters-input",
+        label: "Primary Characters",
+        value: config.primaryCharacters,
+        placeholder: "Hua Cheng (Tian Guan Ci Fu), Kim Dokja",
+        tooltip:
+          "Only show works where these characters are in the first few character tags.",
+      }),
+      "primaryCharacters",
+      config
+    );
     pairingSection.appendChild(primaryChar);
     const relPad = window.AO3MenuHelpers.createNumberInput({
       id: "primary-relpad-input",
@@ -787,71 +920,99 @@
 
     const workSection =
       window.AO3MenuHelpers.createSection("Work Filtering 🔍");
-    const languages = window.AO3MenuHelpers.createTextInput({
-      id: "allowed-languages-input",
-      label: "Allowed Languages",
-      value: config.allowedLanguages || "",
-      placeholder: "English, Русский, 中文-普通话国语",
-      tooltip: "Only show these languages. Leave empty for all.",
-    });
+    const languages = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextInput({
+        id: "allowed-languages-input",
+        label: "Allowed Languages",
+        value: config.allowedLanguages || "",
+        placeholder: "English, Русский, 中文-普通话国语",
+        tooltip: "Only show these languages. Leave empty for all.",
+      }),
+      "language",
+      config
+    );
     workSection.appendChild(languages);
-    const maxFandoms = window.AO3MenuHelpers.createNumberInput({
-      id: "max-crossovers-input",
-      label: "Max Fandoms",
-      value: config.maxCrossovers || "",
-      min: 1,
-      tooltip: "Hide works with more than this many fandoms.",
-    });
-    const maxMonths = window.AO3MenuHelpers.createNumberInput({
-      id: "max-months-since-update-input",
-      label: "Max Months Since Update",
-      value: config.maxMonthsSinceUpdate || "",
-      min: 1,
-      placeholder: "6",
-      tooltip:
-        "Hide ongoing works not updated in X months. Only applies to ongoing works.",
-    });
+    const maxFandoms = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createNumberInput({
+        id: "max-crossovers-input",
+        label: "Max Fandoms",
+        value: config.maxCrossovers || "",
+        min: 1,
+        tooltip: "Hide works with more than this many fandoms.",
+      }),
+      "maxCrossovers",
+      config
+    );
+    const maxMonths = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createNumberInput({
+        id: "max-months-since-update-input",
+        label: "Max Months Since Update",
+        value: config.maxMonthsSinceUpdate || "",
+        min: 1,
+        placeholder: "6",
+        tooltip:
+          "Hide ongoing works not updated in X months. Only applies to ongoing works.",
+      }),
+      "maxMonthsSinceUpdate",
+      config
+    );
     const row1 = window.AO3MenuHelpers.createTwoColumnLayout(
       maxFandoms,
       maxMonths
     );
     workSection.appendChild(row1);
-    const minWords = window.AO3MenuHelpers.createTextInput({
-      id: "min-words-input",
-      label: "Min Words",
-      value: config.minWords || "",
-      placeholder: "1000",
-      tooltip: "Hide works under this many words.",
-    });
-    const maxWords = window.AO3MenuHelpers.createTextInput({
-      id: "max-words-input",
-      label: "Max Words",
-      value: config.maxWords || "",
-      placeholder: "100000",
-      tooltip: "Hide works over this many words.",
-    });
+    const minWords = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextInput({
+        id: "min-words-input",
+        label: "Min Words",
+        value: config.minWords || "",
+        placeholder: "1000",
+        tooltip: "Hide works under this many words.",
+      }),
+      "minWords",
+      config
+    );
+    const maxWords = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextInput({
+        id: "max-words-input",
+        label: "Max Words",
+        value: config.maxWords || "",
+        placeholder: "100000",
+        tooltip: "Hide works over this many words.",
+      }),
+      "maxWords",
+      config
+    );
     const row2 = window.AO3MenuHelpers.createTwoColumnLayout(
       minWords,
       maxWords
     );
     workSection.appendChild(row2);
-    const minChapters = window.AO3MenuHelpers.createNumberInput({
-      id: "min-chapters-input",
-      label: "Min Chapters",
-      value: config.minChapters || "",
-      min: 1,
-      placeholder: "2",
-      tooltip: "Hide works with fewer chapters. Set to 2 to skip oneshots.",
-    });
-    const maxChapters = window.AO3MenuHelpers.createNumberInput({
-      id: "max-chapters-input",
-      label: "Max Chapters",
-      value: config.maxChapters || "",
-      min: 1,
-      placeholder: "200",
-      tooltip:
-        "Hide works with more chapters. Useful for avoiding epic-length works or drabble collections.",
-    });
+    const minChapters = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createNumberInput({
+        id: "min-chapters-input",
+        label: "Min Chapters",
+        value: config.minChapters || "",
+        min: 1,
+        placeholder: "2",
+        tooltip: "Hide works with fewer chapters. Set to 2 to skip oneshots.",
+      }),
+      "minChapters",
+      config
+    );
+    const maxChapters = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createNumberInput({
+        id: "max-chapters-input",
+        label: "Max Chapters",
+        value: config.maxChapters || "",
+        min: 1,
+        placeholder: "200",
+        tooltip:
+          "Hide works with more chapters. Useful for avoiding epic-length works or drabble collections.",
+      }),
+      "maxChapters",
+      config
+    );
     const row3 = window.AO3MenuHelpers.createTwoColumnLayout(
       minChapters,
       maxChapters
@@ -871,9 +1032,19 @@
       tooltip: "Hide works that are marked as complete.",
       inGroup: false,
     });
-    const row4 = window.AO3MenuHelpers.createTwoColumnLayout(
+    const blockOngoingGroup = createInputWithEyeToggle(
       window.AO3MenuHelpers.createSettingGroup(blockOngoing),
-      window.AO3MenuHelpers.createSettingGroup(blockComplete)
+      "blockOngoing",
+      config
+    );
+    const blockCompleteGroup = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createSettingGroup(blockComplete),
+      "blockComplete",
+      config
+    );
+    const row4 = window.AO3MenuHelpers.createTwoColumnLayout(
+      blockOngoingGroup,
+      blockCompleteGroup
     );
     workSection.appendChild(row4);
     dialog.appendChild(workSection);
@@ -881,33 +1052,60 @@
     const authorSection = window.AO3MenuHelpers.createSection(
       "Author & Content Filtering ✏️"
     );
-    const authorBlacklist = window.AO3MenuHelpers.createTextarea({
-      id: "author-blacklist-input",
-      label: "Blacklist Authors",
-      value: config.authorBlacklist,
-      placeholder: "DetectiveMittens, BlackBatCat",
-      tooltip: "Match the author name exactly.",
-    });
-    const titleBlacklist = window.AO3MenuHelpers.createTextarea({
-      id: "title-blacklist-input",
-      label: "Blacklist Titles",
-      value: config.titleBlacklist,
-      placeholder: "oneshot, prompt, 2025",
-      tooltip: "Blocks if the title contains your text.",
-    });
-    const authorRow = window.AO3MenuHelpers.createTwoColumnLayout(
-      authorBlacklist,
-      titleBlacklist
+    const titleBlacklist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "title-blacklist-input",
+        label: "Blacklist Titles",
+        value: config.titleBlacklist,
+        placeholder: "oneshot, prompt, 2025",
+        tooltip: "Blocks if the title contains your text.",
+      }),
+      "titleBlacklist",
+      config
     );
-    authorSection.appendChild(authorRow);
-    const summaryBlacklist = window.AO3MenuHelpers.createTextarea({
-      id: "summary-blacklist-input",
-      label: "Blacklist Summary",
-      value: config.summaryBlacklist,
-      placeholder: "oneshot, prompt, 2025",
-      tooltip: "Blocks if the summary has these words/phrases.",
-    });
-    authorSection.appendChild(summaryBlacklist);
+    const authorBlacklist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "author-blacklist-input",
+        label: "Blacklist Authors",
+        value: config.authorBlacklist,
+        placeholder: "DetectiveMittens, BlackBatCat",
+        tooltip: "Match the author name exactly.",
+      }),
+      "authorBlacklist",
+      config
+    );
+    const summaryBlacklist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "summary-blacklist-input",
+        label: "Blacklist Summary",
+        value: config.summaryBlacklist,
+        placeholder: "oneshot, prompt, 2025",
+        tooltip: "Blocks if the summary has these words/phrases.",
+      }),
+      "summaryBlacklist",
+      config
+    );
+    const workBlacklist = createInputWithEyeToggle(
+      window.AO3MenuHelpers.createTextarea({
+        id: "work-blacklist-input",
+        label: "Blacklist Works",
+        value: config.workBlacklist,
+        placeholder: "73294031, 12345678",
+        tooltip: "To get the work ID, `Alt + Click` the title of the work or copy the 8-digit number from the work URL.",
+      }),
+      "workBlacklist",
+      config
+    );
+    const authorRow1 = window.AO3MenuHelpers.createTwoColumnLayout(
+      titleBlacklist,
+      authorBlacklist
+    );
+    authorSection.appendChild(authorRow1);
+    const authorRow2 = window.AO3MenuHelpers.createTwoColumnLayout(
+      summaryBlacklist,
+      workBlacklist
+    );
+    authorSection.appendChild(authorRow2);
     dialog.appendChild(authorSection);
 
     const displaySection =
@@ -916,16 +1114,8 @@
       id: "show-reasons-checkbox",
       label: "Show Block Reason",
       checked: config.showReasons,
-      tooltip: "List what triggered the block.",
+      tooltip: "Show detailed reasons in placeholders, or just show 'Hidden by filters'.",
       inGroup: false,
-    });
-    const showPlaceholders = window.AO3MenuHelpers.createConditionalCheckbox({
-      id: "show-placeholders-checkbox",
-      label: "Show Work Placeholder",
-      checked: config.showPlaceholders,
-      tooltip:
-        "Leave a stub you can click to reveal. If disabled, hides the work completely.",
-      subsettings: showReasonsCheckbox,
     });
     const enableHighlighting = window.AO3MenuHelpers.createCheckbox({
       id: "enable-highlighting-on-my-content-checkbox",
@@ -943,7 +1133,7 @@
       subsettings: enableHighlighting,
     });
     const displayRow = window.AO3MenuHelpers.createTwoColumnLayout(
-      showPlaceholders,
+      window.AO3MenuHelpers.createSettingGroup(showReasonsCheckbox),
       disableOnMyContent
     );
     displaySection.appendChild(displayRow);
@@ -954,14 +1144,14 @@
     tipContent.appendChild(window.AO3MenuHelpers.createKeyboardKey("Alt"));
     tipContent.appendChild(
       document.createTextNode(
-        " and click any tag or author name to instantly add them to your blacklist."
+        " and click any tag, author name, or work title to instantly add them to your blacklist."
       )
     );
     const tipBox = window.AO3MenuHelpers.createInfoBox(tipContent);
     dialog.appendChild(tipBox);
 
     const buttons = window.AO3MenuHelpers.createButtonGroup([
-      { text: "Save Settings", id: "blocker-save" },
+      { text: "Save", id: "blocker-save" },
       { text: "Cancel", id: "blocker-cancel" },
     ]);
     dialog.appendChild(buttons);
@@ -1067,6 +1257,8 @@
           window.AO3MenuHelpers.getValue("title-blacklist-input") || "",
         summaryBlacklist:
           window.AO3MenuHelpers.getValue("summary-blacklist-input") || "",
+        workBlacklist:
+          window.AO3MenuHelpers.getValue("work-blacklist-input") || "",
         showReasons: window.AO3MenuHelpers.getValue("show-reasons-checkbox"),
         showPlaceholders: window.AO3MenuHelpers.getValue(
           "show-placeholders-checkbox"
@@ -1105,7 +1297,16 @@
         primaryCharpad:
           window.AO3MenuHelpers.getValue("primary-charpad-input") ||
           DEFAULTS.primaryCharpad,
-        _version: "3.0",
+        hideCompletelyRules: (() => {
+          const rules = {};
+          document.querySelectorAll('.ao3-blocker-eye-toggle').forEach(toggle => {
+            const filterId = toggle.getAttribute('data-filter-id');
+            const pressed = toggle.getAttribute('aria-pressed') === 'true';
+            rules[filterId] = pressed;
+          });
+          return rules;
+        })(),
+        _version: "3.2",
       };
       if (saveConfig(updatedConfig)) {
         location.href =
@@ -1218,6 +1419,10 @@
           const label = reason.authors.length === 1 ? "Author:" : "Authors:";
           parts.push(`<em>${label} ${reason.authors.join(", ")}</em>`);
         }
+        if (reason.works && reason.works.length > 0) {
+          const label = reason.works.length === 1 ? "Work:" : "Works:";
+          parts.push(`<em>${label} ${reason.works.join(", ")}</em>`);
+        }
         if (reason.titles && reason.titles.length > 0)
           parts.push(`<em>Title: ${reason.titles[0]}</em>`);
         if (reason.summaryTerms && reason.summaryTerms.length > 0)
@@ -1274,7 +1479,10 @@
 
   function blockWork(workElement, reasons, config) {
     if (!reasons) return;
-    if (config.showPlaceholders) {
+    const hideCompletely = reasons.some(reason => config.hideCompletelyRules && config.hideCompletelyRules[reason._filterType]);
+    if (hideCompletely) {
+      workElement.classList.add(`${CSS_NAMESPACE}-hidden`);
+    } else if (config.showPlaceholders) {
       const fold = getFold(reasons);
       const cut = getCut(workElement);
       workElement.classList.add(`${CSS_NAMESPACE}-work`);
@@ -1398,6 +1606,7 @@
       language,
       fandomCount,
       wordCount,
+      workId,
     } = blockables;
     const {
       authorBlacklist,
@@ -1405,6 +1614,7 @@
       tagBlacklist,
       tagWhitelist,
       summaryBlacklist,
+      workBlacklist,
       allowedLanguages,
       maxCrossovers,
       minWords,
@@ -1416,16 +1626,16 @@
     if (isTagWhitelisted(allTags, tagWhitelist)) return null;
     const reasons = [];
     const primaryPairingReason = checkPrimaryPairing(categorizedTags, config);
-    if (primaryPairingReason) reasons.push(primaryPairingReason);
+    if (primaryPairingReason) reasons.push({ ...primaryPairingReason, _filterType: 'primaryRelationships' }); // or primaryCharacters, but since it's combined, maybe choose one
     if (blockComplete && completionStatus === "complete")
-      reasons.push({ completionStatus: "Status: Complete" });
+      reasons.push({ completionStatus: "Status: Complete", _filterType: "blockComplete" });
     if (blockOngoing && completionStatus === "ongoing")
-      reasons.push({ completionStatus: "Status: Ongoing" });
+      reasons.push({ completionStatus: "Status: Ongoing", _filterType: "blockOngoing" });
     if (allowedLanguages.length > 0) {
       const lang = (language || "").toLowerCase().trim();
       if (lang && lang !== "unknown") {
         const allowed = allowedLanguages.includes(lang);
-        if (!allowed) reasons.push({ language: language || "unknown" });
+        if (!allowed) reasons.push({ language: language || "unknown", _filterType: "language" });
       }
     }
     if (
@@ -1433,7 +1643,7 @@
       maxCrossovers > 0 &&
       fandomCount > maxCrossovers
     ) {
-      reasons.push({ crossovers: fandomCount });
+      reasons.push({ crossovers: fandomCount, _filterType: "maxCrossovers" });
     }
     if (minWords != null || maxWords != null) {
       const wc = wordCount;
@@ -1447,7 +1657,8 @@
       })();
       if (wcHit) {
         const wcStr = wc?.toLocaleString?.() ?? wc;
-        reasons.push({ wordCount: `Words: ${wcStr}` });
+        const filterType = wcHit.over ? 'maxWords' : 'minWords';
+        reasons.push({ wordCount: `Words: ${wcStr}`, _filterType: filterType });
       }
     }
     if (config.minChapters != null || config.maxChapters != null) {
@@ -1459,7 +1670,7 @@
           blocked = true;
         if (config.maxChapters != null && chapters > config.maxChapters)
           blocked = true;
-        if (blocked) reasons.push({ chapterCount: `Chapters: ${chapters}` });
+        if (blocked) reasons.push({ chapterCount: `Chapters: ${chapters}`, _filterType: config.minChapters != null && chapters < config.minChapters ? 'minChapters' : 'maxChapters' });
       }
     }
     if (config.maxMonthsSinceUpdate != null && completionStatus === "ongoing") {
@@ -1473,6 +1684,7 @@
           staleUpdate: `Updated ${monthsDisplay} month${
             monthsDisplay !== 1 ? "s" : ""
           } ago`,
+          _filterType: "maxMonthsSinceUpdate",
         });
       }
     }
@@ -1487,7 +1699,7 @@
         }
       });
     });
-    if (blockedTags.length > 0) reasons.push({ tags: blockedTags });
+    if (blockedTags.length > 0) reasons.push({ tags: blockedTags, _filterType: "tagBlacklist" });
     const blockedAuthors = [];
     authors.forEach((author) => {
       authorBlacklist.forEach((blacklistedAuthor) => {
@@ -1499,7 +1711,19 @@
         }
       });
     });
-    if (blockedAuthors.length > 0) reasons.push({ authors: blockedAuthors });
+    if (blockedAuthors.length > 0) reasons.push({ authors: blockedAuthors, _filterType: "authorBlacklist" });
+    const blockedWorks = [];
+    if (workId) {
+      workBlacklist.forEach((blacklistedWork) => {
+        if (
+          blacklistedWork.trim() &&
+          workId === blacklistedWork
+        ) {
+          blockedWorks.push(workId);
+        }
+      });
+    }
+    if (blockedWorks.length > 0) reasons.push({ works: blockedWorks, _filterType: "workBlacklist" });
     const blockedTitles = new Set();
     titleBlacklist.forEach((pattern) => {
       if (
@@ -1513,7 +1737,7 @@
       }
     });
     if (blockedTitles.size > 0)
-      reasons.push({ titles: Array.from(blockedTitles) });
+      reasons.push({ titles: Array.from(blockedTitles), _filterType: "titleBlacklist" });
     const blockedSummaryTerms = [];
     summaryBlacklist.forEach((pattern) => {
       if (
@@ -1527,7 +1751,7 @@
       }
     });
     if (blockedSummaryTerms.length > 0)
-      reasons.push({ summaryTerms: blockedSummaryTerms });
+      reasons.push({ summaryTerms: blockedSummaryTerms, _filterType: "summaryBlacklist" });
     return reasons.length > 0 ? reasons : null;
   }
 
@@ -1560,6 +1784,8 @@
       completionStatus = parseChaptersStatus(chaptersText);
     }
     const tagData = getCategorizedAndFlatTags(blurbElement);
+    const titleLink = blurbElement.querySelector(".header .heading a:first-child");
+    const workId = titleLink ? titleLink.href.match(/\/works\/(\d+)/)?.[1] : null;
     return {
       authors: selectTextsIn(blurbElement, "a[rel=author]"),
       categorizedTags: tagData.categorized,
@@ -1570,56 +1796,7 @@
       fandomCount: fandoms.length,
       wordCount: getWordCount(blurbElement),
       completionStatus: completionStatus,
+      workId: workId,
     };
-  }
-
-  function checkWorks() {
-    const config = window.ao3Blocker.config;
-    let blocked = 0;
-    let total = 0;
-    if (config.pauseBlocking) {
-      return;
-    }
-    if (!config) {
-      return;
-    }
-    let isOnMyContent = false;
-    let username = config.username || detectUsername(config);
-    if (config.disableOnMyContent && username) {
-      isOnMyContent = isMyContentPage(username);
-      if (isOnMyContent && !config.enableHighlightingOnMyContent) return;
-    }
-    const blurbs = document.querySelectorAll("li.blurb");
-    blurbs.forEach((blurbEl) => {
-      const isWorkOrBookmark =
-        (blurbEl.classList.contains("work") ||
-          blurbEl.classList.contains("bookmark")) &&
-        !blurbEl.classList.contains("picture");
-      if (!isWorkOrBookmark) return;
-      const blockables = selectFromBlurb(blurbEl);
-      const allTags = blockables.tags;
-      total++;
-      let shouldHighlight = false;
-      if (config.tagHighlights.length > 0) {
-        for (let i = 0; i < allTags.length; i++) {
-          for (let j = 0; j < config.tagHighlights.length; j++) {
-            if (matchPattern(allTags[i], config.tagHighlights[j], true)) {
-              shouldHighlight = true;
-              break;
-            }
-          }
-          if (shouldHighlight) break;
-        }
-      }
-      if (shouldHighlight) {
-        blurbEl.classList.add("ao3-blocker-highlight");
-      }
-      let reason = null;
-      if (!isOnMyContent) reason = getBlockReason(blockables, config, blurbEl);
-      if (reason) {
-        blockWork(blurbEl, reason, config);
-        blocked++;
-      }
-    });
   }
 })();
