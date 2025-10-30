@@ -725,6 +725,7 @@
     // Quality Score Section
     const qualityScoreSection =
       window.AO3MenuHelpers.createSection("💖 Quality Score");
+    qualityScoreSection.style.paddingBottom = "20px";
     const qualityScoreGroup = window.AO3MenuHelpers.createSettingGroup();
     const enableQualityScoreCheckbox = window.AO3MenuHelpers.createCheckbox({
       id: "enableQualityScore",
