@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         AO3: Menu Helpers Library
-// @version      1.1.1
-// @description  Shared UI components and styling for AO3 userscripts
+// @name         AO3: Menu Helpers Library v2
+// @version      2.0.0
+// @description  Shared UI components and styling for AO3 userscripts - Enhanced theme detection
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
 // @license      MIT
@@ -17,43 +17,285 @@
     return;
   }
 
-  // Cache for background color to avoid repeated DOM operations
-  let cachedInputBg = null;
   let stylesInjected = false;
 
+  // ============================================================
+  // THEME DETECTION SYSTEM
+  // ============================================================
+
+  const ThemeDetector = {
+    cache: {},
+
+    /**
+     * Creates a temporary element with specified tag and classes
+     * @private
+     */
+    _createTempElement(tag, className) {
+      const element = document.createElement(tag);
+      if (tag === "input" && className) {
+        element.type = className; // Set type for inputs
+      } else if (className) {
+        element.className = className; // Set class for other elements
+      }
+      element.style.cssText =
+        "position:absolute;left:-9999px;visibility:hidden;";
+      if (!document.body) {
+        // If body doesn't exist yet, wait for it
+        return null;
+      }
+      document.body.appendChild(element);
+      return element;
+    },
+
+    /**
+     * Safely gets computed style, handling missing elements
+     * @private
+     */
+    _getComputedStyle(selector, tempConfig) {
+      let element = selector ? document.querySelector(selector) : null;
+      let cleanup = false;
+
+      if (!element && tempConfig) {
+        element = this._createTempElement(tempConfig.tag, tempConfig.className);
+        if (!element) return null; // Body not ready
+        cleanup = true;
+      }
+
+      if (!element) return null;
+
+      const styles = window.getComputedStyle(element);
+      const result = {
+        backgroundColor: styles.backgroundColor,
+        borderColor: styles.borderColor,
+        borderWidth: styles.borderWidth,
+        borderRadius: styles.borderRadius,
+        boxShadow: styles.boxShadow,
+        color: styles.color,
+        padding: styles.padding,
+      };
+
+      if (cleanup) element.remove();
+      return result;
+    },
+
+    /**
+     * Sample dialog/modal styling
+     */
+    getDialogStyles() {
+      if (this.cache.dialog) return this.cache.dialog;
+
+      // Try to sample from actual modal
+      let styles = this._getComputedStyle("#modal");
+
+      // Fallback to fieldset
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle("fieldset");
+      }
+
+      // Last resort: create temporary modal
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle(null, { tag: "div", className: "" });
+      }
+
+      // Ensure we have valid values with fallbacks
+      this.cache.dialog = {
+        backgroundColor: styles?.backgroundColor || "#ffffff",
+        borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
+        borderWidth: styles?.borderWidth || "1px",
+        borderRadius: styles?.borderRadius || "8px",
+        boxShadow: styles?.boxShadow || "0 0 20px rgba(0,0,0,0.2)",
+      };
+
+      return this.cache.dialog;
+    },
+
+    /**
+     * Sample blurb styling (for list items)
+     */
+    getBlurbStyles() {
+      if (this.cache.blurb) return this.cache.blurb;
+
+      let styles = this._getComputedStyle("li.blurb");
+
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle(null, {
+          tag: "li",
+          className: "blurb",
+        });
+      }
+
+      this.cache.blurb = {
+        backgroundColor: styles?.backgroundColor || "#f5f5f5",
+        borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
+        borderWidth: styles?.borderWidth || "1px",
+        borderRadius: styles?.borderRadius || "8px",
+        boxShadow: styles?.boxShadow || "none",
+        padding: styles?.padding || "0.75em",
+      };
+
+      return this.cache.blurb;
+    },
+
+    /**
+     * Sample button styling
+     */
+    getButtonStyles() {
+      if (this.cache.button) return this.cache.button;
+
+      // Try to sample from actual submit inputs in action areas first
+      let styles = this._getComputedStyle('.actions li input[type="submit"]');
+
+      if (!styles) {
+        styles = this._getComputedStyle('input[type="submit"]');
+      }
+
+      if (!styles) {
+        styles = this._getComputedStyle("button");
+      }
+
+      if (!styles) {
+        styles = this._getComputedStyle(".actions a");
+      }
+
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle(null, {
+          tag: "input",
+          className: "submit",
+        });
+      }
+
+      this.cache.button = {
+        backgroundColor: styles?.backgroundColor || "#e0e0e0",
+        borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.3)",
+        borderWidth: styles?.borderWidth || "1px",
+        borderRadius: styles?.borderRadius || "4px",
+        color: styles?.color || "#000000",
+        boxShadow: styles?.boxShadow || "none",
+      };
+
+      return this.cache.button;
+    },
+
+    /**
+     * Sample input field styling
+     */
+    getInputStyles() {
+      if (this.cache.input) return this.cache.input;
+
+      // Always use temporary element for inputs to ensure skin styles are applied
+      const styles = this._getComputedStyle(null, {
+        tag: "input",
+        className: "text",
+      });
+
+      this.cache.input = {
+        backgroundColor: styles?.backgroundColor || "#ffffff",
+        borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.3)",
+        borderWidth: styles?.borderWidth || "1px",
+        borderRadius: styles?.borderRadius || "4px",
+        color: styles?.color || "#000000",
+      };
+
+      return this.cache.input;
+    },
+
+    /**
+     * Sample fieldset/section styling
+     */
+    getFieldsetStyles() {
+      if (this.cache.fieldset) return this.cache.fieldset;
+
+      let styles = this._getComputedStyle("fieldset");
+
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle(".listbox");
+      }
+
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle(null, {
+          tag: "fieldset",
+          className: "",
+        });
+      }
+
+      this.cache.fieldset = {
+        backgroundColor: styles?.backgroundColor || "#f9f9f9",
+        borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
+        borderWidth: styles?.borderWidth || "1px",
+        borderRadius: styles?.borderRadius || "8px",
+        boxShadow: styles?.boxShadow || "none",
+      };
+
+      return this.cache.fieldset;
+    },
+
+    /**
+     * Sample text color from body
+     */
+    getTextColor() {
+      if (this.cache.textColor) return this.cache.textColor;
+
+      const body = document.body || document.documentElement;
+      if (!body) {
+        this.cache.textColor = "#000000";
+        return this.cache.textColor;
+      }
+
+      const styles = window.getComputedStyle(body);
+      this.cache.textColor = styles.color || "#000000";
+      return this.cache.textColor;
+    },
+
+    /**
+     * Sample link color
+     */
+    getLinkColor() {
+      if (this.cache.linkColor) return this.cache.linkColor;
+
+      let link = document.querySelector("a");
+      let cleanup = false;
+
+      if (!link) {
+        link = this._createTempElement("a", "");
+        if (!link) {
+          this.cache.linkColor = "#0000ff";
+          return this.cache.linkColor;
+        }
+        cleanup = true;
+      }
+
+      const styles = window.getComputedStyle(link);
+      this.cache.linkColor = styles.color || "#0000ff";
+
+      if (cleanup) link.remove();
+
+      return this.cache.linkColor;
+    },
+
+    /**
+     * Clear cache (useful if theme changes)
+     */
+    clearCache() {
+      this.cache = {};
+    },
+  };
+
+  // ============================================================
+  // MAIN LIBRARY
+  // ============================================================
+
   window.AO3MenuHelpers = {
-    version: "1.1.1",
+    version: "2.1.0",
+    themeDetector: ThemeDetector,
 
     /**
      * Detects AO3's input field background color from current theme
-     * Uses caching to avoid repeated DOM operations
+     * Uses theme detector with caching
      * @returns {string} Background color (hex or rgba format)
      */
     getAO3InputBackground() {
-      if (cachedInputBg) return cachedInputBg;
-
-      let inputBg = "#fffaf5"; // Fallback default
-      const testInput = document.createElement("input");
-      document.body.appendChild(testInput);
-
-      try {
-        const computedStyle = window.getComputedStyle(testInput);
-        const computedBg = computedStyle.backgroundColor;
-        if (
-          computedBg &&
-          computedBg !== "rgba(0, 0, 0, 0)" &&
-          computedBg !== "transparent"
-        ) {
-          inputBg = computedBg;
-        }
-      } catch (e) {
-        // Failed to detect background color
-      } finally {
-        testInput.remove();
-      }
-
-      cachedInputBg = inputBg;
-      return inputBg;
+      const inputStyles = this.themeDetector.getInputStyles();
+      return inputStyles.backgroundColor;
     },
 
     /**
@@ -64,6 +306,12 @@
     injectSharedStyles() {
       if (stylesInjected) return;
       if (!document.head) {
+        // Wait for head to be available
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", () => {
+            this.injectSharedStyles();
+          });
+        }
         return;
       }
 
@@ -73,7 +321,12 @@
         return;
       }
 
-      const inputBg = this.getAO3InputBackground();
+      // Get theme styles - with safe fallbacks
+      const dialogTheme = this.themeDetector.getDialogStyles();
+      const inputTheme = this.themeDetector.getInputStyles();
+      const buttonTheme = this.themeDetector.getButtonStyles();
+      const fieldsetTheme = this.themeDetector.getFieldsetStyles();
+      const textColor = this.themeDetector.getTextColor();
 
       const style = document.createElement("style");
       style.id = "ao3-menu-helpers-styles";
@@ -84,10 +337,11 @@
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%);
-              background: ${inputBg};
+              background: ${dialogTheme.backgroundColor};
               padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 0 20px rgba(0,0,0,0.2);
+              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor};
+              border-radius: ${dialogTheme.borderRadius};
+              box-shadow: ${dialogTheme.boxShadow};
               z-index: 10000;
               width: 90%;
               max-width: 600px;
@@ -95,7 +349,7 @@
               overflow-y: auto;
               font-family: inherit;
               font-size: inherit;
-              color: inherit;
+              color: ${textColor};
               box-sizing: border-box;
             }
 
@@ -123,11 +377,12 @@
             
             /* Settings Sections */
             .ao3-menu-dialog .settings-section {
-              background: rgba(0,0,0,0.03);
-              border-radius: 6px;
+              background: ${fieldsetTheme.backgroundColor};
+              border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor};
+              border-radius: ${fieldsetTheme.borderRadius};
               padding: 15px 15px 10px 15px;
               margin-bottom: 20px;
-              border-left: 4px solid currentColor;
+              box-shadow: ${fieldsetTheme.boxShadow};
             }
 
             .ao3-menu-dialog .settings-section > *:last-child,
@@ -227,6 +482,10 @@
               width: 100%;
               box-sizing: border-box;
               padding-left: 8px;
+              background: ${inputTheme.backgroundColor};
+              border: ${inputTheme.borderWidth} solid ${inputTheme.borderColor};
+              border-radius: ${inputTheme.borderRadius};
+              color: ${inputTheme.color};
             }
 
             .ao3-menu-dialog textarea {
@@ -240,7 +499,8 @@
             .ao3-menu-dialog input[type="color"]:focus,
             .ao3-menu-dialog select:focus,
             .ao3-menu-dialog textarea:focus {
-              background: ${inputBg} !important;
+              background: ${inputTheme.backgroundColor} !important;
+              outline: 2px solid ${buttonTheme.borderColor};
             }
             
             .ao3-menu-dialog input::placeholder,
@@ -256,10 +516,9 @@
               margin-top: 20px;
             }
             
-            .ao3-menu-dialog .button-group button {
+            .ao3-menu-dialog .button-group input[type="submit"] {
               flex: 1;
               padding: 10px;
-              color: inherit;
               opacity: 0.9;
             }
             
@@ -287,10 +546,59 @@
               font-family: monospace;
               font-size: 0.9em;
             }
+
+            /* Modal Overlay */
+            .ao3-menu-overlay {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: rgba(0, 0, 0, 0.5);
+              z-index: 9999;
+            }
           `;
 
       document.head.appendChild(style);
       stylesInjected = true;
+    },
+
+    /**
+     * Adds ESC key support to close a dialog
+     * @private
+     * @param {HTMLElement} dialog - The dialog element to add ESC support to
+     */
+    _addEscSupport(dialog) {
+      const escHandler = (e) => {
+        if (e.key === "Escape") {
+          dialog.remove();
+          document.removeEventListener("keydown", escHandler);
+        }
+      };
+      document.addEventListener("keydown", escHandler);
+    },
+
+    /**
+     * Adds modal overlay support to a dialog
+     * @private
+     * @param {HTMLElement} dialog - The dialog element to add modal support to
+     */
+    _addModalSupport(dialog) {
+      const overlay = document.createElement("div");
+      overlay.className = "ao3-menu-overlay";
+      overlay.addEventListener("click", () => {
+        dialog.remove();
+      });
+      document.body.appendChild(overlay);
+
+      // Remove overlay when dialog is removed
+      const observer = new MutationObserver(() => {
+        if (!document.body.contains(dialog)) {
+          overlay.remove();
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
     },
 
     /**
@@ -324,6 +632,9 @@
       const titleElement = document.createElement("h3");
       titleElement.textContent = title;
       dialog.appendChild(titleElement);
+
+      this._addEscSupport(dialog);
+      this._addModalSupport(dialog);
 
       return dialog;
     },
@@ -719,12 +1030,15 @@
       container.appendChild(subsettingsContainer);
 
       // Auto-toggle visibility using getElementById (more robust than querySelector)
-      const checkbox = document.getElementById(id);
-      if (checkbox) {
-        checkbox.addEventListener("change", (e) => {
-          subsettingsContainer.style.display = e.target.checked ? "" : "none";
-        });
-      }
+      // Use setTimeout to ensure checkbox is in DOM after dialog is appended
+      setTimeout(() => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+          checkbox.addEventListener("change", (e) => {
+            subsettingsContainer.style.display = e.target.checked ? "" : "none";
+          });
+        }
+      }, 0);
 
       return container;
     },
@@ -877,9 +1191,9 @@
       group.className = "button-group";
 
       buttons.forEach((btnConfig) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = btnConfig.text;
+        const button = document.createElement("input");
+        button.type = "submit";
+        button.value = btnConfig.text;
         if (btnConfig.id) button.id = btnConfig.id;
         if (btnConfig.primary) button.classList.add("primary");
         if (btnConfig.onClick)
@@ -930,31 +1244,41 @@
      * Creates an info/tip box with border and background
      * @param {string|HTMLElement} content - HTML content, text, or element
      * @param {Object} [options={}] - Optional styling
-     * @param {string} [options.icon='💡'] - Icon to display
+     * @param {string|HTMLElement} [options.icon='💡'] - Icon to display
      * @param {string} [options.title=''] - Optional title
      * @returns {HTMLElement} Styled info box
      */
     createInfoBox(content, options = {}) {
       const { icon = "💡", title = "" } = options;
 
+      const fieldsetTheme = this.themeDetector.getFieldsetStyles();
+
       const box = document.createElement("div");
       box.style.cssText = `
             padding: 12px;
             margin: 15px 0;
-            background: rgba(0,0,0,0.03);
-            border-radius: 6px;
-            border-left: 4px solid currentColor;
+            background: ${fieldsetTheme.backgroundColor};
+            border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor};
+            border-radius: ${fieldsetTheme.borderRadius};
+            box-shadow: ${fieldsetTheme.boxShadow};
           `;
 
       const contentDiv = document.createElement("div");
       contentDiv.style.cssText =
-        "display: flex; align-items: flex-start; gap: 8px; font-size: 0.9em; opacity: 0.8;";
+        "display: flex; align-items: center; gap: 8px; font-size: 0.9em; opacity: 0.8;";
 
       if (icon) {
-        const iconSpan = document.createElement("span");
-        iconSpan.textContent = icon;
-        iconSpan.style.cssText = "flex-shrink: 0;";
-        contentDiv.appendChild(iconSpan);
+        if (icon instanceof HTMLElement) {
+          icon.style.cssText =
+            (icon.style.cssText ? icon.style.cssText + "; " : "") +
+            "flex-shrink: 0;";
+          contentDiv.appendChild(icon);
+        } else {
+          const iconSpan = document.createElement("span");
+          iconSpan.innerHTML = icon;
+          iconSpan.style.cssText = "flex-shrink: 0;";
+          contentDiv.appendChild(iconSpan);
+        }
       }
 
       const textDiv = document.createElement("div");
@@ -1142,14 +1466,18 @@
         badgeSize = "0.7em",
       } = config;
 
+      const fieldsetTheme = this.themeDetector.getFieldsetStyles();
+      const blurbTheme = this.themeDetector.getBlurbStyles();
+
       const item = document.createElement("div");
       item.className = "menu-list-item";
       item.style.cssText = `
-            padding: 12px;
+            padding: ${blurbTheme.padding};
             margin: 8px 0;
-            background: rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.2);
-            border-radius: 8px;
+            background: ${fieldsetTheme.backgroundColor};
+            border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor};
+            border-radius: ${fieldsetTheme.borderRadius};
+            box-shadow: ${fieldsetTheme.boxShadow};
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -1325,7 +1653,9 @@
       } = config;
 
       this.injectSharedStyles();
-      const inputBg = this.getAO3InputBackground();
+      this.injectListItemStyles();
+
+      const dialogTheme = this.themeDetector.getDialogStyles();
 
       const dialog = document.createElement("div");
       dialog.className = "ao3-menu-dialog";
@@ -1334,10 +1664,11 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: ${inputBg};
+            background: ${dialogTheme.backgroundColor};
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor};
+            border-radius: ${dialogTheme.borderRadius};
+            box-shadow: ${dialogTheme.boxShadow};
             z-index: 10000;
             width: ${width};
             max-width: ${maxWidth};
@@ -1368,6 +1699,9 @@
       dialog.addEventListener("click", (e) => {
         if (e.target === dialog) dialog.remove();
       });
+
+      this._addEscSupport(dialog);
+      this._addModalSupport(dialog);
 
       return dialog;
     },
@@ -1500,35 +1834,12 @@
      * @returns {Object} Object with borderRadius and borderColor
      */
     detectBorderStyling(selectors = []) {
-      let borderRadius = "8px";
-      let borderColor = "rgba(0,0,0,0.2)";
+      const inputTheme = this.themeDetector.getInputStyles();
 
-      const defaultSelectors = ["input", "button", ".actions a"];
-
-      const elementsToCheck = [...selectors, ...defaultSelectors]
-        .map((sel) => document.querySelector(sel))
-        .filter((el) => el !== null);
-
-      for (const elem of elementsToCheck) {
-        const computed = window.getComputedStyle(elem);
-
-        if (computed.borderRadius && computed.borderRadius !== "0px") {
-          borderRadius = computed.borderRadius;
-        }
-
-        if (
-          computed.borderColor &&
-          computed.borderColor !== "rgba(0, 0, 0, 0)"
-        ) {
-          borderColor = computed.borderColor;
-        }
-
-        if (borderRadius !== "8px" && borderColor !== "rgba(0,0,0,0.2)") {
-          break;
-        }
-      }
-
-      return { borderRadius, borderColor };
+      return {
+        borderRadius: inputTheme.borderRadius || "8px",
+        borderColor: inputTheme.borderColor || "rgba(0,0,0,0.2)",
+      };
     },
 
     /**

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       3.2
+// @version       3.3
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*/works*
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1680254/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/554170/1686204/AO3%3A%20Menu%20Helpers%20Library%20v2.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -76,6 +76,7 @@
     summaryBlacklist: "",
     workBlacklist: "",
     showReasons: true,
+    showPlaceholders: true,
     allowedLanguages: "",
     maxCrossovers: "6",
     disableOnMyContent: true,
@@ -87,7 +88,7 @@
     primaryCharpad: "5",
     pauseBlocking: false,
     hideCompletelyRules: {},
-    _version: "3.2",
+    _version: "3.3",
   };
 
   const STORAGE_KEY = "ao3_advanced_blocker_config";
@@ -129,6 +130,7 @@
       "blockComplete",
       "blockOngoing",
       "showReasons",
+      "showPlaceholders",
       "disableOnMyContent",
       "enableHighlightingOnMyContent",
       "pauseBlocking",
@@ -138,20 +140,36 @@
         typeof config[field] === "boolean" ? config[field] : DEFAULTS[field];
     });
     sanitized.hideCompletelyRules = {};
-    if (config.hideCompletelyRules && typeof config.hideCompletelyRules === "object") {
+    if (
+      config.hideCompletelyRules &&
+      typeof config.hideCompletelyRules === "object"
+    ) {
       const validKeys = [
-        "minWords", "maxWords", "minChapters", "maxChapters", "blockComplete", "blockOngoing",
-        "maxMonthsSinceUpdate", "maxCrossovers", "language", "tagBlacklist", "tagWhitelist",
-        "authorBlacklist", "titleBlacklist", "summaryBlacklist", "workBlacklist",
-        "primaryRelationships", "primaryCharacters"
+        "minWords",
+        "maxWords",
+        "minChapters",
+        "maxChapters",
+        "blockComplete",
+        "blockOngoing",
+        "maxMonthsSinceUpdate",
+        "maxCrossovers",
+        "language",
+        "tagBlacklist",
+        "tagWhitelist",
+        "authorBlacklist",
+        "titleBlacklist",
+        "summaryBlacklist",
+        "workBlacklist",
+        "primaryRelationships",
+        "primaryCharacters",
       ];
-      validKeys.forEach(key => {
+      validKeys.forEach((key) => {
         if (typeof config.hideCompletelyRules[key] === "boolean") {
           sanitized.hideCompletelyRules[key] = config.hideCompletelyRules[key];
         }
       });
     }
-    sanitized._version = "3.2";
+    sanitized._version = "3.3";
     return sanitized;
   }
 
@@ -192,7 +210,7 @@
   }
   .ao3-blocker-eye-toggle {
     display: inline-block; width: 1.2em; height: 1.2em; margin-left: 0.3em; margin-right: 0.3em;
-    vertical-align: -0.15em; background-color: currentColor; opacity: 0.5; transition: opacity 0.2s ease;
+    vertical-align: -0.15em; color: inherit; opacity: 0.75; transition: opacity 0.2s ease;
     border: none; padding: 0; cursor: pointer; background: none;
   }
   .ao3-blocker-eye-toggle:hover { opacity: 1.0; }
@@ -223,14 +241,23 @@
     button.setAttribute("data-filter-id", filterId);
     button.setAttribute("aria-label", `Toggle hide completely for ${filterId}`);
     button.setAttribute("aria-pressed", initialState ? "true" : "false");
-    button.innerHTML = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;background-color:currentColor;mask:url('${initialState ? ICON_HIDE : ICON_EYE}') no-repeat center/contain;-webkit-mask:url('${initialState ? ICON_HIDE : ICON_EYE}') no-repeat center/contain;"></span>`;
+    button.setAttribute("title", "Hide works completely");
+    button.innerHTML = `<span style="display:inline-block;width:1.2em;height:1.2em;vertical-align:-0.15em;background-color:currentColor;mask:url('${
+      initialState ? ICON_HIDE : ICON_EYE
+    }') no-repeat center/contain;-webkit-mask:url('${
+      initialState ? ICON_HIDE : ICON_EYE
+    }') no-repeat center/contain;"></span>`;
     button.addEventListener("click", () => {
       const currentPressed = button.getAttribute("aria-pressed") === "true";
       const newPressed = !currentPressed;
       button.setAttribute("aria-pressed", newPressed ? "true" : "false");
       const span = button.querySelector("span");
-      span.style.mask = `url('${newPressed ? ICON_HIDE : ICON_EYE}') no-repeat center/contain`;
-      span.style.webkitMask = `url('${newPressed ? ICON_HIDE : ICON_EYE}') no-repeat center/contain`;
+      span.style.mask = `url('${
+        newPressed ? ICON_HIDE : ICON_EYE
+      }') no-repeat center/contain`;
+      span.style.webkitMask = `url('${
+        newPressed ? ICON_HIDE : ICON_EYE
+      }') no-repeat center/contain`;
     });
     return button;
   }
@@ -238,7 +265,10 @@
   function createInputWithEyeToggle(element, filterId, config) {
     const label = element.querySelector("label");
     if (label) {
-      const eyeToggle = createEyeToggle(filterId, config.hideCompletelyRules[filterId] || false);
+      const eyeToggle = createEyeToggle(
+        filterId,
+        config.hideCompletelyRules[filterId] || false
+      );
       // Insert after label text but before tooltip
       const tooltip = label.querySelector(".ao3mh-tooltip");
       if (tooltip) {
@@ -281,7 +311,7 @@
       if (!stored) return { ...DEFAULTS };
       const parsedConfig = JSON.parse(stored);
       const needsSanitization =
-        !parsedConfig._version || parsedConfig._version !== "3.0";
+        !parsedConfig._version || parsedConfig._version !== DEFAULTS._version;
       if (needsSanitization) {
         const sanitized = sanitizeConfig({ ...DEFAULTS, ...parsedConfig });
         saveConfig(sanitized);
@@ -469,7 +499,11 @@
           blurbEl.classList.contains("bookmark")) &&
         !blurbEl.classList.contains("picture");
       if (!isWorkOrBookmark) return;
-      if (blurbEl.classList.contains(`${CSS_NAMESPACE}-hidden`) || blurbEl.classList.contains(`${CSS_NAMESPACE}-work`)) return;
+      if (
+        blurbEl.classList.contains(`${CSS_NAMESPACE}-hidden`) ||
+        blurbEl.classList.contains(`${CSS_NAMESPACE}-work`)
+      )
+        return;
       const blockables = selectFromBlurb(blurbEl);
       const allTags = blockables.tags;
       total++;
@@ -529,7 +563,11 @@
         currentTags.length > 0 ? config.tagBlacklist + ", " + tagText : tagText;
       config.tagBlacklist = updatedTags;
       saveConfig(config);
-      window.ao3Blocker.config.tagBlacklist = updatedTags.split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean).map(compilePattern);
+      window.ao3Blocker.config.tagBlacklist = updatedTags
+        .split(/,(?:\s)?/g)
+        .map((i) => i.trim())
+        .filter(Boolean)
+        .map(compilePattern);
       checkWorks();
       showQuickAddNotification(`✓ Added "${tagText}" to tag blacklist`);
       return;
@@ -569,12 +607,20 @@
           : authorText;
       config.authorBlacklist = updatedAuthors;
       saveConfig(config);
-      window.ao3Blocker.config.authorBlacklist = updatedAuthors.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean);
+      window.ao3Blocker.config.authorBlacklist = updatedAuthors
+        .toLowerCase()
+        .split(/,(?:\s)?/g)
+        .map((i) => i.trim())
+        .filter(Boolean);
       checkWorks();
       showQuickAddNotification(`✓ Added "${authorText}" to author blacklist`);
       return;
     }
-    if (target.tagName === "A" && target.href && target.href.match(/\/works\/\d+/)) {
+    if (
+      target.tagName === "A" &&
+      target.href &&
+      target.href.match(/\/works\/\d+/)
+    ) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -601,7 +647,11 @@
         currentWorks.length > 0 ? config.workBlacklist + ", " + workId : workId;
       config.workBlacklist = updatedWorks;
       saveConfig(config);
-      window.ao3Blocker.config.workBlacklist = updatedWorks.toLowerCase().split(/,(?:\s)?/g).map(i => i.trim()).filter(Boolean);
+      window.ao3Blocker.config.workBlacklist = updatedWorks
+        .toLowerCase()
+        .split(/,(?:\s)?/g)
+        .map((i) => i.trim())
+        .filter(Boolean);
       checkWorks();
       showQuickAddNotification(`✓ Added "${workId}" to work blacklist`);
       return;
@@ -612,6 +662,7 @@
     const config = loadConfig();
     window.ao3Blocker.config = {
       showReasons: config.showReasons,
+      showPlaceholders: config.showPlaceholders ?? true,
       authorBlacklist: config.authorBlacklist
         .toLowerCase()
         .split(/,(?:\s)?/g)
@@ -833,18 +884,14 @@
       config
     );
     tagSection.appendChild(tagBlacklist);
-    const tagWhitelist = createInputWithEyeToggle(
-      window.AO3MenuHelpers.createTextarea({
-        id: "tag-whitelist-input",
-        label: "Whitelist Tags",
-        value: config.tagWhitelist,
-        placeholder: "*Happy Ending*, Temporary Character Death, Fluff",
-        description:
-          "Always shows the work even if it matches the blacklist. * for wildcards.",
-      }),
-      "tagWhitelist",
-      config
-    );
+    const tagWhitelist = window.AO3MenuHelpers.createTextarea({
+      id: "tag-whitelist-input",
+      label: "Whitelist Tags",
+      value: config.tagWhitelist,
+      placeholder: "*Happy Ending*, Temporary Character Death, Fluff",
+      description:
+        "Always shows the work even if it matches the blacklist. * for wildcards.",
+    });
     tagSection.appendChild(tagWhitelist);
     const tagHighlightsInput = window.AO3MenuHelpers.createTextarea({
       id: "tag-highlights-input",
@@ -1091,7 +1138,8 @@
         label: "Blacklist Works",
         value: config.workBlacklist,
         placeholder: "73294031, 12345678",
-        tooltip: "To get the work ID, `Alt + Click` the title of the work or copy the 8-digit number from the work URL.",
+        tooltip:
+          "To get the work ID, `Alt + Click` the title of the work or copy the 8-digit number from the work URL.",
       }),
       "workBlacklist",
       config
@@ -1114,9 +1162,19 @@
       id: "show-reasons-checkbox",
       label: "Show Block Reason",
       checked: config.showReasons,
-      tooltip: "Show detailed reasons in placeholders, or just show 'Hidden by filters'.",
+      tooltip:
+        "Show detailed reasons in placeholders, or just show 'Hidden by filters'.",
       inGroup: false,
     });
+    const showPlaceholdersCheckbox =
+      window.AO3MenuHelpers.createConditionalCheckbox({
+        id: "show-placeholders-checkbox",
+        label: "Show Placeholders",
+        checked: config.showPlaceholders,
+        tooltip:
+          "When ON: show placeholders for blocked works (use eye icons below to hide specific filters completely). When OFF: hide ALL blocked works completely.",
+        subsettings: showReasonsCheckbox,
+      });
     const enableHighlighting = window.AO3MenuHelpers.createCheckbox({
       id: "enable-highlighting-on-my-content-checkbox",
       label: "Enable Highlighting",
@@ -1132,15 +1190,31 @@
         "Don't block or highlight works on your dashboard, bookmarks, history, and works pages. Automatically includes all your pseuds.",
       subsettings: enableHighlighting,
     });
-    const displayRow = window.AO3MenuHelpers.createTwoColumnLayout(
-      window.AO3MenuHelpers.createSettingGroup(showReasonsCheckbox),
+    const displayRow1 = window.AO3MenuHelpers.createTwoColumnLayout(
+      showPlaceholdersCheckbox,
       disableOnMyContent
     );
-    displaySection.appendChild(displayRow);
+    displaySection.appendChild(displayRow1);
+
     dialog.appendChild(displaySection);
 
+    const eyeToggleTipContent = document.createElement("span");
+    eyeToggleTipContent.innerHTML =
+      "<strong>Hide Works:</strong> Click the eye icon next to any filter above to hide matching works completely. ";
+    const eyeToggleTipSpan = document.createElement("span");
+    eyeToggleTipSpan.style.opacity = "0.8";
+    eyeToggleTipSpan.textContent =
+      'Works hidden this way won\'t show placeholders even when "Show Placeholders" is enabled.';
+    eyeToggleTipContent.appendChild(eyeToggleTipSpan);
+    const eyeToggleTipBox = window.AO3MenuHelpers.createInfoBox(
+      eyeToggleTipContent,
+      { icon: "👁️" }
+    );
+    eyeToggleTipBox.id = "eye-toggle-info";
+    dialog.appendChild(eyeToggleTipBox);
+
     const tipContent = document.createElement("span");
-    tipContent.innerHTML = "<strong> Quick-Add Tip:</strong> Hold ";
+    tipContent.innerHTML = "<strong> Quick-Add:</strong> Hold ";
     tipContent.appendChild(window.AO3MenuHelpers.createKeyboardKey("Alt"));
     tipContent.appendChild(
       document.createTextNode(
@@ -1299,14 +1373,16 @@
           DEFAULTS.primaryCharpad,
         hideCompletelyRules: (() => {
           const rules = {};
-          document.querySelectorAll('.ao3-blocker-eye-toggle').forEach(toggle => {
-            const filterId = toggle.getAttribute('data-filter-id');
-            const pressed = toggle.getAttribute('aria-pressed') === 'true';
-            rules[filterId] = pressed;
-          });
+          document
+            .querySelectorAll(".ao3-blocker-eye-toggle")
+            .forEach((toggle) => {
+              const filterId = toggle.getAttribute("data-filter-id");
+              const pressed = toggle.getAttribute("aria-pressed") === "true";
+              rules[filterId] = pressed;
+            });
           return rules;
         })(),
-        _version: "3.2",
+        _version: "3.3",
       };
       if (saveConfig(updatedConfig)) {
         location.href =
@@ -1321,6 +1397,37 @@
       dialog.remove();
     });
     document.body.appendChild(dialog);
+
+    // Function to toggle eye icon visibility
+    function updateEyeToggleVisibility() {
+      const showPlaceholders = window.AO3MenuHelpers.getValue(
+        "show-placeholders-checkbox"
+      );
+      const eyeToggles = dialog.querySelectorAll(".ao3-blocker-eye-toggle");
+      const eyeToggleTip = dialog.querySelector("#eye-toggle-info");
+
+      eyeToggles.forEach((toggle) => {
+        toggle.style.display = showPlaceholders ? "inline-block" : "none";
+      });
+
+      if (eyeToggleTip) {
+        eyeToggleTip.style.display = showPlaceholders ? "block" : "none";
+      }
+    }
+
+    // Initial state and event listener setup after dialog is in DOM
+    updateEyeToggleVisibility();
+
+    // Listen for changes to Show Placeholders checkbox
+    const showPlaceholdersElement = dialog.querySelector(
+      "#show-placeholders-checkbox"
+    );
+    if (showPlaceholdersElement) {
+      showPlaceholdersElement.addEventListener(
+        "change",
+        updateEyeToggleVisibility
+      );
+    }
   }
 
   function getWordCount(workElement) {
@@ -1479,10 +1586,24 @@
 
   function blockWork(workElement, reasons, config) {
     if (!reasons) return;
-    const hideCompletely = reasons.some(reason => config.hideCompletelyRules && config.hideCompletelyRules[reason._filterType]);
+
+    // Master override: if Show Placeholders is off, hide everything
+    if (!config.showPlaceholders) {
+      workElement.classList.add(`${CSS_NAMESPACE}-hidden`);
+      return;
+    }
+
+    // Otherwise, check individual eye toggle rules
+    const hideCompletely = reasons.some(
+      (reason) =>
+        config.hideCompletelyRules &&
+        config.hideCompletelyRules[reason._filterType]
+    );
+
     if (hideCompletely) {
       workElement.classList.add(`${CSS_NAMESPACE}-hidden`);
-    } else if (config.showPlaceholders) {
+    } else {
+      // Show placeholder with fold/toggle
       const fold = getFold(reasons);
       const cut = getCut(workElement);
       workElement.classList.add(`${CSS_NAMESPACE}-work`);
@@ -1491,8 +1612,6 @@
       workElement.appendChild(cut);
       if (!config.showReasons)
         workElement.classList.add(`${CSS_NAMESPACE}-hide-reasons`);
-    } else {
-      workElement.classList.add(`${CSS_NAMESPACE}-hidden`);
     }
   }
 
@@ -1626,16 +1745,30 @@
     if (isTagWhitelisted(allTags, tagWhitelist)) return null;
     const reasons = [];
     const primaryPairingReason = checkPrimaryPairing(categorizedTags, config);
-    if (primaryPairingReason) reasons.push({ ...primaryPairingReason, _filterType: 'primaryRelationships' }); // or primaryCharacters, but since it's combined, maybe choose one
+    if (primaryPairingReason)
+      reasons.push({
+        ...primaryPairingReason,
+        _filterType: "primaryRelationships",
+      }); // or primaryCharacters, but since it's combined, maybe choose one
     if (blockComplete && completionStatus === "complete")
-      reasons.push({ completionStatus: "Status: Complete", _filterType: "blockComplete" });
+      reasons.push({
+        completionStatus: "Status: Complete",
+        _filterType: "blockComplete",
+      });
     if (blockOngoing && completionStatus === "ongoing")
-      reasons.push({ completionStatus: "Status: Ongoing", _filterType: "blockOngoing" });
+      reasons.push({
+        completionStatus: "Status: Ongoing",
+        _filterType: "blockOngoing",
+      });
     if (allowedLanguages.length > 0) {
       const lang = (language || "").toLowerCase().trim();
       if (lang && lang !== "unknown") {
         const allowed = allowedLanguages.includes(lang);
-        if (!allowed) reasons.push({ language: language || "unknown", _filterType: "language" });
+        if (!allowed)
+          reasons.push({
+            language: language || "unknown",
+            _filterType: "language",
+          });
       }
     }
     if (
@@ -1657,7 +1790,7 @@
       })();
       if (wcHit) {
         const wcStr = wc?.toLocaleString?.() ?? wc;
-        const filterType = wcHit.over ? 'maxWords' : 'minWords';
+        const filterType = wcHit.over ? "maxWords" : "minWords";
         reasons.push({ wordCount: `Words: ${wcStr}`, _filterType: filterType });
       }
     }
@@ -1670,7 +1803,14 @@
           blocked = true;
         if (config.maxChapters != null && chapters > config.maxChapters)
           blocked = true;
-        if (blocked) reasons.push({ chapterCount: `Chapters: ${chapters}`, _filterType: config.minChapters != null && chapters < config.minChapters ? 'minChapters' : 'maxChapters' });
+        if (blocked)
+          reasons.push({
+            chapterCount: `Chapters: ${chapters}`,
+            _filterType:
+              config.minChapters != null && chapters < config.minChapters
+                ? "minChapters"
+                : "maxChapters",
+          });
       }
     }
     if (config.maxMonthsSinceUpdate != null && completionStatus === "ongoing") {
@@ -1699,7 +1839,8 @@
         }
       });
     });
-    if (blockedTags.length > 0) reasons.push({ tags: blockedTags, _filterType: "tagBlacklist" });
+    if (blockedTags.length > 0)
+      reasons.push({ tags: blockedTags, _filterType: "tagBlacklist" });
     const blockedAuthors = [];
     authors.forEach((author) => {
       authorBlacklist.forEach((blacklistedAuthor) => {
@@ -1711,19 +1852,18 @@
         }
       });
     });
-    if (blockedAuthors.length > 0) reasons.push({ authors: blockedAuthors, _filterType: "authorBlacklist" });
+    if (blockedAuthors.length > 0)
+      reasons.push({ authors: blockedAuthors, _filterType: "authorBlacklist" });
     const blockedWorks = [];
     if (workId) {
       workBlacklist.forEach((blacklistedWork) => {
-        if (
-          blacklistedWork.trim() &&
-          workId === blacklistedWork
-        ) {
+        if (blacklistedWork.trim() && workId === blacklistedWork) {
           blockedWorks.push(workId);
         }
       });
     }
-    if (blockedWorks.length > 0) reasons.push({ works: blockedWorks, _filterType: "workBlacklist" });
+    if (blockedWorks.length > 0)
+      reasons.push({ works: blockedWorks, _filterType: "workBlacklist" });
     const blockedTitles = new Set();
     titleBlacklist.forEach((pattern) => {
       if (
@@ -1737,7 +1877,10 @@
       }
     });
     if (blockedTitles.size > 0)
-      reasons.push({ titles: Array.from(blockedTitles), _filterType: "titleBlacklist" });
+      reasons.push({
+        titles: Array.from(blockedTitles),
+        _filterType: "titleBlacklist",
+      });
     const blockedSummaryTerms = [];
     summaryBlacklist.forEach((pattern) => {
       if (
@@ -1751,7 +1894,10 @@
       }
     });
     if (blockedSummaryTerms.length > 0)
-      reasons.push({ summaryTerms: blockedSummaryTerms, _filterType: "summaryBlacklist" });
+      reasons.push({
+        summaryTerms: blockedSummaryTerms,
+        _filterType: "summaryBlacklist",
+      });
     return reasons.length > 0 ? reasons : null;
   }
 
@@ -1784,8 +1930,12 @@
       completionStatus = parseChaptersStatus(chaptersText);
     }
     const tagData = getCategorizedAndFlatTags(blurbElement);
-    const titleLink = blurbElement.querySelector(".header .heading a:first-child");
-    const workId = titleLink ? titleLink.href.match(/\/works\/(\d+)/)?.[1] : null;
+    const titleLink = blurbElement.querySelector(
+      ".header .heading a:first-child"
+    );
+    const workId = titleLink
+      ? titleLink.href.match(/\/works\/(\d+)/)?.[1]
+      : null;
     return {
       authors: selectTextsIn(blurbElement, "a[rel=author]"),
       categorizedTags: tagData.categorized,

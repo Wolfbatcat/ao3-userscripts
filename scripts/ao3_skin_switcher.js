@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
-// @version       2.1
+// @version       2.3
 // @description   Change site skins from anywhere without leaving the page.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1680254/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/554170/1686204/AO3%3A%20Menu%20Helpers%20Library%20v2.js
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
