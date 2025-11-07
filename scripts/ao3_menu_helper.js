@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         AO3: Menu Helpers Library v2
-// @version      2.0.0
+// @name         AO3: Menu Helpers Library
+// @version      2.1.2
 // @description  Shared UI components and styling for AO3 userscripts - Enhanced theme detection
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -205,7 +205,25 @@
     getFieldsetStyles() {
       if (this.cache.fieldset) return this.cache.fieldset;
 
-      let styles = this._getComputedStyle("fieldset");
+      let styles = null;
+
+      // On works/chapters pages, sample from work meta group first
+      const WORKS_PAGE_REGEX =
+        /^https?:\/\/archiveofourown\.org\/(?:.*\/)?(works|chapters)(\/|$)/;
+      if (WORKS_PAGE_REGEX.test(window.location.href)) {
+        // Try the meta group container itself
+        styles = this._getComputedStyle("dl.work.meta.group");
+
+        // Fallback to dd elements within the meta group
+        if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+          styles = this._getComputedStyle("dl.work.meta.group dd");
+        }
+      }
+
+      // Fallback to original sampling logic (fieldsets, listbox, temp element)
+      if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
+        styles = this._getComputedStyle("fieldset");
+      }
 
       if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
         styles = this._getComputedStyle(".listbox");
@@ -218,6 +236,7 @@
         });
       }
 
+      // Ensure we have valid values with fallbacks
       this.cache.fieldset = {
         backgroundColor: styles?.backgroundColor || "#f9f9f9",
         borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
@@ -285,7 +304,7 @@
   // ============================================================
 
   window.AO3MenuHelpers = {
-    version: "2.1.0",
+    version: "2.1.2",
     themeDetector: ThemeDetector,
 
     /**
@@ -356,14 +375,13 @@
             /* Mobile: Full width with minimal padding */
             @media (max-width: 768px) {
               .ao3-menu-dialog {
-                width: 100% !important;
-                max-width: 100% !important;
-                height: 100vh !important;
-                max-height: 100vh !important;
-                top: 0 !important;
-                left: 0 !important;
-                transform: none !important;
-                border-radius: 0 !important;
+                width: 96% !important;
+                max-width: 96% !important;
+                height: auto !important;
+                max-height: calc(100vh - 120px) !important;
+                top: 50% !important;
+                left: 50% !important;
+                transform: translate(-50%, -50%) !important;
                 padding: 15px !important;
               }
             }

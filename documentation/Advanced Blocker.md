@@ -2,8 +2,7 @@
 
 Block works on AO3 based on tags, authors, titles, word counts, and more. Filter by completion status, language, reading time, and primary pairings. Customize what you see—or don't see.
 
-![Advanced Blocker](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-1.png "Advanced Blocker in action" =400x)
-
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-2.png" width="600" alt="Advanced Blocker in action">
 ---
 
 ## ✨ Features
@@ -35,6 +34,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 ### **Display Options**
 - **Show/Hide Block Reasons** – See exactly why a work was blocked, or hide it completely.
 - **Work Placeholders** – Blocked works appear as stubs you can click to reveal, or disappear entirely.
+- **Per-Filter Hide Completely** – Toggle eye icons next to specific filters to hide matching works entirely, bypassing placeholders.
 - **Highlighting on Your Content** – Re-enable tag highlighting on your own dashboard, bookmarks, and works pages.
 - **Disable on My Content** – Skip blocking/filtering on your own profile pages entirely.
 
@@ -43,9 +43,14 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Pause Blocking** – Temporarily disable filtering without changing settings.
 - **Import/Export Settings** – Save and restore your configuration across devices or browsers.
 
+
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-1.png" width="600" alt="Advanced Blocker in action">
+
 ---
 
 ## 📋 How to Use
+
+>  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
 
 1. Install with a userscript manager:
    - **Tampermonkey**
@@ -53,8 +58,6 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
      - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
      - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)
      - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
-
-   **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
 
 2. Navigate to any AO3 works page (search results, tag pages, user profiles, bookmarks, etc.).
 3. Click **Userscripts** → **Advanced Blocker** to open settings.
@@ -87,6 +90,9 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 
 **Language Filter**
 - Enter language names as they appear on AO3: `English`, `Русский`, `中文-普通话国语`
+
+**Hide Completely Toggles**
+- Many filters have an eye icon (👁️) next to the input field. Clicking this toggle switches between showing a placeholder (which can be clicked to reveal the blocked work) and hiding the work completely. This allows fine-grained control over how different types of blocks are displayed.
 
 ---
 

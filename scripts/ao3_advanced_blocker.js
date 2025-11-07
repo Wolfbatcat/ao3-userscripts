@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       3.3
+// @version       3.4
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*/works*
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/554170/1686204/AO3%3A%20Menu%20Helpers%20Library%20v2.js
+// @require       https://update.greasyfork.org/scripts/552743/1690921/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.2
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -20,6 +20,7 @@
 (function () {
   "use strict";
 
+  let quickAddKeyPressed = false;
   let cachedUsername = null;
   function detectUsername(config) {
     if (cachedUsername) return cachedUsername;
@@ -88,7 +89,8 @@
     primaryCharpad: "5",
     pauseBlocking: false,
     hideCompletelyRules: {},
-    _version: "3.3",
+    quickAddKey: "Alt",
+    _version: "3.4",
   };
 
   const STORAGE_KEY = "ao3_advanced_blocker_config";
@@ -116,6 +118,7 @@
       "primaryRelpad",
       "primaryCharpad",
       "username",
+      "quickAddKey",
     ];
     stringFields.forEach((field) => {
       const value = config[field];
@@ -169,7 +172,7 @@
         }
       });
     }
-    sanitized._version = "3.3";
+    sanitized._version = "3.4";
     return sanitized;
   }
 
@@ -281,7 +284,7 @@
   }
 
   const ICON_HIDE =
-    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.33%2C13.33%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C3.93-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.43%2C13.43%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C3.93-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
   const ICON_EYE =
     "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Visible%22%20id%3D%22Eye_Visible%22%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.42%2C17.51%2C27.66%2C11%2C20%2C11S7.58%2C17.51%2C6.33%2C19.46a1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.58%2C22.49%2C12.34%2C29%2C20%2C29s12.42-6.51%2C13.67-8.46A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46ZM20%2C25a5%2C5%2C0%2C1%2C1%2C5-5A5%2C5%2C0%2C0%2C1%2C20%2C25Z%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
@@ -383,35 +386,36 @@
       characters: [],
       freeforms: [],
     };
-    tags.ratings = selectTextsIn(
-      container,
-      ".rating.tags a.tag, .rating.tags .text"
-    );
-    tags.warnings = selectTextsIn(
-      container,
-      ".warning.tags a.tag, .warning.tags .text"
-    );
-    tags.categories = selectTextsIn(
-      container,
-      ".category.tags a.tag, .category.tags .text"
-    );
-    tags.fandoms = selectTextsIn(container, ".fandom.tags a.tag");
-    tags.relationships = selectTextsIn(container, ".relationship.tags a.tag");
-    tags.characters = selectTextsIn(container, ".character.tags a.tag");
-    tags.freeforms = selectTextsIn(container, ".freeform.tags a.tag");
-    const hasAnyTags =
-      tags.ratings.length > 0 ||
-      tags.warnings.length > 0 ||
-      tags.relationships.length > 0;
-    if (!hasAnyTags) {
-      tags.relationships = selectTextsIn(container, "li.relationships a.tag");
-      tags.characters = selectTextsIn(container, "li.characters a.tag");
-      tags.freeforms = selectTextsIn(container, "li.freeforms a.tag");
-      tags.ratings = selectTextsIn(container, ".rating .text");
-      tags.warnings = selectTextsIn(container, ".warnings .text");
-      tags.categories = selectTextsIn(container, ".category .text");
-      tags.fandoms = selectTextsIn(container, ".fandoms a.tag");
-    }
+    
+    // Single query for all tags - much more efficient than 7-14 separate queries
+    const allTagElements = container.querySelectorAll('a.tag, .text');
+    
+    // Categorize tags in one pass
+    allTagElements.forEach(el => {
+      const text = getText(el);
+      if (!text) return;
+      
+      const parent = el.closest('li');
+      if (!parent) return;
+      
+      // Check parent's class to categorize the tag
+      if (parent.classList.contains('rating') || parent.classList.contains('ratings')) {
+        tags.ratings.push(text);
+      } else if (parent.classList.contains('warning') || parent.classList.contains('warnings')) {
+        tags.warnings.push(text);
+      } else if (parent.classList.contains('category') || parent.classList.contains('categories')) {
+        tags.categories.push(text);
+      } else if (parent.classList.contains('fandom') || parent.classList.contains('fandoms')) {
+        tags.fandoms.push(text);
+      } else if (parent.classList.contains('relationship') || parent.classList.contains('relationships')) {
+        tags.relationships.push(text);
+      } else if (parent.classList.contains('character') || parent.classList.contains('characters')) {
+        tags.characters.push(text);
+      } else if (parent.classList.contains('freeform') || parent.classList.contains('freeforms')) {
+        tags.freeforms.push(text);
+      }
+    });
+    
     const flat = [
       ...tags.ratings,
       ...tags.warnings,
@@ -532,7 +536,7 @@
   }
 
   function handleQuickAdd(event) {
-    if (!event.altKey) return;
+    if (!quickAddKeyPressed) return;
     const target = event.target;
     const config = loadConfig();
     if (target.classList.contains("tag")) {
@@ -775,6 +779,18 @@
     );
     checkWorks();
     document.addEventListener("click", handleQuickAdd, true);
+    
+    // Setup quick-add key listeners
+    const quickAddKey = config.quickAddKey || "Alt";
+    document.addEventListener('keydown', (e) => { 
+      if (e.key === quickAddKey) { 
+        e.preventDefault(); 
+        quickAddKeyPressed = true; 
+      } 
+    });
+    document.addEventListener('keyup', (e) => { 
+      if (e.key === quickAddKey) quickAddKeyPressed = false; 
+    });
   }
 
   if (document.readyState === "loading") {
@@ -1139,7 +1155,7 @@
         value: config.workBlacklist,
         placeholder: "73294031, 12345678",
         tooltip:
-          "To get the work ID, `Alt + Click` the title of the work or copy the 8-digit number from the work URL.",
+          `To get the work ID, \`${config.quickAddKey || "Alt"} + Click\` the title of the work or copy the 8-digit number from the work URL.`,
       }),
       "workBlacklist",
       config
@@ -1195,6 +1211,20 @@
       disableOnMyContent
     );
     displaySection.appendChild(displayRow1);
+    
+    const quickAddKeyInput = window.AO3MenuHelpers.createTextInput({
+      id: "quick-add-key-input",
+      label: "Quick-Add Key",
+      value: config.quickAddKey || "Alt",
+      placeholder: "Alt",
+      tooltip:
+        "Keyboard key to press while clicking to quickly add tags/authors/works to blacklist. Common options: Alt, Ctrl, Shift, F1, F2, etc.",
+    });
+    const displayRow2 = window.AO3MenuHelpers.createTwoColumnLayout(
+      quickAddKeyInput,
+      document.createElement('div') // Empty div for second column
+    );
+    displaySection.appendChild(displayRow2);
 
     dialog.appendChild(displaySection);
 
@@ -1214,14 +1244,14 @@
     dialog.appendChild(eyeToggleTipBox);
 
     const tipContent = document.createElement("span");
-    tipContent.innerHTML = "<strong> Quick-Add:</strong> Hold ";
-    tipContent.appendChild(window.AO3MenuHelpers.createKeyboardKey("Alt"));
+    tipContent.innerHTML = "<strong> Quick-Add:</strong> Press ";
+    tipContent.appendChild(window.AO3MenuHelpers.createKeyboardKey(config.quickAddKey || "Alt"));
     tipContent.appendChild(
       document.createTextNode(
         " and click any tag, author name, or work title to instantly add them to your blacklist."
       )
     );
-    const tipBox = window.AO3MenuHelpers.createInfoBox(tipContent);
+    const tipBox = window.AO3MenuHelpers.createInfoBox(tipContent, { icon: '➕' });
     dialog.appendChild(tipBox);
 
     const buttons = window.AO3MenuHelpers.createButtonGroup([
@@ -1371,6 +1401,9 @@
         primaryCharpad:
           window.AO3MenuHelpers.getValue("primary-charpad-input") ||
           DEFAULTS.primaryCharpad,
+        quickAddKey:
+          window.AO3MenuHelpers.getValue("quick-add-key-input") ||
+          DEFAULTS.quickAddKey,
         hideCompletelyRules: (() => {
           const rules = {};
           document
@@ -1382,7 +1415,7 @@
             });
           return rules;
         })(),
-        _version: "3.3",
+        _version: "3.4",
       };
       if (saveConfig(updatedConfig)) {
         location.href =

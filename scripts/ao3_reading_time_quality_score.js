@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     3.4
+// @version     3.5
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
 // @match       *://archiveofourown.org/
@@ -12,7 +12,7 @@
 // @match       *://archiveofourown.org/bookmarks*
 // @match       *://archiveofourown.org/series/*
 // @license     MIT
-// @require     https://update.greasyfork.org/scripts/554170/1686204/AO3%3A%20Menu%20Helpers%20Library%20v2.js
+// @require     https://update.greasyfork.org/scripts/552743/1690921/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.2
 // @grant       none
 // ==/UserScript==
 
@@ -94,8 +94,9 @@
         localStorage.removeItem("ao3_reading_quality_config");
       }
       CONFIG = { ...DEFAULTS };
-      if (CONFIG.enableReadingTime && countable) calculateReadtime();
-      if (CONFIG.enableQualityScore && countable) countRatio();
+      if ((CONFIG.enableReadingTime || CONFIG.enableQualityScore) && countable) {
+        calculateMetrics();
+      }
       if (CONFIG.enableChapterStats) calculateChapterStats();
     }
   };
@@ -337,65 +338,6 @@
     }
   };
 
-  const calculateReadtime = () => {
-    if (!countable || !CONFIG.enableReadingTime) return;
-    $("dl.stats").forEach((statsElement) => {
-      if ($1("dt.readtime", statsElement)) return;
-      const wordsElement = $1("dd.words", statsElement);
-      if (!wordsElement) return;
-      const words_count = getNumberFromElement(wordsElement);
-      if (isNaN(words_count)) return;
-      const minutes = words_count / CONFIG.wpm;
-      const hrs = Math.floor(minutes / 60);
-      const mins = (minutes % 60).toFixed(0);
-      const minutes_print = hrs > 0 ? hrs + "h" + mins + "m" : mins + "m";
-
-      const readtime_label = document.createElement("dt");
-      readtime_label.className = "readtime";
-      if (!CONFIG.useIcons) {
-        readtime_label.textContent = "Time:";
-      }
-
-      const readtime_value = document.createElement("dd");
-      readtime_value.className = "readtime";
-
-      let color;
-      if (minutes < CONFIG.readingTimeLvl1) {
-        color = CONFIG.colorGreen;
-      } else if (minutes < CONFIG.readingTimeLvl2) {
-        color = CONFIG.colorYellow;
-      } else {
-        color = CONFIG.colorRed;
-      }
-
-      Object.assign(readtime_value.style, {
-        display: "inline-block",
-        verticalAlign: "baseline",
-      });
-
-      if (CONFIG.useIcons) {
-        const textSpan = document.createElement("span");
-        textSpan.textContent = minutes_print;
-        textSpan.style.borderRadius = "4px";
-        textSpan.style.display = "inline-block";
-        textSpan.style.verticalAlign = "baseline";
-        textSpan.style.fontSize = "inherit";
-        textSpan.style.lineHeight = "inherit";
-        applyColorStyling(textSpan, color);
-        readtime_value.appendChild(textSpan);
-      } else {
-        readtime_value.textContent = minutes_print;
-        readtime_value.style.borderRadius = "4px";
-        readtime_value.style.fontSize = "inherit";
-        readtime_value.style.lineHeight = "inherit";
-        applyColorStyling(readtime_value, color);
-      }
-
-      wordsElement.insertAdjacentElement("afterend", readtime_label);
-      readtime_label.insertAdjacentElement("afterend", readtime_value);
-    });
-  };
-
   const calculateWordBasedScore = (kudos, hits, words) => {
     if (hits === 0 || words === 0 || kudos === 0) return 0;
     const effectiveChapters = words / 5000;
@@ -403,121 +345,216 @@
     return (100 * kudos) / adjustedHits;
   };
 
-  const countRatio = () => {
-    if (!countable || !CONFIG.enableQualityScore) return;
-    $("dl.stats").forEach((statsElement) => {
-      if ($1("dt.kudoshits", statsElement)) return;
-      const hitsElement = $1("dd.hits", statsElement);
-      const kudosElement = $1("dd.kudos", statsElement);
+  // Combined function to calculate both reading time and quality score efficiently
+  const calculateMetrics = () => {
+    if (!countable) return;
+    if (!CONFIG.enableReadingTime && !CONFIG.enableQualityScore && !CONFIG.hideMetrics) return;
+    
+    const allStats = $("dl.stats");
+    allStats.forEach((statsElement) => {
       const wordsElement = $1("dd.words", statsElement);
-      const parentLi = statsElement.closest("li");
-      try {
-        const hits = getNumberFromElement(hitsElement);
-        const kudos = getNumberFromElement(kudosElement);
-        const words = getNumberFromElement(wordsElement);
-        if (isNaN(hits) || isNaN(kudos) || isNaN(words)) return;
-        if (CONFIG.hideHits && !statsPage && hitsElement) {
-          hitsElement.style.display = "none";
-        }
-        if (CONFIG.hideKudos && !statsPage && kudosElement) {
-          kudosElement.style.display = "none";
-        }
-        const bookmarksElement = $1("dd.bookmarks", statsElement);
-        if (CONFIG.hideBookmarks && !statsPage && bookmarksElement) {
-          bookmarksElement.style.display = "none";
-        }
-        const commentsElement = $1("dd.comments", statsElement);
-        if (CONFIG.hideComments && !statsPage && commentsElement) {
-          commentsElement.style.display = "none";
-        }
-        if (kudos < CONFIG.minKudosToShowScore) {
-          if (statsElement.querySelector("dt.kudoshits"))
-            statsElement.querySelector("dt.kudoshits").remove();
-          if (statsElement.querySelector("dd.kudoshits"))
-            statsElement.querySelector("dd.kudoshits").remove();
-          return;
-        }
-        let rawScore = calculateWordBasedScore(kudos, hits, words);
-        if (kudos < 10) rawScore = 1;
-        let displayScore = rawScore;
-        let thresholdLow = CONFIG.colorThresholdLow;
-        let thresholdHigh = CONFIG.colorThresholdHigh;
-        if (CONFIG.useNormalization) {
-          displayScore = (rawScore / CONFIG.userMaxScore) * 100;
-          displayScore = Math.min(100, displayScore);
-          displayScore = Math.ceil(displayScore);
-          thresholdLow = Math.ceil(
-            (CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100
-          );
-          thresholdHigh = Math.ceil(
-            (CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100
-          );
-        } else {
-          displayScore = Math.round(displayScore * 10) / 10;
-        }
-        const ratioLabel = document.createElement("dt");
-        ratioLabel.className = "kudoshits";
+      if (!wordsElement) return;
+      
+      const words = getNumberFromElement(wordsElement);
+      if (isNaN(words)) return;
+      
+      // Calculate reading time if enabled
+      if (CONFIG.enableReadingTime && !$1("dt.readtime", statsElement)) {
+        const minutes = words / CONFIG.wpm;
+        const hrs = Math.floor(minutes / 60);
+        const mins = (minutes % 60).toFixed(0);
+        const minutes_print = hrs > 0 ? hrs + "h" + mins + "m" : mins + "m";
+
+        const readtime_label = document.createElement("dt");
+        readtime_label.className = "readtime";
         if (!CONFIG.useIcons) {
-          ratioLabel.textContent = "Score:";
+          readtime_label.textContent = "Time:";
         }
-        const ratioValue = document.createElement("dd");
-        ratioValue.className = "kudoshits";
+
+        const readtime_value = document.createElement("dd");
+        readtime_value.className = "readtime";
 
         let color;
-        if (displayScore >= thresholdHigh) {
+        if (minutes < CONFIG.readingTimeLvl1) {
           color = CONFIG.colorGreen;
-        } else if (displayScore >= thresholdLow) {
+        } else if (minutes < CONFIG.readingTimeLvl2) {
           color = CONFIG.colorYellow;
         } else {
           color = CONFIG.colorRed;
         }
 
-        Object.assign(ratioValue.style, {
+        Object.assign(readtime_value.style, {
           display: "inline-block",
           verticalAlign: "baseline",
         });
 
         if (CONFIG.useIcons) {
           const textSpan = document.createElement("span");
-          textSpan.textContent = displayScore;
+          textSpan.textContent = minutes_print;
           textSpan.style.borderRadius = "4px";
           textSpan.style.display = "inline-block";
           textSpan.style.verticalAlign = "baseline";
           textSpan.style.fontSize = "inherit";
           textSpan.style.lineHeight = "inherit";
           applyColorStyling(textSpan, color);
-          ratioValue.appendChild(textSpan);
+          readtime_value.appendChild(textSpan);
         } else {
-          ratioValue.textContent = displayScore;
-          ratioValue.style.borderRadius = "4px";
-          ratioValue.style.fontSize = "inherit";
-          ratioValue.style.lineHeight = "inherit";
-          applyColorStyling(ratioValue, color);
+          readtime_value.textContent = minutes_print;
+          readtime_value.style.borderRadius = "4px";
+          readtime_value.style.fontSize = "inherit";
+          readtime_value.style.lineHeight = "inherit";
+          applyColorStyling(readtime_value, color);
         }
 
-        hitsElement.insertAdjacentElement("afterend", ratioValue);
-        hitsElement.insertAdjacentElement("afterend", ratioLabel);
-        if (parentLi) parentLi.setAttribute("kudospercent", displayScore);
-      } catch (error) {
-        console.error("Error calculating score:", error);
+        wordsElement.insertAdjacentElement("afterend", readtime_label);
+        readtime_label.insertAdjacentElement("afterend", readtime_value);
+      }
+      
+      // Calculate quality score if enabled
+      if (CONFIG.enableQualityScore && !$1("dt.kudoshits", statsElement)) {
+        const hitsElement = $1("dd.hits", statsElement);
+        const kudosElement = $1("dd.kudos", statsElement);
+        const parentLi = statsElement.closest("li");
+        
+        try {
+          const hits = getNumberFromElement(hitsElement);
+          const kudos = getNumberFromElement(kudosElement);
+          
+          // Only calculate score if we have valid data
+          if (!isNaN(hits) && !isNaN(kudos)) {
+            if (kudos < CONFIG.minKudosToShowScore) {
+              if (statsElement.querySelector("dt.kudoshits"))
+                statsElement.querySelector("dt.kudoshits").remove();
+              if (statsElement.querySelector("dd.kudoshits"))
+                statsElement.querySelector("dd.kudoshits").remove();
+            } else {
+              let rawScore = calculateWordBasedScore(kudos, hits, words);
+              if (kudos < 10) rawScore = 1;
+              let displayScore = rawScore;
+              let thresholdLow = CONFIG.colorThresholdLow;
+              let thresholdHigh = CONFIG.colorThresholdHigh;
+              if (CONFIG.useNormalization) {
+                displayScore = (rawScore / CONFIG.userMaxScore) * 100;
+                displayScore = Math.min(100, displayScore);
+                displayScore = Math.ceil(displayScore);
+                thresholdLow = Math.ceil(
+                  (CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100
+                );
+                thresholdHigh = Math.ceil(
+                  (CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100
+                );
+              } else {
+                displayScore = Math.round(displayScore * 10) / 10;
+              }
+              
+              const ratioLabel = document.createElement("dt");
+              ratioLabel.className = "kudoshits";
+              if (!CONFIG.useIcons) {
+                ratioLabel.textContent = "Score:";
+              }
+              const ratioValue = document.createElement("dd");
+              ratioValue.className = "kudoshits";
+
+              let color;
+              if (displayScore >= thresholdHigh) {
+                color = CONFIG.colorGreen;
+              } else if (displayScore >= thresholdLow) {
+                color = CONFIG.colorYellow;
+              } else {
+                color = CONFIG.colorRed;
+              }
+
+              Object.assign(ratioValue.style, {
+                display: "inline-block",
+                verticalAlign: "baseline",
+              });
+
+              if (CONFIG.useIcons) {
+                const textSpan = document.createElement("span");
+                textSpan.textContent = displayScore;
+                textSpan.style.borderRadius = "4px";
+                textSpan.style.display = "inline-block";
+                textSpan.style.verticalAlign = "baseline";
+                textSpan.style.fontSize = "inherit";
+                textSpan.style.lineHeight = "inherit";
+                applyColorStyling(textSpan, color);
+                ratioValue.appendChild(textSpan);
+              } else {
+                ratioValue.textContent = displayScore;
+                ratioValue.style.borderRadius = "4px";
+                ratioValue.style.fontSize = "inherit";
+                ratioValue.style.lineHeight = "inherit";
+                applyColorStyling(ratioValue, color);
+              }
+
+              hitsElement.insertAdjacentElement("afterend", ratioValue);
+              hitsElement.insertAdjacentElement("afterend", ratioLabel);
+              if (parentLi) parentLi.setAttribute("kudospercent", displayScore);
+            }
+          }
+        } catch (error) {
+          console.error("Error calculating score:", error);
+        }
+      }
+      
+      // Hide metrics independently (works regardless of whether features are enabled)
+      if (CONFIG.hideMetrics && !statsPage) {
+        const hitsElement = $1("dd.hits", statsElement);
+        const kudosElement = $1("dd.kudos", statsElement);
+        const bookmarksElement = $1("dd.bookmarks", statsElement);
+        const commentsElement = $1("dd.comments", statsElement);
+        
+        if (CONFIG.hideHits && hitsElement) {
+          hitsElement.style.display = "none";
+        }
+        if (CONFIG.hideKudos && kudosElement) {
+          kudosElement.style.display = "none";
+        }
+        if (CONFIG.hideBookmarks && bookmarksElement) {
+          bookmarksElement.style.display = "none";
+        }
+        if (CONFIG.hideComments && commentsElement) {
+          commentsElement.style.display = "none";
+        }
       }
     });
   };
 
+  // Wrapper functions for backward compatibility with manual triggers
+  const calculateReadtime = () => {
+    if (!countable || !CONFIG.enableReadingTime) return;
+    calculateMetrics();
+  };
+
+  const countRatio = () => {
+    if (!countable || !CONFIG.enableQualityScore) return;
+    calculateMetrics();
+  };
+
   const sortByRatio = (ascending = false) => {
     if (!sortable) return;
+    
+    // Collect unique parent lists to avoid sorting the same list multiple times
+    const listsToSort = new Set();
     $("dl.stats").forEach((statsElement) => {
       const parentLi = statsElement.closest("li");
       const list = parentLi?.parentElement;
-      if (!list) return;
+      if (list) listsToSort.add(list);
+    });
+    
+    // Sort each unique list once
+    listsToSort.forEach((list) => {
       const listElements = Array.from(list.children);
       listElements.sort((a, b) => {
         const aPercent = parseFloat(a.getAttribute("kudospercent")) || 0;
         const bPercent = parseFloat(b.getAttribute("kudospercent")) || 0;
         return ascending ? aPercent - bPercent : bPercent - aPercent;
       });
-      list.innerHTML = "";
-      list.append(...listElements);
+      
+      // Use DocumentFragment for better performance
+      const fragment = document.createDocumentFragment();
+      listElements.forEach(el => fragment.appendChild(el));
+      list.appendChild(fragment);
     });
   };
 
@@ -549,21 +586,17 @@
           return;
         }
       } else {
-        if ($1(".notice", chapter)) {
+        if ($1(".notice.ao3-chapter-stats", chapter)) {
           return;
         }
         userstuff = $1("div.userstuff", chapter);
       }
       if (!userstuff) return;
-      const clone = userstuff.cloneNode(true);
-      const elementsToRemove = clone.querySelectorAll(
-        "h3.landmark, script, style"
-      );
-      elementsToRemove.forEach((el) => el.remove());
-      const text = clone.textContent
-        .trim()
-        .replace(/\s+/g, " ")
-        .replace(/[^\w\s'-]/g, "");
+      
+      // More efficient text extraction without deep cloning
+      let text = userstuff.textContent || userstuff.innerText || "";
+      text = text.trim().replace(/\s+/g, " ");
+      
       const words = text.split(/\s+/).filter((word) => {
         return word.length > 0 && /[a-zA-Z]/.test(word);
       });
@@ -1370,20 +1403,18 @@
     const username = detectAndStoreUsername();
 
     setTimeout(() => {
-      if (CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) {
-        calculateReadtime();
-      }
-
-      if (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore) {
-        countRatio();
-
-        const myContentPage = isMyContentPage(username);
-
-        if (
-          CONFIG.alwaysSortQualityScore &&
-          !(CONFIG.excludeMyContentFromSort && myContentPage)
-        ) {
-          sortByRatio();
+      // Use combined calculateMetrics for better performance when both are enabled
+      if ((CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) ||
+          (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore) ||
+          CONFIG.hideMetrics) {
+        calculateMetrics();
+        
+        // Sort after calculation if needed
+        if (CONFIG.alwaysSortQualityScore && CONFIG.enableQualityScore) {
+          const myContentPage = isMyContentPage(username);
+          if (!(CONFIG.excludeMyContentFromSort && myContentPage)) {
+            sortByRatio();
+          }
         }
       }
 
@@ -1394,7 +1425,11 @@
   };
 
   loadUserSettings();
-  addIconStyles();
+  
+  // Only inject icon styles if icons are enabled
+  if (CONFIG.useIcons) {
+    addIconStyles();
+  }
 
   console.log("[AO3: Reading Time & Quality Score] loaded.");
 
