@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.1.2
+// @version      2.1.5
 // @description  Shared UI components and styling for AO3 userscripts - Enhanced theme detection
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -12,9 +12,44 @@
 (function () {
   "use strict";
 
-  // Prevent multiple injections
+  const VERSION = "2.1.5";
+
+  // Prevent multiple injections - but always replace old versions without version property
   if (window.AO3MenuHelpers) {
-    return;
+    if (!window.AO3MenuHelpers.version) {
+      console.log(
+        "[AO3: Menu Helpers] Replacing old library version with",
+        VERSION
+      );
+    } else {
+      function compareVersions(a, b) {
+        const partsA = a.split(".").map(Number);
+        const partsB = b.split(".").map(Number);
+
+        for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+          const partA = partsA[i] || 0;
+          const partB = partsB[i] || 0;
+
+          if (partA > partB) return 1;
+          if (partA < partB) return -1;
+        }
+
+        return 0;
+      }
+
+      const currentVersion = window.AO3MenuHelpers.version;
+
+      if (compareVersions(VERSION, currentVersion) <= 0) {
+        return;
+      } else {
+        console.log(
+          "[AO3: Menu Helpers] Skipped version",
+          currentVersion,
+          "- loading most recent version",
+          VERSION
+        );
+      }
+    }
   }
 
   let stylesInjected = false;
@@ -26,38 +61,29 @@
   const ThemeDetector = {
     cache: {},
 
-    /**
-     * Creates a temporary element with specified tag and classes
-     * @private
-     */
     _createTempElement(tag, className) {
       const element = document.createElement(tag);
       if (tag === "input" && className) {
-        element.type = className; // Set type for inputs
+        element.type = className;
       } else if (className) {
-        element.className = className; // Set class for other elements
+        element.className = className;
       }
       element.style.cssText =
         "position:absolute;left:-9999px;visibility:hidden;";
       if (!document.body) {
-        // If body doesn't exist yet, wait for it
         return null;
       }
       document.body.appendChild(element);
       return element;
     },
 
-    /**
-     * Safely gets computed style, handling missing elements
-     * @private
-     */
     _getComputedStyle(selector, tempConfig) {
       let element = selector ? document.querySelector(selector) : null;
       let cleanup = false;
 
       if (!element && tempConfig) {
         element = this._createTempElement(tempConfig.tag, tempConfig.className);
-        if (!element) return null; // Body not ready
+        if (!element) return null;
         cleanup = true;
       }
 
@@ -78,26 +104,19 @@
       return result;
     },
 
-    /**
-     * Sample dialog/modal styling
-     */
     getDialogStyles() {
       if (this.cache.dialog) return this.cache.dialog;
 
-      // Try to sample from actual modal
       let styles = this._getComputedStyle("#modal");
 
-      // Fallback to fieldset
       if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
         styles = this._getComputedStyle("fieldset");
       }
 
-      // Last resort: create temporary modal
       if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
         styles = this._getComputedStyle(null, { tag: "div", className: "" });
       }
 
-      // Ensure we have valid values with fallbacks
       this.cache.dialog = {
         backgroundColor: styles?.backgroundColor || "#ffffff",
         borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
@@ -109,9 +128,6 @@
       return this.cache.dialog;
     },
 
-    /**
-     * Sample blurb styling (for list items)
-     */
     getBlurbStyles() {
       if (this.cache.blurb) return this.cache.blurb;
 
@@ -136,13 +152,9 @@
       return this.cache.blurb;
     },
 
-    /**
-     * Sample button styling
-     */
     getButtonStyles() {
       if (this.cache.button) return this.cache.button;
 
-      // Try to sample from actual submit inputs in action areas first
       let styles = this._getComputedStyle('.actions li input[type="submit"]');
 
       if (!styles) {
@@ -176,13 +188,9 @@
       return this.cache.button;
     },
 
-    /**
-     * Sample input field styling
-     */
     getInputStyles() {
       if (this.cache.input) return this.cache.input;
 
-      // Always use temporary element for inputs to ensure skin styles are applied
       const styles = this._getComputedStyle(null, {
         tag: "input",
         className: "text",
@@ -199,28 +207,21 @@
       return this.cache.input;
     },
 
-    /**
-     * Sample fieldset/section styling
-     */
     getFieldsetStyles() {
       if (this.cache.fieldset) return this.cache.fieldset;
 
       let styles = null;
 
-      // On works/chapters pages, sample from work meta group first
       const WORKS_PAGE_REGEX =
         /^https?:\/\/archiveofourown\.org\/(?:.*\/)?(works|chapters)(\/|$)/;
       if (WORKS_PAGE_REGEX.test(window.location.href)) {
-        // Try the meta group container itself
         styles = this._getComputedStyle("dl.work.meta.group");
 
-        // Fallback to dd elements within the meta group
         if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
           styles = this._getComputedStyle("dl.work.meta.group dd");
         }
       }
 
-      // Fallback to original sampling logic (fieldsets, listbox, temp element)
       if (!styles || styles.backgroundColor === "rgba(0, 0, 0, 0)") {
         styles = this._getComputedStyle("fieldset");
       }
@@ -236,7 +237,6 @@
         });
       }
 
-      // Ensure we have valid values with fallbacks
       this.cache.fieldset = {
         backgroundColor: styles?.backgroundColor || "#f9f9f9",
         borderColor: styles?.borderColor || "rgba(0, 0, 0, 0.2)",
@@ -248,9 +248,6 @@
       return this.cache.fieldset;
     },
 
-    /**
-     * Sample text color from body
-     */
     getTextColor() {
       if (this.cache.textColor) return this.cache.textColor;
 
@@ -265,9 +262,6 @@
       return this.cache.textColor;
     },
 
-    /**
-     * Sample link color
-     */
     getLinkColor() {
       if (this.cache.linkColor) return this.cache.linkColor;
 
@@ -291,9 +285,6 @@
       return this.cache.linkColor;
     },
 
-    /**
-     * Clear cache (useful if theme changes)
-     */
     clearCache() {
       this.cache = {};
     },
@@ -304,28 +295,17 @@
   // ============================================================
 
   window.AO3MenuHelpers = {
-    version: "2.1.2",
+    version: VERSION,
     themeDetector: ThemeDetector,
 
-    /**
-     * Detects AO3's input field background color from current theme
-     * Uses theme detector with caching
-     * @returns {string} Background color (hex or rgba format)
-     */
     getAO3InputBackground() {
       const inputStyles = this.themeDetector.getInputStyles();
       return inputStyles.backgroundColor;
     },
 
-    /**
-     * Injects shared CSS styles for all menu components
-     * Only injects once per page load, safe to call multiple times
-     * Automatically called when library loads
-     */
     injectSharedStyles() {
       if (stylesInjected) return;
       if (!document.head) {
-        // Wait for head to be available
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", () => {
             this.injectSharedStyles();
@@ -340,12 +320,12 @@
         return;
       }
 
-      // Get theme styles - with safe fallbacks
       const dialogTheme = this.themeDetector.getDialogStyles();
       const inputTheme = this.themeDetector.getInputStyles();
       const buttonTheme = this.themeDetector.getButtonStyles();
       const fieldsetTheme = this.themeDetector.getFieldsetStyles();
       const textColor = this.themeDetector.getTextColor();
+      const linkColor = this.themeDetector.getLinkColor();
 
       const style = document.createElement("style");
       style.id = "ao3-menu-helpers-styles";
@@ -372,7 +352,6 @@
               box-sizing: border-box;
             }
 
-            /* Mobile: Full width with minimal padding */
             @media (max-width: 768px) {
               .ao3-menu-dialog {
                 width: 96% !important;
@@ -393,7 +372,6 @@
               font-family: inherit;
             }
             
-            /* Settings Sections */
             .ao3-menu-dialog .settings-section {
               background: ${fieldsetTheme.backgroundColor};
               border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor};
@@ -416,9 +394,13 @@
               color: inherit;
               opacity: 0.85;
               font-family: inherit;
+              cursor: pointer;
             }
             
-            /* Setting Groups */
+            .ao3-menu-dialog .section-content {
+              margin-top: 10px;
+            }
+            
             .ao3-menu-dialog .setting-group {
               margin-bottom: 15px;
             }
@@ -440,7 +422,6 @@
               line-height: 1.4;
             }
             
-            /* Checkbox and Radio Labels */
             .ao3-menu-dialog .checkbox-label {
               display: block;
               font-weight: normal;
@@ -456,13 +437,11 @@
               margin-bottom: 8px;
             }
             
-            /* Subsettings (indented settings) */
             .ao3-menu-dialog .subsettings {
               padding-left: 20px;
               margin-top: 10px;
             }
             
-            /* Layout Helpers */
             .ao3-menu-dialog .two-column {
               display: grid;
               grid-template-columns: 1fr 1fr;
@@ -473,7 +452,6 @@
               margin-top: 15px;
             }
             
-            /* Slider with Value Display */
             .ao3-menu-dialog .slider-with-value {
               display: flex;
               align-items: center;
@@ -492,7 +470,6 @@
               opacity: 0.6;
             }
             
-            /* Form Inputs */
             .ao3-menu-dialog input[type="text"],
             .ao3-menu-dialog input[type="number"],
             .ao3-menu-dialog select,
@@ -518,7 +495,7 @@
             .ao3-menu-dialog select:focus,
             .ao3-menu-dialog textarea:focus {
               background: ${inputTheme.backgroundColor} !important;
-              outline: 2px solid ${buttonTheme.borderColor};
+              outline: 2px solid ${linkColor};
             }
             
             .ao3-menu-dialog input::placeholder,
@@ -526,7 +503,6 @@
               opacity: 0.6 !important;
             }
             
-            /* Buttons */
             .ao3-menu-dialog .button-group {
               display: flex;
               justify-content: space-between;
@@ -540,7 +516,6 @@
               opacity: 0.9;
             }
             
-            /* Reset Link */
             .ao3-menu-dialog .reset-link {
               text-align: center;
               margin-top: 10px;
@@ -549,14 +524,12 @@
               opacity: 0.7;
             }
             
-            /* Tooltips */
             .ao3-menu-dialog .symbol.question {
               font-size: 0.5em;
               vertical-align: middle;
               margin-left: 0.1em;
             }
             
-            /* Keyboard key styling */
             .ao3-menu-dialog kbd {
               padding: 2px 6px;
               background: rgba(0,0,0,0.1);
@@ -565,7 +538,6 @@
               font-size: 0.9em;
             }
 
-            /* Modal Overlay */
             .ao3-menu-overlay {
               position: fixed;
               top: 0;
@@ -581,11 +553,6 @@
       stylesInjected = true;
     },
 
-    /**
-     * Adds ESC key support to close a dialog
-     * @private
-     * @param {HTMLElement} dialog - The dialog element to add ESC support to
-     */
     _addEscSupport(dialog) {
       const escHandler = (e) => {
         if (e.key === "Escape") {
@@ -596,11 +563,6 @@
       document.addEventListener("keydown", escHandler);
     },
 
-    /**
-     * Adds modal overlay support to a dialog
-     * @private
-     * @param {HTMLElement} dialog - The dialog element to add modal support to
-     */
     _addModalSupport(dialog) {
       const overlay = document.createElement("div");
       overlay.className = "ao3-menu-overlay";
@@ -609,7 +571,6 @@
       });
       document.body.appendChild(overlay);
 
-      // Remove overlay when dialog is removed
       const observer = new MutationObserver(() => {
         if (!document.body.contains(dialog)) {
           overlay.remove();
@@ -621,16 +582,10 @@
 
     /**
      * Creates a dialog/popup container
-     * @param {string} title - Dialog title (can include emoji)
-     * @param {Object} [options={}] - Optional configuration
-     * @param {string} [options.width='90%'] - Dialog width
-     * @param {string} [options.maxWidth='600px'] - Maximum dialog width
-     * @param {string} [options.maxHeight='80vh'] - Maximum dialog height
-     * @param {string} [options.className=''] - Additional CSS classes
-     * @returns {HTMLElement} Dialog container element
+     * @param {string} title - Dialog title
+     * @param {Object} [options] - width, maxWidth, maxHeight, className
      */
     createDialog(title, options = {}) {
-      // Ensure styles are injected before creating dialog
       this.injectSharedStyles();
 
       const {
@@ -657,11 +612,19 @@
       return dialog;
     },
 
+    _getSectionStates() {
+      const stored = localStorage.getItem("ao3_menu_helpers");
+      return stored ? JSON.parse(stored) : {};
+    },
+
+    _saveSectionStates(states) {
+      localStorage.setItem("ao3_menu_helpers", JSON.stringify(states));
+    },
+
     /**
-     * Creates a settings section with colored border
+     * Creates a collapsible settings section
      * @param {string} title - Section title
-     * @param {string|HTMLElement} [content=''] - Section content (HTML string or element)
-     * @returns {HTMLElement} Section container
+     * @param {string|HTMLElement} [content] - Section content
      */
     createSection(title, content = "") {
       const section = document.createElement("div");
@@ -672,20 +635,43 @@
       titleElement.textContent = title;
       section.appendChild(titleElement);
 
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "section-content";
+
       if (typeof content === "string" && content) {
-        section.innerHTML += content;
+        contentDiv.innerHTML = content;
       } else if (content instanceof HTMLElement) {
-        section.appendChild(content);
+        contentDiv.appendChild(content);
       }
+
+      section.appendChild(contentDiv);
+
+      const sectionId = title.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+
+      const states = this._getSectionStates();
+      if (states[sectionId] === "collapsed") {
+        contentDiv.style.display = "none";
+      }
+
+      const originalAppendChild = section.appendChild.bind(section);
+      section.appendChild = function (child) {
+        if (child === titleElement || child === contentDiv) {
+          return originalAppendChild(child);
+        }
+        return contentDiv.appendChild(child);
+      };
+
+      titleElement.addEventListener("click", () => {
+        const isCurrentlyCollapsed = contentDiv.style.display === "none";
+        contentDiv.style.display = isCurrentlyCollapsed ? "" : "none";
+        const states = this._getSectionStates();
+        states[sectionId] = isCurrentlyCollapsed ? "expanded" : "collapsed";
+        this._saveSectionStates(states);
+      });
 
       return section;
     },
 
-    /**
-     * Creates a setting group container
-     * @param {string|HTMLElement} content - Group content
-     * @returns {HTMLElement} Setting group div
-     */
     createSettingGroup(content = "") {
       const group = document.createElement("div");
       group.className = "setting-group";
@@ -699,11 +685,6 @@
       return group;
     },
 
-    /**
-     * Creates a tooltip help icon
-     * @param {string} text - Tooltip text
-     * @returns {HTMLElement} Tooltip span element
-     */
     createTooltip(text) {
       if (!text) return document.createTextNode("");
 
@@ -718,14 +699,6 @@
       return tooltip;
     },
 
-    /**
-     * Creates a label element with optional tooltip
-     * @param {string} text - Label text
-     * @param {string} [forId=''] - ID of associated input
-     * @param {string} [tooltip=''] - Optional tooltip text
-     * @param {string} [className='setting-label'] - CSS class name
-     * @returns {HTMLElement} Label element
-     */
     createLabel(text, forId = "", tooltip = "", className = "setting-label") {
       const label = document.createElement("label");
       label.className = className;
@@ -741,11 +714,6 @@
       return label;
     },
 
-    /**
-     * Creates an inline help/description text element
-     * @param {string} text - Help text
-     * @returns {HTMLElement} Description span element
-     */
     createDescription(text) {
       const help = document.createElement("span");
       help.className = "setting-description";
@@ -753,18 +721,6 @@
       return help;
     },
 
-    /**
-     * Creates a range slider input
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {number} config.min - Minimum value
-     * @param {number} config.max - Maximum value
-     * @param {number} config.step - Step increment
-     * @param {number} config.value - Initial value
-     * @param {string} [config.label=''] - Optional label text
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @returns {HTMLElement} Container with slider (or just slider if no label)
-     */
     createSlider(config) {
       const { id, min, max, step, value, label = "", tooltip = "" } = config;
 
@@ -786,18 +742,8 @@
     },
 
     /**
-     * Creates a slider with synchronized value display
-     * Automatically updates value display when slider moves
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.label - Label text
-     * @param {number} config.min - Minimum value
-     * @param {number} config.max - Maximum value
-     * @param {number} config.step - Step increment
-     * @param {number} config.value - Initial value
-     * @param {string} [config.unit=''] - Unit to display (e.g., '%', 'px')
-     * @param {string} [config.tooltip=''] - Optional tooltip text
-     * @returns {HTMLElement} Container with label, slider, and value display
+     * Creates a slider with value display that auto-updates
+     * @param {Object} config - id, label, min, max, step, value, unit, tooltip
      */
     createSliderWithValue(config) {
       const {
@@ -837,7 +783,6 @@
         valueDisplay.appendChild(document.createTextNode(unit));
       }
 
-      // Auto-update value display when slider moves
       slider.addEventListener("input", (e) => {
         valueSpan.textContent = e.target.value;
       });
@@ -849,16 +794,6 @@
       return group;
     },
 
-    /**
-     * Creates a text input field
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.label - Label text
-     * @param {string} [config.value=''] - Initial value
-     * @param {string} [config.placeholder=''] - Placeholder text
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @returns {HTMLElement} Container with label and input
-     */
     createTextInput(config) {
       const { id, label, value = "", placeholder = "", tooltip = "" } = config;
 
@@ -875,19 +810,6 @@
       return group;
     },
 
-    /**
-     * Creates a number input field
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.label - Label text
-     * @param {number|string} [config.value=''] - Initial value
-     * @param {number} [config.min] - Minimum value
-     * @param {number} [config.max] - Maximum value
-     * @param {number} [config.step=1] - Step increment
-     * @param {string} [config.placeholder=''] - Placeholder text
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @returns {HTMLElement} Container with label and input
-     */
     createNumberInput(config) {
       const {
         id,
@@ -918,19 +840,6 @@
       return group;
     },
 
-    /**
-     * Creates a textarea input field
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Textarea ID
-     * @param {string} config.label - Label text
-     * @param {string} [config.value=''] - Initial value
-     * @param {string} [config.placeholder=''] - Placeholder text
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @param {string} [config.description=''] - Optional description text below label
-     * @param {string} [config.rows='4'] - Number of visible rows
-     * @param {string} [config.minHeight='100px'] - Minimum height
-     * @returns {HTMLElement} Container with label, optional description, and textarea
-     */
     createTextarea(config) {
       const {
         id,
@@ -946,7 +855,6 @@
       const group = this.createSettingGroup();
       group.appendChild(this.createLabel(label, id, tooltip));
 
-      // Add description if provided
       if (description) {
         group.appendChild(this.createDescription(description));
       }
@@ -963,16 +871,6 @@
       return group;
     },
 
-    /**
-     * Creates a checkbox input
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.label - Label text
-     * @param {boolean} [config.checked=false] - Initial checked state
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @param {boolean} [config.inGroup=true] - Wrap in setting-group div
-     * @returns {HTMLElement} Label element (or container if inGroup=true)
-     */
     createCheckbox(config) {
       const {
         id,
@@ -1005,22 +903,14 @@
     },
 
     /**
-     * Creates a checkbox with conditional subsettings that show/hide
-     * Common pattern: checkbox that reveals additional options when checked
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Checkbox ID
-     * @param {string} config.label - Checkbox label
-     * @param {boolean} [config.checked=false] - Initial checked state
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @param {HTMLElement|Array<HTMLElement>} config.subsettings - Elements to show/hide
-     * @returns {HTMLElement} Container with checkbox and conditional subsettings
+     * Creates a checkbox with subsettings that show/hide when checked
+     * @param {Object} config - id, label, checked, tooltip, subsettings (element or array)
      */
     createConditionalCheckbox(config) {
       const { id, label, checked = false, tooltip = "", subsettings } = config;
 
       const container = this.createSettingGroup();
 
-      // Create checkbox
       const checkboxLabel = this.createCheckbox({
         id,
         label,
@@ -1030,11 +920,9 @@
       });
       container.appendChild(checkboxLabel);
 
-      // Create subsettings container
       const subsettingsContainer = this.createSubsettings();
       subsettingsContainer.style.display = checked ? "" : "none";
 
-      // Add subsettings content
       if (Array.isArray(subsettings)) {
         subsettings.forEach((element) => {
           if (element instanceof HTMLElement) {
@@ -1047,8 +935,6 @@
 
       container.appendChild(subsettingsContainer);
 
-      // Auto-toggle visibility using getElementById (more robust than querySelector)
-      // Use setTimeout to ensure checkbox is in DOM after dialog is appended
       setTimeout(() => {
         const checkbox = document.getElementById(id);
         if (checkbox) {
@@ -1061,15 +947,6 @@
       return container;
     },
 
-    /**
-     * Creates a radio button group
-     * @param {Object} config - Configuration object
-     * @param {string} config.name - Radio group name (all radios share this)
-     * @param {string} config.label - Group label text
-     * @param {Array<{value: string, label: string, checked?: boolean}>} config.options - Radio options
-     * @param {string} [config.tooltip=''] - Optional tooltip for group label
-     * @returns {HTMLElement} Container with label and radio buttons
-     */
     createRadioGroup(config) {
       const { name, label, options, tooltip = "" } = config;
 
@@ -1099,15 +976,6 @@
       return group;
     },
 
-    /**
-     * Creates a select dropdown
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Select ID
-     * @param {string} config.label - Label text
-     * @param {Array<{value: string, label: string, selected?: boolean}>} config.options - Select options
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @returns {HTMLElement} Container with label and select
-     */
     createSelect(config) {
       const { id, label, options, tooltip = "" } = config;
 
@@ -1133,15 +1001,6 @@
       return group;
     },
 
-    /**
-     * Creates a color picker input
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.label - Label text
-     * @param {string} [config.value='#000000'] - Initial color value
-     * @param {string} [config.tooltip=''] - Optional tooltip
-     * @returns {HTMLElement} Container with label and color input
-     */
     createColorPicker(config) {
       const { id, label, value = "#000000", tooltip = "" } = config;
 
@@ -1157,12 +1016,6 @@
       return group;
     },
 
-    /**
-     * Creates a two-column layout
-     * @param {HTMLElement} leftContent - Left column content
-     * @param {HTMLElement} rightContent - Right column content
-     * @returns {HTMLElement} Two-column container
-     */
     createTwoColumnLayout(leftContent, rightContent) {
       const container = document.createElement("div");
       container.className = "two-column";
@@ -1177,11 +1030,6 @@
       return container;
     },
 
-    /**
-     * Creates a subsettings container (indented settings)
-     * @param {HTMLElement|string} [content=''] - Content to place inside
-     * @returns {HTMLElement} Subsettings div
-     */
     createSubsettings(content = "") {
       const subsettings = document.createElement("div");
       subsettings.className = "subsettings";
@@ -1197,8 +1045,7 @@
 
     /**
      * Creates a button group (typically for Save/Cancel)
-     * @param {Array<{text: string, id: string, primary?: boolean, onClick?: function}>} buttons - Button configurations
-     * @returns {HTMLElement} Button group container
+     * @param {Array} buttons - Array of {text, id, primary, onClick}
      */
     createButtonGroup(buttons) {
       if (!buttons || !Array.isArray(buttons)) {
@@ -1223,12 +1070,6 @@
       return group;
     },
 
-    /**
-     * Creates a reset link
-     * @param {string} text - Link text
-     * @param {function} onResetCallback - Function to call when clicked
-     * @returns {HTMLElement} Reset link container
-     */
     createResetLink(text, onResetCallback) {
       const container = document.createElement("div");
       container.className = "reset-link";
@@ -1247,11 +1088,6 @@
       return container;
     },
 
-    /**
-     * Creates a keyboard key visual element
-     * @param {string} keyText - Text to display (e.g., 'Alt', 'Ctrl')
-     * @returns {HTMLElement} Styled kbd element
-     */
     createKeyboardKey(keyText) {
       const kbd = document.createElement("kbd");
       kbd.textContent = keyText;
@@ -1259,12 +1095,9 @@
     },
 
     /**
-     * Creates an info/tip box with border and background
-     * @param {string|HTMLElement} content - HTML content, text, or element
-     * @param {Object} [options={}] - Optional styling
-     * @param {string|HTMLElement} [options.icon='💡'] - Icon to display
-     * @param {string} [options.title=''] - Optional title
-     * @returns {HTMLElement} Styled info box
+     * Creates an info/tip box
+     * @param {string|HTMLElement} content - Content to display
+     * @param {Object} [options] - icon, title
      */
     createInfoBox(content, options = {}) {
       const { icon = "💡", title = "" } = options;
@@ -1322,13 +1155,8 @@
     },
 
     /**
-     * Creates a file input button with custom styling
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Input ID
-     * @param {string} config.buttonText - Button text
-     * @param {string} [config.accept=''] - File accept attribute
-     * @param {function} [config.onChange] - Change event handler (receives file as parameter)
-     * @returns {Object} Object with {button, input} elements
+     * Creates a file input with custom button
+     * @returns {Object} {button, input}
      */
     createFileInput(config) {
       const { id, buttonText, accept = "", onChange } = config;
@@ -1357,15 +1185,6 @@
       return { button, input };
     },
 
-    /**
-     * Creates a horizontal layout container
-     * @param {Array<HTMLElement>} elements - Elements to place horizontally
-     * @param {Object} [options={}] - Layout options
-     * @param {string} [options.gap='8px'] - Gap between elements
-     * @param {string} [options.justifyContent='flex-start'] - Flex justify-content
-     * @param {string} [options.alignItems='center'] - Flex align-items
-     * @returns {HTMLElement} Horizontal layout container
-     */
     createHorizontalLayout(elements, options = {}) {
       const {
         gap = "8px",
@@ -1393,9 +1212,6 @@
       return container;
     },
 
-    /**
-     * Removes all dialogs with .ao3-menu-dialog class from the page
-     */
     removeAllDialogs() {
       document.querySelectorAll(".ao3-menu-dialog").forEach((dialog) => {
         dialog.remove();
@@ -1403,10 +1219,8 @@
     },
 
     /**
-     * Helper to get value from an input by ID
-     * Returns appropriate type based on input type
-     * @param {string} id - Input element ID
-     * @returns {string|number|boolean|null} Input value or null if not found
+     * Gets value from input by ID
+     * @returns {string|number|boolean|null}
      */
     getValue(id) {
       const element = document.getElementById(id);
@@ -1432,11 +1246,7 @@
     },
 
     /**
-     * Helper to set value of an input by ID
-     * Handles different input types appropriately
-     * @param {string} id - Input element ID
-     * @param {*} value - Value to set
-     * @returns {boolean} True if successful, false otherwise
+     * Sets value of input by ID
      */
     setValue(id, value) {
       const element = document.getElementById(id);
@@ -1460,17 +1270,8 @@
     },
 
     /**
-     * Creates a clickable list item (for menus/selection lists)
-     * @param {Object} config - Configuration object
-     * @param {string} config.text - Item text
-     * @param {function} config.onClick - Click handler
-     * @param {string} [config.dataAttribute=''] - Data attribute name (e.g., 'data-id')
-     * @param {string} [config.dataValue=''] - Data attribute value
-     * @param {string} [config.icon=''] - Optional icon/emoji to display
-     * @param {string} [config.badge=''] - Optional badge text
-     * @param {string} [config.badgeClass='unread'] - CSS class to apply to badge (default: 'unread')
-     * @param {string} [config.badgeSize='0.7em'] - Badge font size
-     * @returns {HTMLElement} Styled list item
+     * Creates a clickable list item
+     * @param {Object} config - text, onClick, dataAttribute, dataValue, icon, badge, badgeClass, badgeSize
      */
     createListItem(config) {
       const {
@@ -1545,12 +1346,8 @@
     },
 
     /**
-     * Creates a dialog header with title and action icons
-     * @param {Object} config - Configuration object
-     * @param {string} config.title - Dialog title (can include emoji)
-     * @param {Array<{icon: string, title: string, onClick: function, id?: string}>} [config.actions=[]] - Action buttons
-     * @param {boolean} [config.includeCloseButton=true] - Whether to include X close button
-     * @returns {HTMLElement} Header container with title and icons
+     * Creates a dialog header with title and action buttons
+     * @param {Object} config - title, actions (array), includeCloseButton
      */
     createDialogHeader(config) {
       const { title, actions = [], includeCloseButton = true } = config;
@@ -1617,14 +1414,6 @@
       return header;
     },
 
-    /**
-     * Creates a scrollable content area for dialogs
-     * @param {HTMLElement|string} content - Content to place inside
-     * @param {Object} [options={}] - Optional styling
-     * @param {string} [options.maxHeight=''] - Maximum height (e.g., '400px')
-     * @param {string} [options.flex='1 1 0%'] - Flex properties
-     * @returns {HTMLElement} Scrollable container
-     */
     createScrollableContent(content, options = {}) {
       const { maxHeight = "", flex = "1 1 0%" } = options;
 
@@ -1650,15 +1439,7 @@
 
     /**
      * Creates a fixed-height dialog with header and scrollable content
-     * Common pattern for list/menu dialogs
-     * @param {Object} config - Configuration object
-     * @param {string} config.title - Dialog title
-     * @param {HTMLElement|string} config.content - Scrollable content
-     * @param {Array} [config.headerActions=[]] - Header action buttons
-     * @param {string} [config.height='450px'] - Dialog height
-     * @param {string} [config.width='90%'] - Dialog width
-     * @param {string} [config.maxWidth='500px'] - Maximum width
-     * @returns {HTMLElement} Complete dialog element
+     * @param {Object} config - title, content, headerActions, height, width, maxWidth
      */
     createFixedHeightDialog(config) {
       const {
@@ -1724,11 +1505,6 @@
       return dialog;
     },
 
-    /**
-     * Injects additional styles for list items and icon buttons
-     * Called automatically by createFixedHeightDialog
-     * Safe to call multiple times
-     */
     injectListItemStyles() {
       if (document.getElementById("ao3-list-item-styles")) return;
 
@@ -1765,11 +1541,9 @@
     },
 
     /**
-     * Samples styling from an existing AO3 element class
-     * Useful for matching theme styles (e.g., .unread, .replied)
-     * @param {string} selector - CSS selector for element to sample
+     * Samples styling from an existing AO3 element
+     * @param {string} selector - CSS selector
      * @param {Array<string>} properties - CSS properties to extract
-     * @returns {Object} Object with CSS property:value pairs
      */
     sampleElementStyles(selector, properties) {
       const element = document.querySelector(selector);
@@ -1794,13 +1568,6 @@
       return styles;
     },
 
-    /**
-     * Creates a checkmark icon (using AO3's .replied style if available)
-     * @param {Object} [options={}] - Optional configuration
-     * @param {string} [options.title='active'] - Title attribute
-     * @param {boolean} [options.useRepliedClass=true] - Use AO3's .replied class styling
-     * @returns {HTMLElement} Checkmark span element
-     */
     createCheckmarkIcon(options = {}) {
       const { title = "active", useRepliedClass = true } = options;
 
@@ -1829,28 +1596,14 @@
       return checkmark;
     },
 
-    /**
-     * Creates an SVG icon for edit button
-     * @returns {string} SVG markup for edit icon
-     */
     getEditIconSVG() {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
     },
 
-    /**
-     * Creates an SVG icon for home button
-     * @returns {string} SVG markup for home icon
-     */
     getHomeIconSVG() {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`;
     },
 
-    /**
-     * Detects border styling from current theme
-     * Samples from inputs, buttons, or specified elements
-     * @param {Array<string>} [selectors=[]] - Custom selectors to check
-     * @returns {Object} Object with borderRadius and borderColor
-     */
     detectBorderStyling(selectors = []) {
       const inputTheme = this.themeDetector.getInputStyles();
 
@@ -1862,14 +1615,7 @@
 
     /**
      * Adds an item to the shared Userscripts dropdown menu
-     * Creates the dropdown if it doesn't exist
-     * @param {Object} config - Configuration object
-     * @param {string} config.id - Menu item link ID
-     * @param {string} config.text - Menu item text
-     * @param {function} config.onClick - Click handler
-     * @param {string} [config.position='append'] - 'append' or 'prepend' to control order
-     * @param {string} [config.menuTitle='Userscripts'] - Dropdown menu title
-     * @returns {boolean} True if successful, false otherwise
+     * @param {Object} config - id, text, onClick, position, menuTitle
      */
     addToSharedMenu(config) {
       const {

@@ -1,6 +1,6 @@
 # AO3: Advanced Blocker
 
-Block works on AO3 based on tags, authors, titles, word counts, and more. Filter by completion status, language, reading time, and primary pairings. Customize what you see—or don't see.
+Block works on AO3 based on tags, authors, titles, word counts, and more. Filter by completion status, language, last update, and primary pairings. Customize what you see—or don't see.
 
 <img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-2.png" width="600" alt="Advanced Blocker in action">
 ---
@@ -12,11 +12,15 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Whitelist Tags** – Always show works even if they match the blacklist.
 - **Highlight Tags** – Make works with certain tags stand out with custom colors.
 - **Wildcard Support** – Use `*` to match partial tags. For example: `Abandoned*` matches "Abandoned Work" and "Abandoned WIP."
+- **Conditional Blocking** – Block tags based on the presence or absence of other tags:
+  - `unless:{tag}` – Block UNLESS the condition tag is present. Example: `F/M unless:{Multi}` blocks F/M works that don't have Multi.
+  - `with:{tag}` – Block ONLY IF the condition tag is present. Example: `Major Character Death with:{Unhappy Ending}` blocks Major Character Death only when it's tagged as Unhappy Ending.
 
 ### **Content Filtering**
 - **Author Blacklist** – Block works by specific authors.
 - **Title Blacklist** – Hide works whose titles contain specific words or phrases.
 - **Summary Blacklist** – Hide works whose summaries contain specific words or phrases.
+- **Work Blacklist** - Block works by work ID; `Alt+Click` the work's title to add automatically.
 
 ### **Work Metadata Filtering**
 - **Word Count Limits** – Set minimum and maximum word counts.
@@ -39,7 +43,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Disable on My Content** – Skip blocking/filtering on your own profile pages entirely.
 
 ### **Convenience Features**
-- **Quick-Add** – Hold **Alt** and click any tag or author name to instantly add them to your blacklist.
+- **Quick-Add** – Hold a customizable key (by default, **Alt**) and click any tag or author name to instantly add them to your blacklist. Hold **Shift + Alt** to add to strict blacklist instead.
 - **Pause Blocking** – Temporarily disable filtering without changing settings.
 - **Import/Export Settings** – Save and restore your configuration across devices or browsers.
 
@@ -76,8 +80,26 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
   - `Self*Insert*` matches: Self-Insert, Self-Insert Player, Self...Insert (with anything between)
   - `*Angst` matches: Angst, Major Angst, Existential Angst
 
-**Comma-Separated Lists**
-- Enter multiple items separated by commas: `Tag1, Tag2, Tag3`
+**Conditional Blocking Syntax**
+- Use `Tag unless:{ConditionTag}` or `Tag with:{ConditionTag}` to create smart filters
+- Works in both tag blacklists and whitelist.
+- **unless** – Blocks the tag UNLESS the condition tag is also present
+- **with** – Blocks the tag ONLY IF the condition tag is also present
+- Examples:
+  - `F/M unless:{Multi}` – Blocks F/M works that don't have Multi
+  - `Angst unless:{Fluff}` – Blocks angsty works that don't have Fluff
+  - `Major Character Death with:{Unhappy Ending}` – Only blocks Major Character Death when it's tagged as Unhappy Ending
+  - `Explicit with:{Dead Dove: Do Not Eat}` – Only blocks Explicit works that also have the Dead Dove tag
+
+**Hide Completely Toggles**
+- All filters have an eye icon (👁️) next to the input field. Clicking this toggle switches between showing a placeholder (which can be clicked to reveal the blocked work) and hiding the work completely. This allows fine-grained control over how different types of blocks are displayed.
+
+**Strict vs Regular Tag Blocking**
+- **Regular Blacklist Tags** – Show a placeholder that can be clicked to reveal the blocked work (or use eye toggle to hide completely)
+- **Strict Blacklist Tags** – Always hide works completely without any placeholder, providing separation between mild dislikes and absolute deal-breakers
+- Example: You might blacklist "Angst" normally (don't prefer but willing to check occasionally) vs strict blacklist "Major Character Death" (absolutely never want to see)
+- Enable "Strict Tag Blocking" in Display Options to split your blacklist into two categories
+- Quick-add: **Alt + Click** adds to regular blacklist, **Shift + Alt + Click** adds to strict blacklist
 
 **Tag vs. Title/Summary Matching**
 - **Tags** use exact matching but are case-insensitive: `romance` will match 'Romance' but not `Slow Burn Romance`.
@@ -90,9 +112,6 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 
 **Language Filter**
 - Enter language names as they appear on AO3: `English`, `Русский`, `中文-普通话国语`
-
-**Hide Completely Toggles**
-- Many filters have an eye icon (👁️) next to the input field. Clicking this toggle switches between showing a placeholder (which can be clicked to reveal the blocked work) and hiding the work completely. This allows fine-grained control over how different types of blocks are displayed.
 
 ---
 

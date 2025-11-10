@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
-// @version       2.5
+// @version       2.7
 // @description   Change site skins from anywhere without leaving the page.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1690921/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.2
+// @require       https://update.greasyfork.org/scripts/554170/1692500/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.5
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -155,7 +155,24 @@
         item.querySelector(".datetime")?.textContent.trim() || "";
       let lastModified = null;
       if (dateText) {
-        lastModified = new Date(dateText);
+        // Parse date in format "DD MMM YYYY" (e.g., "09 Oct 2025")
+        const parts = dateText.split(' ');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const monthStr = parts[1];
+          const year = parseInt(parts[2], 10);
+          
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const month = monthNames.indexOf(monthStr);
+          
+          if (!isNaN(day) && month !== -1 && !isNaN(year)) {
+            lastModified = new Date(year, month, day);
+            if (isNaN(lastModified.getTime())) {
+              lastModified = null;
+            }
+          }
+        }
       }
 
       if (skinName && skinId && (isUsable || isParentOnly)) {
@@ -289,12 +306,8 @@
       const sortedSkins = [...skins].sort((a, b) =>
         a.name.localeCompare(b.name)
       );
-      const sortedByDate = [...skins].sort((a, b) => {
-        if (!a.lastModified && !b.lastModified) return 0;
-        if (!a.lastModified) return 1;
-        if (!b.lastModified) return -1;
-        return b.lastModified - a.lastModified;
-      });
+      // The skins are fetched in last modified descending order from the page
+      const sortedByDate = [...skins];
 
       let editMode = false;
 

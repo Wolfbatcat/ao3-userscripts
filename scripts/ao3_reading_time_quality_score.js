@@ -12,7 +12,7 @@
 // @match       *://archiveofourown.org/bookmarks*
 // @match       *://archiveofourown.org/series/*
 // @license     MIT
-// @require     https://update.greasyfork.org/scripts/552743/1690921/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.2
+// @require     https://update.greasyfork.org/scripts/554170/1692487/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.3
 // @grant       none
 // ==/UserScript==
 
