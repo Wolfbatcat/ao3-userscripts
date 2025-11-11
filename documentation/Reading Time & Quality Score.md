@@ -43,6 +43,7 @@ The full set of icons comes from [Rose Pine site skin](https://archiveofourown.o
   - **Best practice:** set max score to the **highest raw score in your fandom** — that fic will be treated as “perfect.”  
   - Want more forgiving scores? Just set the max score lower.  
 - Configurable thresholds color-code scores (e.g., low, medium, high).  
+- **Hide works by score:** Optionally filter out works below a minimum quality score threshold.
 
 ![Quality Score](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_reading-time-quality-score-2.png "Quality Score Settings")
 

@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
-// @version       2.7
+// @version       2.8
 // @description   Change site skins from anywhere without leaving the page.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/554170/1692500/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.5
+// @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -310,6 +310,7 @@
       const sortedByDate = [...skins];
 
       let editMode = false;
+      let dialog = null;
 
       function render() {
         // Create content container
@@ -372,43 +373,52 @@
           contentContainer.appendChild(skinItem);
         });
 
-        // Create dialog with header actions
-        const dialog = window.AO3MenuHelpers.createFixedHeightDialog({
-          title: "🔄 Skin Switcher",
-          content: contentContainer,
-          height: "450px",
-          width: "90%",
-          maxWidth: "500px",
-          headerActions: [
-            {
-              id: "edit-toggle",
-              icon: window.AO3MenuHelpers.getEditIconSVG(),
-              title: editMode ? "Exit Edit Mode" : "Edit Mode",
-              onClick: () => {
-                editMode = !editMode;
-                render();
+        if (!dialog) {
+          // Create dialog with header actions only once
+          dialog = window.AO3MenuHelpers.createFixedHeightDialog({
+            title: "🔄 Skin Switcher",
+            content: contentContainer,
+            height: "450px",
+            width: "90%",
+            maxWidth: "500px",
+            headerActions: [
+              {
+                id: "edit-toggle",
+                icon: window.AO3MenuHelpers.getEditIconSVG(),
+                title: editMode ? "Exit Edit Mode" : "Edit Mode",
+                onClick: () => {
+                  editMode = !editMode;
+                  render();
+                },
               },
-            },
-            {
-              id: "home-btn",
-              icon: window.AO3MenuHelpers.getHomeIconSVG(),
-              title: "Go to Skins Page",
-              onClick: () => {
-                // Clear cache when navigating to skins page
-                clearSkinsCache();
-                window.location.href = `https://archiveofourown.org/users/${username}/skins`;
+              {
+                id: "home-btn",
+                icon: window.AO3MenuHelpers.getHomeIconSVG(),
+                title: "Go to Skins Page",
+                onClick: () => {
+                  // Clear cache when navigating to skins page
+                  clearSkinsCache();
+                  window.location.href = `https://archiveofourown.org/users/${username}/skins`;
+                },
               },
-            },
-          ],
-        });
+            ],
+          });
+          document.body.appendChild(dialog);
+        } else {
+          // Update existing dialog's content
+          const scrollableContent = dialog.querySelector(".ao3-menu-dialog > div:last-child");
+          if (scrollableContent) {
+            scrollableContent.innerHTML = "";
+            scrollableContent.appendChild(contentContainer);
+          }
+        }
 
-        // Update edit button opacity based on mode
+        // Update edit button state
         const editBtn = dialog.querySelector("#edit-toggle");
         if (editBtn) {
           editBtn.style.opacity = editMode ? "1" : "0.7";
+          editBtn.title = editMode ? "Exit Edit Mode" : "Edit Mode";
         }
-
-        document.body.appendChild(dialog);
       }
 
       render();

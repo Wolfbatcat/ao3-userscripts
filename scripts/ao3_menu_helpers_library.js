@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.1.5
+// @version      2.1.6
 // @description  Shared UI components and styling for AO3 userscripts - Enhanced theme detection
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "2.1.5";
+  const VERSION = "2.1.6";
 
   // Prevent multiple injections - but always replace old versions without version property
   if (window.AO3MenuHelpers) {
@@ -40,12 +40,13 @@
       const currentVersion = window.AO3MenuHelpers.version;
 
       if (compareVersions(VERSION, currentVersion) <= 0) {
+        // This version is older or equal - skip silently
         return;
       } else {
         console.log(
-          "[AO3: Menu Helpers] Skipped version",
+          "[AO3: Menu Helpers] Replacing version",
           currentVersion,
-          "- loading most recent version",
+          "with newer version",
           VERSION
         );
       }
@@ -564,6 +565,10 @@
     },
 
     _addModalSupport(dialog) {
+      // Remove any existing overlays first
+      const existingOverlays = document.querySelectorAll(".ao3-menu-overlay");
+      existingOverlays.forEach((overlay) => overlay.remove());
+
       const overlay = document.createElement("div");
       overlay.className = "ao3-menu-overlay";
       overlay.addEventListener("click", () => {
