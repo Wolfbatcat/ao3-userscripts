@@ -44,9 +44,9 @@ Transform your AO3 reading experience with complete font and layout control:
      - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
      - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
      - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
-3. Click **"Userscripts"** in the header menu, then **"Site Wizard Settings"** to customize.
+3. Click **Userscripts** in the header menu, then **Site Wizard** to customize.
 4. Adjust fonts, sizes, alignment, and spacing to your preference.
-5. Click **"Apply Settings"** to save — changes persist across browser sessions.
+5. Click **Save** — changes persist across browser sessions.
 
 ---
 ### 🎨 Customization Tips

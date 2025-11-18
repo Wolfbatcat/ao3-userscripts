@@ -76,9 +76,9 @@ The full set of icons comes from [Rose Pine site skin](https://archiveofourown.o
      - [Chrome/Chromium](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)  
      - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
      - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
-     - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)  
-2. Open any AO3 work — the bars appear automatically.  
-3. Open **Userscript settings** to adjust WPM, toggle features, set normalization, and customize colors.  
+     - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)   
+3. Click **Userscripts** → **Reading Time & Quality Score** to open settings.
+4. **Save** your changes for them to go into effect.
 
 ---
 

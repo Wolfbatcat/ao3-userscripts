@@ -27,7 +27,8 @@ Tired of navigating to your skins page every time you want to switch themes? Thi
      - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
      - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
      - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
-3. Click **"Userscripts"** in the header menu, then **"Skin Changer"** to to bring up the menu.
+2. Click **Userscripts** -> **Skin Switcher** in the header to to bring up the menu.
+3. Select the skin you want.
 
 
 ### 📜 Check out my other scripts:

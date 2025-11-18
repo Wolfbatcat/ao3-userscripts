@@ -65,7 +65,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 
 2. Navigate to any AO3 works page (search results, tag pages, user profiles, bookmarks, etc.).
 3. Click **Userscripts** → **Advanced Blocker** to open settings.
-4. Configure your filters and click **Save Settings**.
+4. Configure your filters and click **Save**.
 
 ---
 

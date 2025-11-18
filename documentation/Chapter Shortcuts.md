@@ -16,14 +16,13 @@ Tired of extra clicks just to get to the latest chapter? This script adds handy 
 >  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
 
 
-1. Install a Tampermonkey:  
+1. Install with a userscript manager: 
  - [Chrome/Chromium](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)  
  - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
  - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
  - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)  
-2. Click “Install” on this page. Your userscript manager will prompt you to add the script.  
-3. On AO3, click "Chapter Shortcuts" under the "Userscripts" menu on the navigation bar.
-4. Choose a shortcut symbol or use your own [preferred character](https://emojicombos.com/twitter-display-name-symbols).
+2. On AO3, click **Userscripts** -> **Chapter Shortcuts**.
+3. Choose a shortcut symbol or use your own [preferred character](https://emojicombos.com/twitter-display-name-symbols).
 
 ---
 
