@@ -58,6 +58,8 @@
     console.log("[AO3: Advanced Blocker] loaded.");
   } catch (e) {}
 
+  const normalizationCache = new Map();
+
   const CSS_NAMESPACE = "ao3-blocker";
 
   const DEFAULTS = {
@@ -464,43 +466,77 @@
       freeforms: [],
     };
 
-    const tagsByClass = {
-      ratings: container.querySelectorAll(
-        "li.rating a.tag, li.ratings a.tag, li.rating span.tag, li.ratings span.tag, span.rating, span.ratings"
-      ),
-      warnings: container.querySelectorAll(
-        "li.warning a.tag, li.warnings a.tag, li.warning span.tag, li.warnings span.tag"
-      ),
-      categories: container.querySelectorAll(
-        "li.category a.tag, li.categories a.tag, li.category span.tag, li.categories span.tag, span.category, span.categories"
-      ),
-      fandoms: container.querySelectorAll(
-        "h5.fandoms.heading a.tag, li.fandom a.tag, li.fandoms a.tag, li.fandom span.tag, li.fandoms span.tag"
-      ),
-      relationships: container.querySelectorAll(
-        "li.relationship a.tag, li.relationships a.tag, li.relationship span.tag, li.relationships span.tag"
-      ),
-      characters: container.querySelectorAll(
-        "li.character a.tag, li.characters a.tag, li.character span.tag, li.characters span.tag"
-      ),
-      freeforms: container.querySelectorAll(
+    const allTagElements = container.querySelectorAll(
+      "li.rating a.tag, li.ratings a.tag, li.rating span.tag, li.ratings span.tag, span.rating, span.ratings, " +
+        "li.warning a.tag, li.warnings a.tag, li.warning span.tag, li.warnings span.tag, " +
+        "li.category a.tag, li.categories a.tag, li.category span.tag, li.categories span.tag, span.category, span.categories, " +
+        "h5.fandoms.heading a.tag, li.fandom a.tag, li.fandoms a.tag, li.fandom span.tag, li.fandoms span.tag, " +
+        "li.relationship a.tag, li.relationships a.tag, li.relationship span.tag, li.relationships span.tag, " +
+        "li.character a.tag, li.characters a.tag, li.character span.tag, li.characters span.tag, " +
         "li.freeform a.tag, li.freeforms a.tag, li.freeform span.tag, li.freeforms span.tag"
-      ),
-    };
+    );
 
-    // Process each category
-    Object.keys(tagsByClass).forEach((category) => {
-      tagsByClass[category].forEach((el) => {
-        const text = getText(el);
-        if (!text) return;
+    // Helper to get category for an element
+    function getCategory(el) {
+      if (el.tagName === "SPAN") {
+        if (el.classList.contains("rating") || el.classList.contains("ratings"))
+          return "ratings";
+        if (
+          el.classList.contains("category") ||
+          el.classList.contains("categories")
+        )
+          return "categories";
+      }
+      const li = el.closest("li");
+      if (li) {
+        if (li.classList.contains("rating") || li.classList.contains("ratings"))
+          return "ratings";
+        if (
+          li.classList.contains("warning") ||
+          li.classList.contains("warnings")
+        )
+          return "warnings";
+        if (
+          li.classList.contains("category") ||
+          li.classList.contains("categories")
+        )
+          return "categories";
+        if (li.classList.contains("fandom") || li.classList.contains("fandoms"))
+          return "fandoms";
+        if (
+          li.classList.contains("relationship") ||
+          li.classList.contains("relationships")
+        )
+          return "relationships";
+        if (
+          li.classList.contains("character") ||
+          li.classList.contains("characters")
+        )
+          return "characters";
+        if (
+          li.classList.contains("freeform") ||
+          li.classList.contains("freeforms")
+        )
+          return "freeforms";
+      }
+      const h5 = el.closest("h5");
+      if (h5 && h5.classList.contains("fandoms")) return "fandoms";
+      return null;
+    }
 
-        // Split comma-separated tags and add them
-        text.split(", ").forEach((tag) => {
-          const trimmed = tag.trim();
-          if (trimmed && !tags[category].includes(trimmed)) {
-            tags[category].push(trimmed);
-          }
-        });
+    // Process all tag elements
+    allTagElements.forEach((el) => {
+      const text = getText(el);
+      if (!text) return;
+      const category = getCategory(el);
+      if (!category) return;
+
+      // Split comma-separated tags and add them
+      text.split(", ").forEach((tag) => {
+        const trimmed = tag.trim();
+        if (trimmed && !tags[category].includes(trimmed)) {
+          tags[category].push(trimmed);
+        }
       });
     });
 
@@ -523,7 +559,12 @@
 
   function normalizeText(text) {
     if (typeof text !== "string") return "";
-    return text.toLowerCase();
+    if (normalizationCache.has(text)) {
+      return normalizationCache.get(text);
+    }
+    const normalized = text.toLowerCase();
+    normalizationCache.set(text, normalized);
+    return normalized;
   }
 
   function escapeRegex(string) {
@@ -578,6 +619,7 @@
     processedWorks.forEach((work) => {
       work.classList.remove(`${CSS_NAMESPACE}-processed`);
     });
+    normalizationCache.clear();
   }
 
   function checkWorks() {
@@ -821,11 +863,13 @@
         showReasons: config.showReasons,
         showPlaceholders: config.showPlaceholders ?? true,
         quickAddKey: config.quickAddKey,
-        authorBlacklist: rawAuthorBlacklist
-          .toLowerCase()
-          .split(/,(?:\s)?/g)
-          .map((i) => i.trim())
-          .filter(Boolean),
+        authorBlacklist: new Set(
+          rawAuthorBlacklist
+            .toLowerCase()
+            .split(/,(?:\s)?/g)
+            .map((i) => i.trim())
+            .filter(Boolean)
+        ),
         titleBlacklist: rawTitleBlacklist
           .split(/,(?:\s)?/g)
           .map((i) => i.trim())
@@ -858,11 +902,13 @@
           .map((i) => i.trim())
           .filter(Boolean)
           .map(compilePattern),
-        workBlacklist: rawWorkBlacklist
-          .toLowerCase()
-          .split(/,(?:\s)?/g)
-          .map((i) => i.trim())
-          .filter(Boolean),
+        workBlacklist: new Set(
+          rawWorkBlacklist
+            .toLowerCase()
+            .split(/,(?:\s)?/g)
+            .map((i) => i.trim())
+            .filter(Boolean)
+        ),
         highlightColor: config.highlightColor,
         allowedLanguages: rawAllowedLanguages
           .toLowerCase()
@@ -1816,8 +1862,8 @@
     }
   }
 
-  function getWordCount(workElement) {
-    const wordsElement = workElement.querySelector("dd.words");
+  function getWordCount(ddElements) {
+    const wordsElement = ddElements.words;
     if (!wordsElement) return null;
     let txt = wordsElement.textContent.trim();
     txt = txt.replace(/(?<=\d)[ ,](?=\d{3}(\D|$))/g, "");
@@ -2129,8 +2175,8 @@
     return null;
   }
 
-  function getChapterInfo(workElement) {
-    const chaptersElement = workElement.querySelector("dd.chapters");
+  function getChapterInfo(ddElements) {
+    const chaptersElement = ddElements.chapters;
     if (!chaptersElement) return null;
     const text = chaptersElement.textContent.trim();
     const match = text.match(/^(\d+)\s*\/\s*([\d\?]+)/);
@@ -2146,10 +2192,8 @@
     };
   }
 
-  function getMonthsSinceUpdate(workElement) {
-    const dateElement = workElement.querySelector(
-      "dd.updated .datetime, .datetime"
-    );
+  function getMonthsSinceUpdate(ddElements) {
+    const dateElement = ddElements.updated;
     if (!dateElement) return null;
     const dateText = dateElement.textContent.trim();
     const updated = new Date(dateText);
@@ -2171,6 +2215,7 @@
       fandomCount,
       wordCount,
       workId,
+      ddElements,
     } = blockables;
     const {
       authorBlacklist,
@@ -2288,7 +2333,7 @@
       }
     }
     if (config.minChapters != null || config.maxChapters != null) {
-      const chapterInfo = getChapterInfo(blurbElement);
+      const chapterInfo = getChapterInfo(ddElements);
       if (chapterInfo && chapterInfo.current != null) {
         const chapters = chapterInfo.current;
         let blocked = false;
@@ -2307,7 +2352,7 @@
       }
     }
     if (config.maxMonthsSinceUpdate != null && completionStatus === "ongoing") {
-      const monthsSinceUpdate = getMonthsSinceUpdate(blurbElement);
+      const monthsSinceUpdate = getMonthsSinceUpdate(ddElements);
       if (
         monthsSinceUpdate != null &&
         monthsSinceUpdate > config.maxMonthsSinceUpdate
@@ -2331,21 +2376,17 @@
       reasons.push({ tags: blockedTags, _filterType: "tagBlacklist" });
     const blockedAuthors = [];
     authors.forEach((author) => {
-      authorBlacklist.forEach((blacklistedAuthor) => {
-        if (blacklistedAuthor && author === blacklistedAuthor) {
-          blockedAuthors.push(author);
-        }
-      });
+      if (authorBlacklist.has(author)) {
+        blockedAuthors.push(author);
+      }
     });
     if (blockedAuthors.length > 0)
       reasons.push({ authors: blockedAuthors, _filterType: "authorBlacklist" });
     const blockedWorks = [];
     if (workId) {
-      workBlacklist.forEach((blacklistedWork) => {
-        if (blacklistedWork && workId === blacklistedWork) {
-          blockedWorks.push(workId);
-        }
-      });
+      if (workBlacklist.has(workId)) {
+        blockedWorks.push(workId);
+      }
     }
     if (blockedWorks.length > 0)
       reasons.push({ works: blockedWorks, _filterType: "workBlacklist" });
@@ -2396,9 +2437,15 @@
   }
 
   function selectFromBlurb(blurbElement) {
+    const ddElements = {
+      chapters: blurbElement.querySelector("dd.chapters"),
+      words: blurbElement.querySelector("dd.words"),
+      language: blurbElement.querySelector("dd.language"),
+      updated: blurbElement.querySelector("dd.updated .datetime, .datetime"),
+    };
     const fandoms = blurbElement.querySelectorAll("h5.fandoms.heading a.tag");
     let completionStatus = null;
-    const chaptersNode = blurbElement.querySelector("dd.chapters");
+    const chaptersNode = ddElements.chapters;
     if (chaptersNode) {
       let chaptersText = "";
       const a = chaptersNode.querySelector("a");
@@ -2429,13 +2476,17 @@
       tags: tagData.flat,
       title: selectTextsIn(blurbElement, ".header .heading a:first-child")[0],
       summary: selectTextsIn(blurbElement, "blockquote.summary")[0],
-      language: (selectTextsIn(blurbElement, "dd.language")[0] || "")
+      language: (ddElements.language
+        ? ddElements.language.textContent.trim()
+        : ""
+      )
         .toLowerCase()
         .trim(),
       fandomCount: fandoms.length,
-      wordCount: getWordCount(blurbElement),
+      wordCount: getWordCount(ddElements),
       completionStatus: completionStatus,
       workId: workId,
+      ddElements: ddElements,
     };
   }
 })();

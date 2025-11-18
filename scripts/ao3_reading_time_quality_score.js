@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     3.7
+// @version     3.8
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @author      BlackBatCat
 // @match       *://archiveofourown.org/
@@ -134,12 +134,14 @@
     return username;
   };
 
-  // Pre-compiled regex patterns for better performance
   const USERNAME_PATTERNS = {
     userPath:
       /^\/users\/([^\/]+)(?:\/pseuds\/[^\/]+)?(?:\/(bookmarks|works))?(?:\/|$)/,
     readings: /^\/users\/([^\/]+)\/readings(?:\/|$)/,
   };
+
+  const numberRegex = /[\d,]+/;
+  const cleanNumberRegex = /[^\d]/g;
 
   const isMyContentPage = (username) => {
     if (!username) return false;
@@ -170,14 +172,19 @@
 
   const getNumberFromElement = (element) => {
     if (!element) return NaN;
-    let text =
-      element.getAttribute("data-ao3e-original") || element.textContent;
-    if (text === null) return NaN;
-    let cleanText = text.replace(/[,\s]/g, "");
+    const text = element.textContent;
+    if (!text) return NaN;
+
     if (element.matches("dd.chapters")) {
-      cleanText = cleanText.split("/")[0];
+      const match = text.match(/^(\d+)/);
+      if (!match) return NaN;
+      return parseInt(match[1], 10);
     }
-    const number = parseInt(cleanText, 10);
+
+    const match = text.match(numberRegex);
+    if (!match) return NaN;
+    const cleaned = match[0].replace(cleanNumberRegex, "");
+    const number = parseInt(cleaned, 10);
     return isNaN(number) ? NaN : number;
   };
 
@@ -204,7 +211,6 @@
     style.id = "ao3-userscript-icon-styles";
     const iconColor = CONFIG.iconColor || "currentColor";
 
-    // Embedded SVG icons as base64-encoded data URIs
     const readingTimeIcon =
       "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGcgdHJhbnNmb3JtPSJtYXRyaXgoMS4yLDAsMCwxLjIsLTIuNCwtMi40KSI+PHBhdGggZmlsbD0iIzAwMDAwMCIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik05LjY2OCAxMy4zNjlhMS44ODQgMS44ODQgMCAwIDAgMC0yLjczOGwtLjEwOC0uMTAyQzcuNTQ1IDguNjA1IDUuOTg4IDcuMTIgNS41MiA0LjAwNyA1LjM1MiAyLjkxIDYuMjkyIDIgNy40MjQgMmg5LjE1YzEuMTMyIDAgMi4wNzIuOTEgMS45MDYgMi4wMDctLjQ3IDMuMTEzLTIuMDI2IDQuNTk4LTQuMDQxIDYuNTIybC0uMTA3LjEwMmExLjg4NCAxLjg4NCAwIDAgMCAwIDIuNzM4bC4xMDcuMTAyYzIuMDE1IDEuOTI0IDMuNTcyIDMuNDA5IDQuMDQxIDYuNTIyLjE2NiAxLjA5Ny0uNzc0IDIuMDA3LTEuOTA2IDIuMDA3aC05LjE1Yy0xLjEzMiAwLTIuMDcyLS45MS0xLjkwNi0yLjAwNy40Ny0zLjExMyAyLjAyNi00LjU5OCA0LjA0MS02LjUyMnptLjY4MyAxLjY5OC0uMDA4LjAwNmMtMS41MzUgMS4zNzMtMi42NzggMi4zOTUtMi44MjcgNC45MjNhLjQ2OC40NjggMCAwIDAgLjE2OC4zODguNDkzLjQ5MyAwIDAgMCAuMzIuMTE2aDcuOTkyYy4xNDQgMCAuMjc0LS4wNi4zNjMtLjE1OGEuNDY2LjQ2NiAwIDAgMCAuMTI0LS4zNDZjLS4xNDktMi41MjgtMS4yOTEtMy41NS0yLjgyNi00LjkyMy0uNDA2LS4zNjMtLjg0LS43NTEtMS4yOS0xLjE5OGEuNTIzLjUyMyAwIDAgMC0uNzM1IDBjLS40NDcuNDQ0LS44NzguODMtMS4yODEgMS4xOTF6Ii8+PC9nPjwvc3ZnPg==";
 
@@ -367,7 +373,6 @@
     return (100 * kudos) / adjustedHits;
   };
 
-  // Combined function to calculate both reading time and quality score efficiently
   const calculateMetrics = (
     statsElements = null,
     forceRecalculation = false,
@@ -382,10 +387,8 @@
       return;
 
     if (CONFIG.hideWorksEnabled) {
-      // Hide works functionality enabled
     }
 
-    // Pre-calculate normalized thresholds if normalization is enabled
     const normalizedThresholdLow = CONFIG.useNormalization
       ? Math.ceil((CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100)
       : CONFIG.colorThresholdLow;
@@ -471,6 +474,14 @@
       }
 
       if (needsScore) {
+        const existingScoreElement = $1("dd.kudoshits", statsElement);
+        if (existingScoreElement && !forceRecalculation) {
+          if (parentLi && !parentLi.hasAttribute("kudospercent")) {
+            const scoreText = existingScoreElement.textContent.trim();
+            parentLi.setAttribute("kudospercent", parseFloat(scoreText));
+          }
+          return;
+        }
         try {
           const hits = getNumberFromElement(hitsElement);
           const kudos = getNumberFromElement(kudosElement);
@@ -498,7 +509,6 @@
               }
 
               if (kudoshitsDt && forceRecalculation) {
-                // Update existing score element
                 const existingScoreElement = $1("dd.kudoshits", statsElement);
                 if (existingScoreElement) {
                   if (CONFIG.useIcons) {
@@ -527,7 +537,6 @@
                   }
                 }
               } else if (!kudoshitsDt) {
-                // Create new score element
                 let ddStyle =
                   "display: inline-block; vertical-align: baseline;";
                 let spanStyle =
@@ -587,24 +596,43 @@
       }
 
       if (CONFIG.hideWorksEnabled && parentLi) {
-        if (parentLi.hasAttribute("kudospercent")) {
-          const displayScore = parseFloat(
-            parentLi.getAttribute("kudospercent")
-          );
-          let rawScore = displayScore;
-          if (CONFIG.useNormalization) {
-            rawScore = (displayScore / 100) * CONFIG.userMaxScore;
+        const username = detectAndStoreUsername();
+        const authorLink = parentLi.querySelector('a[href*="/users/"]');
+        let shouldHide = true;
+
+        if (authorLink && username) {
+          const authorHref = authorLink.getAttribute("href");
+          const authorUsername = authorHref.match(/\/users\/([^\/]+)/)?.[1];
+          if (authorUsername === username) {
+            shouldHide = false;
           }
-          parentLi.style.display =
-            rawScore < CONFIG.hideWorksScore ? "none" : "";
+        }
+
+        if (isMyContentPage(username)) {
+          shouldHide = false;
+        }
+
+        if (shouldHide) {
+          if (parentLi.hasAttribute("kudospercent")) {
+            const displayScore = parseFloat(
+              parentLi.getAttribute("kudospercent")
+            );
+            let rawScore = displayScore;
+            if (CONFIG.useNormalization) {
+              rawScore = (displayScore / 100) * CONFIG.userMaxScore;
+            }
+            parentLi.style.display =
+              rawScore < CONFIG.hideWorksScore ? "none" : "";
+          } else {
+            parentLi.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
+          }
         } else {
-          parentLi.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
+          parentLi.style.display = "";
         }
       }
     });
   };
 
-  // Wrapper functions for backward compatibility with manual triggers
   const calculateReadtime = () => {
     if (!countable || !CONFIG.enableReadingTime) return;
     calculateMetrics(null, false, true);
@@ -615,11 +643,12 @@
     calculateMetrics(null, false, true);
   };
 
-  const sortByRatio = (ascending = false) => {
+  const sortByRatio = (ascending = false, cachedStats = null) => {
     if (!sortable) return;
 
+    const statsElements = cachedStats || Array.from($("dl.stats"));
     const listsToSort = new Set();
-    $("dl.stats").forEach((statsElement) => {
+    statsElements.forEach((statsElement) => {
       const parentLi = statsElement.closest("li");
       const list = parentLi?.parentElement;
       if (list) listsToSort.add(list);
@@ -628,21 +657,33 @@
     listsToSort.forEach((list) => {
       const listElements = Array.from(list.children);
 
+      const parent = list.parentNode;
+      const nextSibling = list.nextSibling;
+      parent.removeChild(list);
+
       listElements.forEach((el, index) => {
         if (!el.hasAttribute("data-original-index")) {
           el.setAttribute("data-original-index", index);
         }
       });
 
+      const scoreCache = new Map();
+      listElements.forEach((el) => {
+        const score = parseFloat(el.getAttribute("kudospercent")) || 0;
+        scoreCache.set(el, score);
+      });
+
       listElements.sort((a, b) => {
-        const aPercent = parseFloat(a.getAttribute("kudospercent")) || 0;
-        const bPercent = parseFloat(b.getAttribute("kudospercent")) || 0;
-        return ascending ? aPercent - bPercent : bPercent - aPercent;
+        return ascending
+          ? scoreCache.get(a) - scoreCache.get(b)
+          : scoreCache.get(b) - scoreCache.get(a);
       });
 
       const fragment = document.createDocumentFragment();
       listElements.forEach((el) => fragment.appendChild(el));
       list.appendChild(fragment);
+
+      parent.insertBefore(list, nextSibling);
     });
   };
 
@@ -669,18 +710,14 @@
     });
   };
 
-  // Update existing reading time and quality score elements with new visual style
   const updateExistingVisualStyles = () => {
     const allStats = Array.from($("dl.stats"));
     allStats.forEach((statsElement) => {
-      // Update reading time elements
       const readtimeDd = $1("dd.readtime", statsElement);
       if (readtimeDd) {
         const span = readtimeDd.querySelector("span");
         if (span) {
-          // Get the reading time value to determine color
           const timeText = span.textContent;
-          // Extract minutes from time text (e.g., "45m", "2h30m")
           let minutes = 0;
           const hourMatch = timeText.match(/(\d+)h/);
           const minuteMatch = timeText.match(/(\d+)m/);
@@ -697,7 +734,6 @@
             color = CONFIG.colorRed;
           }
 
-          // Reapply color style
           span.style.cssText = `border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;`;
           if (CONFIG.colorStyle === "background") {
             span.style.backgroundColor = color;
@@ -709,12 +745,10 @@
         }
       }
 
-      // Update quality score elements
       const kudoshitsDd = $1("dd.kudoshits", statsElement);
       if (kudoshitsDd) {
         const span = kudoshitsDd.querySelector("span");
         if (span) {
-          // Get the score value to determine color
           const scoreText = span.textContent;
           const scoreValue = parseFloat(scoreText);
 
@@ -734,7 +768,6 @@
             color = CONFIG.colorRed;
           }
 
-          // Reapply color style
           span.style.cssText = `border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;`;
           if (CONFIG.colorStyle === "background") {
             span.style.backgroundColor = color;
@@ -744,7 +777,6 @@
             span.style.color = color;
           }
         } else if (kudoshitsDd.textContent && !span) {
-          // Non-icon version - need to reapply styles
           const scoreValue = parseFloat(kudoshitsDd.textContent);
 
           let color;
@@ -776,7 +808,6 @@
     });
   };
 
-  // Update existing chapter time displays with new style
   const updateExistingChapterTimeStyles = () => {
     const WORKS_PAGE_REGEX =
       /^https?:\/\/archiveofourown\.org\/(?:.*\/)?(works|chapters)(\/|$)/;
@@ -785,12 +816,10 @@
     const chaptersContainer = $1("#chapters");
     if (!chaptersContainer) return;
 
-    // Find existing chapter stats elements
     const existingStats = chaptersContainer.querySelectorAll(
       ".ao3-chapter-stats-default, .ao3-chapter-stats-colored, .ao3-chapter-stats-timeonly, .ao3-chapter-stats"
     );
     existingStats.forEach((statsElement) => {
-      // Extract word count from existing element
       let wordCountText;
       if (statsElement.classList.contains("ao3-chapter-stats-default")) {
         wordCountText = statsElement.textContent.match(
@@ -842,14 +871,12 @@
 
       if (CONFIG.chapterTimeStyle === "default") {
         if (!statsElement.classList.contains("ao3-chapter-stats-default")) {
-          // Convert to default
           statsElement.className = "ao3-chapter-stats-default";
           statsElement.tagName = "p";
           statsElement.textContent = `~${timeLongStr} (${wordCount.toLocaleString()} words)`;
         }
       } else if (CONFIG.chapterTimeStyle === "colored") {
         if (!statsElement.classList.contains("ao3-chapter-stats")) {
-          // Convert to colored
           if (statsElement.tagName !== "UL") {
             const newUl = document.createElement("ul");
             newUl.className = "notice ao3-chapter-stats";
@@ -867,7 +894,6 @@
         }
       } else if (CONFIG.chapterTimeStyle === "timeonly") {
         if (!statsElement.classList.contains("ao3-chapter-stats-timeonly")) {
-          // Convert to timeonly
           statsElement.className = "ao3-chapter-stats-timeonly";
           statsElement.tagName = "p"; // Change to p if it was ul
           statsElement.textContent = `~${timeOnlyStr}`;
@@ -876,17 +902,17 @@
     });
   };
 
-  const calculateChapterStats = () => {
+  const calculateChapterStats = (chaptersContainer = null) => {
     if (!CONFIG.enableChapterStats) return;
     const WORKS_PAGE_REGEX =
       /^https?:\/\/archiveofourown\.org\/(?:.*\/)?(works|chapters)(\/|$)/;
     if (!WORKS_PAGE_REGEX.test(window.location.href)) return;
 
-    const chaptersContainer = $1("#chapters");
-    if (!chaptersContainer) return;
+    const container = chaptersContainer || $1("#chapters");
+    if (!container) return;
 
-    const chapters = $("#chapters > .chapter");
-    const singleChapter = $1("#chapters > div.userstuff");
+    const chapters = container.querySelectorAll(".chapter");
+    const singleChapter = container.querySelector("div.userstuff");
     let chaptersToProcess = [];
 
     if (chapters.length > 0) {
@@ -896,7 +922,6 @@
     }
     if (chaptersToProcess.length === 0) return;
 
-    // Pre-compile regex outside the loop for better performance
     const wordRegex = /\b[a-zA-Z][a-zA-Z0-9'-]*\b/g;
 
     chaptersToProcess.forEach((chapter) => {
@@ -1002,7 +1027,6 @@
       }
     );
 
-    // Build entire dialog structure in memory using a DocumentFragment
     const fragment = document.createDocumentFragment();
 
     const displayThresholdLow = CONFIG.useNormalization
@@ -1016,7 +1040,6 @@
       ? Math.round((CONFIG.hideWorksScore / CONFIG.userMaxScore) * 100)
       : CONFIG.hideWorksScore;
 
-    // Reading Time Section
     const readingTimeSection =
       window.AO3MenuHelpers.createSection("📚 Reading Time");
     const readingTimeGroup = window.AO3MenuHelpers.createSettingGroup();
@@ -1087,7 +1110,6 @@
     readingTimeSection.appendChild(readingTimeGroup);
     fragment.appendChild(readingTimeSection);
 
-    // Quality Score Section
     const qualityScoreSection =
       window.AO3MenuHelpers.createSection("💖 Quality Score");
     qualityScoreSection.style.paddingBottom = "20px";
@@ -1112,7 +1134,6 @@
       })
     );
 
-    // Create subsettings for auto-calculate options
     const autoCalculateSubsettings = window.AO3MenuHelpers.createSubsettings();
     autoCalculateSubsettings.style.display = CONFIG.alwaysCountQualityScore
       ? ""
@@ -1238,7 +1259,6 @@
       )
     );
 
-    // Create the Good Score input
     const colorThresholdLowInput = document.createElement("div");
     colorThresholdLowInput.className = "setting-group";
     colorThresholdLowInput.style.marginBottom = "0";
@@ -1253,7 +1273,6 @@
       }).querySelector("input") // Extract just the input, not the wrapper
     );
 
-    // Create the Excellent Score input
     const colorThresholdHighInput = document.createElement("div");
     colorThresholdHighInput.className = "setting-group";
     colorThresholdHighInput.style.marginBottom = "0";
@@ -1268,7 +1287,6 @@
       }).querySelector("input") // Extract just the input, not the wrapper
     );
 
-    // Create two-column layout
     const thresholdTwoColumn = window.AO3MenuHelpers.createTwoColumnLayout(
       colorThresholdLowInput,
       colorThresholdHighInput
@@ -1283,9 +1301,7 @@
 
     const hideWorksScoreLabelSpan = document.createElement("span");
     hideWorksScoreLabelSpan.id = "hideWorksScoreLabel";
-    hideWorksScoreLabelSpan.textContent = CONFIG.useNormalization
-      ? "(%)"
-      : "";
+    hideWorksScoreLabelSpan.textContent = CONFIG.useNormalization ? "(%)" : "";
     hideWorksScoreLabel.appendChild(hideWorksScoreLabelSpan);
 
     const hideWorksScoreInput = window.AO3MenuHelpers.createNumberInput({
@@ -1312,7 +1328,8 @@
         id: "hideWorksEnabled",
         label: "Hide works below score",
         checked: CONFIG.hideWorksEnabled,
-        tooltip: "Works with scores below this threshold will be hidden",
+        tooltip:
+          "Works with scores below this threshold will be hidden. Excludes your own works, bookmarks, and history.",
         subsettings: [hideWorksSubsettings],
       });
 
@@ -1324,7 +1341,6 @@
     qualityScoreSection.appendChild(qualityScoreGroup);
     fragment.appendChild(qualityScoreSection);
 
-    // Visual Styling Section
     const visualSection =
       window.AO3MenuHelpers.createSection("🎨 Visual Styling");
 
@@ -1518,7 +1534,6 @@
 
     fragment.appendChild(visualSection);
 
-    // Buttons
     fragment.appendChild(
       window.AO3MenuHelpers.createButtonGroup([
         { text: "Save", id: "saveButton" },
@@ -1532,7 +1547,6 @@
       })
     );
 
-    // Single append operation at the end
     dialog.appendChild(fragment);
     dialog
       .querySelector("#enableReadingTime")
@@ -1773,10 +1787,8 @@
       // Update existing elements with new visual style
       updateExistingVisualStyles();
 
-      // Update existing chapter time displays with new style
       updateExistingChapterTimeStyles();
 
-      // Handle automatic calculation changes - remove existing calculations if disabled
       const readingTimeDisabled =
         CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime;
       const qualityScoreDisabled =
@@ -1899,11 +1911,28 @@
   const hideWorksBelowScore = () => {
     if (!CONFIG.hideWorksEnabled) return;
     console.log("[AO3] Hiding works below score:", CONFIG.hideWorksScore);
+    const username = detectAndStoreUsername();
+
+    // Don't hide works on user's own content pages
+    if (isMyContentPage(username)) {
+      return;
+    }
+
     const works = $("li.work, li.bookmark");
     works.forEach((work) => {
+      // Check if this work belongs to the current user
+      const authorLink = work.querySelector('a[href*="/users/"]');
+      if (authorLink && username) {
+        const authorHref = authorLink.getAttribute("href");
+        const authorUsername = authorHref.match(/\/users\/([^\/]+)/)?.[1];
+        if (authorUsername === username) {
+          work.style.display = "";
+          return;
+        }
+      }
+
       const scoreAttr = work.getAttribute("kudospercent");
       if (scoreAttr === null) {
-        // Unscored work
         work.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
       } else {
         const displayScore = parseFloat(scoreAttr);
@@ -1919,35 +1948,38 @@
   const init = () => {
     checkCountable();
 
-    const allStatsElements = countable ? Array.from($("dl.stats")) : [];
+    const cachedElements = {
+      allStats: countable ? Array.from($("dl.stats")) : [],
+      workElements: Array.from($("li.work, li.bookmark")),
+      chaptersContainer: $1("#chapters"),
+    };
 
     initSharedMenu();
 
     const username = detectAndStoreUsername();
 
     const runCalculations = () => {
-      // Use combined calculateMetrics for better performance when both are enabled
       if (
         (CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) ||
         (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore)
       ) {
-        calculateMetrics(allStatsElements, false, true); // Pass cached elements
+        calculateMetrics(cachedElements.allStats, false, true);
 
         if (CONFIG.alwaysSortQualityScore && CONFIG.enableQualityScore) {
           const myContentPage = isMyContentPage(username);
           if (!(CONFIG.excludeMyContentFromSort && myContentPage)) {
-            sortByRatio();
+            sortByRatio(false, cachedElements.allStats);
           }
         }
       }
 
       // Handle hiding metrics separately
       if (CONFIG.hideMetrics) {
-        calculateMetrics(allStatsElements, false, false);
+        calculateMetrics(cachedElements.allStats, false, false);
       }
 
       if (CONFIG.enableChapterStats) {
-        calculateChapterStats();
+        calculateChapterStats(cachedElements.chaptersContainer);
       }
     };
 
