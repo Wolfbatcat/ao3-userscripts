@@ -6,15 +6,7 @@ Get a quick feel for any fic at a glance:
 - **Quality Score Bar** ⭐ – a smarter kudos/hits ratio that accounts for fic length.
 - **Both features are independent** — use one or both
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_reading-time-quality-score-5.png "Reading Time & Quality Score Bar")
-
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_reading-time-quality-score-9.png "Reading Time & Quality Score Bar")
-
-
-The full set of icons comes from [Rose Pine site skin](https://archiveofourown.org/works/69993411) or [Stat Icons with Hover Text](https://archiveofourown.org/works/55604875/chapters/141130912), though you can still enable the reading time and score icons through this script.
-
 ---
-
 ### ✨ Features
 
 #### **Reading Time**
