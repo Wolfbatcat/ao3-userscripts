@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       3.9
+// @version       4.0
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*/works*
@@ -339,7 +339,7 @@
   }
 
   const ICON_HIDE =
-    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.43%2C13.43%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C3.93-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Hidden%22%20id%3D%22Eye_Hidden%22%3E%3Cpath%20d%3D%22M21.67%2C25.2a1%2C1%2C0%2C0%2C0-.86-.28A4.28%2C4.28%2C0%2C0%2C1%2C20%2C25a5%2C5%2C0%2C0%2C1-5-5%2C4.28%2C4.28%2C0%2C0%2C1%2C.08-.81%2C1%2C1%2C0%2C0%2C0-.28-.86l-3.27-3.26a1%2C1%2C0%2C0%2C0-1.38%2C0%2C22.4%2C22.4%2C0%2C0%2C0-3.82%2C4.43%2C1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.59%2C22.49%2C12.35%2C29%2C20%2C29A13.43%2C13.43%2C0%2C0%2C0%2C23%2C28.67%2C1%2C1%2C0%2C0%2C0%2C23.44%2C27Z%22%2F%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.41%2C17.51%2C27.65%2C11%2C20%2C11a13.58%2C13.58%2C0%2C0%2C0-6.11%2C1.48l-1.18-1.19a1%2C1%2C0%2C0%2C0-1.42%2C1.42l16%2C16a1%2C1%2C0%2C0%2C0%2C1.42%2C0%2C1%2C1%2C0%2C0%2C0%2C0-1.42l-.82-.81a21.53%2C21.53%2C0%2C0%2C0%2C5.78-5.94A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46Zm-9.5%2C3.29-6.92-6.92a5%2C5%2C0%2C0%2C1%2C4.03-.69%2C4.93%2C4.93%2C0%2C0%2C1%2C3.68%2C3.68A5%2C5%2C0%2C0%2C1%2C24.17%2C22.75Z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
   const ICON_EYE =
     "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2040%2040%22%3E%3Cg%20data-name%3D%22Eye%20Visible%22%20id%3D%22Eye_Visible%22%3E%3Cpath%20d%3D%22M33.67%2C19.46C32.42%2C17.51%2C27.66%2C11%2C20%2C11S7.58%2C17.51%2C6.33%2C19.46a1%2C1%2C0%2C0%2C0%2C0%2C1.08C7.58%2C22.49%2C12.34%2C29%2C20%2C29s12.42-6.51%2C13.67-8.46A1%2C1%2C0%2C0%2C0%2C33.67%2C19.46ZM20%2C25a5%2C5%2C0%2C1%2C1%2C5-5A5%2C5%2C0%2C0%2C1%2C20%2C25Z%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2220%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
@@ -1518,7 +1518,7 @@
       value: config.quickAddKey || "Alt",
       placeholder: "Alt",
       tooltip:
-        "Keyboard key to press while clicking to quickly add tags/authors/works to blacklist. Common options: Alt, Ctrl, Shift, F1, F2, etc.",
+        "Keyboard key to press while clicking to quickly add tags/authors/works to blacklist. Common options: Alt, Ctrl, F1, F2, etc.",
     });
 
     const strictTagBlockingCheckbox = window.AO3MenuHelpers.createCheckbox({
