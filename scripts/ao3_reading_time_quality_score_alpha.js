@@ -38,11 +38,11 @@
     hideKudos: false,
     hideBookmarks: false,
     hideComments: false,
-    useNormalization: false,
-    userMaxScore: 24,
+    useNormalization: true,
+    userMaxScore: 22,
     minKudosToShowScore: 50,
-    colorThresholdLow: 12,
-    colorThresholdHigh: 18,
+    colorThresholdLow: 8,
+    colorThresholdHigh: 14,
     colorStyle: "background",
     colorGreen: "#3e8fb0",
     colorYellow: "#f6c177",
@@ -53,7 +53,7 @@
     chapterTimeStyle: "default",
     username: "",
     hideWorksEnabled: false,
-    hideWorksScore: 6,
+    hideWorksScore: 4,
     keepUnscoredVisible: false,
     lastSeenVersion: null,
     scoringBannerSeenVersion: null,
@@ -98,15 +98,15 @@
     if (prev === SCRIPT_VERSION) return;
 
     // FORCE RESET of score-related settings for everyone:
-    CONFIG.userMaxScore = 24;
+    CONFIG.userMaxScore = 22;
     if (CONFIG.useNormalization) {
-      CONFIG.colorThresholdLow = 50;
-      CONFIG.colorThresholdHigh = 75;
-      CONFIG.hideWorksScore = 25;
+      CONFIG.colorThresholdLow = 40;
+      CONFIG.colorThresholdHigh = 60;
+      CONFIG.hideWorksScore = 20;
     } else {
-      CONFIG.colorThresholdLow = 12;
-      CONFIG.colorThresholdHigh = 18;
-      CONFIG.hideWorksScore = 6;
+      CONFIG.colorThresholdLow = 8;
+      CONFIG.colorThresholdHigh = 14;
+      CONFIG.hideWorksScore = 4;
     }
 
     CONFIG.lastSeenVersion = SCRIPT_VERSION;
@@ -155,7 +155,7 @@
     banner.className = "qs-migrate-banner notice";
     banner.innerHTML = `
         <span>
-            <strong>AO3 Reading Time & Quality Score v4:</strong>
+            <strong>AO3 Reading Time & Quality Score v4.1:</strong>
             The scoring model has been improved. Score settings were updated to fit the new version. <a href="https://greasyfork.org/en/scripts/549777-ao3-reading-time-quality-score" target="_blank">Read more here.</a>
         </span>
         <button class="qs-close-btn">✕</button>
@@ -189,16 +189,17 @@
         localStorage.removeItem("ao3_reading_quality_config");
       }
       CONFIG = { ...DEFAULTS };
-      CONFIG.userMaxScore = 24;
+      CONFIG.userMaxScore = 22;
       if (CONFIG.useNormalization) {
-        CONFIG.colorThresholdLow = 50;
-        CONFIG.colorThresholdHigh = 75;
-        CONFIG.hideWorksScore = 25;
+        CONFIG.colorThresholdLow = 40;
+        CONFIG.colorThresholdHigh = 60;
+        CONFIG.hideWorksScore = 20;
       } else {
-        CONFIG.colorThresholdLow = 12;
-        CONFIG.colorThresholdHigh = 18;
-        CONFIG.hideWorksScore = 6;
+        CONFIG.colorThresholdLow = 8;
+        CONFIG.colorThresholdHigh = 14;
+        CONFIG.hideWorksScore = 4;
       }
+      CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
       CONFIG.scoringBannerSeenVersion = SCRIPT_VERSION;
       saveAllSettings();
       if (
@@ -494,12 +495,8 @@
     if (CONFIG.hideWorksEnabled) {
     }
 
-    const normalizedThresholdLow = CONFIG.useNormalization
-      ? CONFIG.colorThresholdLow
-      : CONFIG.colorThresholdLow;
-    const normalizedThresholdHigh = CONFIG.useNormalization
-      ? CONFIG.colorThresholdHigh
-      : CONFIG.colorThresholdHigh;
+    const normalizedThresholdLow = CONFIG.colorThresholdLow;
+    const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
     const allStats = statsElements || Array.from($("dl.stats"));
     allStats.forEach((statsElement) => {
@@ -591,20 +588,24 @@
           const hits = getNumberFromElement(hitsElement);
           const kudos = getNumberFromElement(kudosElement);
 
-          if (!isNaN(hits) && !isNaN(kudos)) {
-            if (kudos >= CONFIG.minKudosToShowScore) {
-              let rawScore = calculateWordBasedScore(kudos, hits, words);
-              if (kudos < 10) rawScore = 1;
-              // Skip scoring works with 0 words
-              if (words === 0) {
-                // Remove any existing score display and attribute
-                const existingScoreDt = $1("dt.kudoshits", statsElement);
-                const existingScoreDd = $1("dd.kudoshits", statsElement);
-                if (existingScoreDt) existingScoreDt.remove();
-                if (existingScoreDd) existingScoreDd.remove();
-                if (parentLi) parentLi.removeAttribute("kudospercent");
-                return;
-              }
+          // Validate that we have valid numbers
+          if (isNaN(hits) || isNaN(kudos) || hits === 0) {
+            return;
+          }
+
+          if (kudos >= CONFIG.minKudosToShowScore) {
+            // Skip scoring works with 0 words
+            if (words === 0) {
+              // Remove any existing score display and attribute
+              const existingScoreDt = $1("dt.kudoshits", statsElement);
+              const existingScoreDd = $1("dd.kudoshits", statsElement);
+              if (existingScoreDt) existingScoreDt.remove();
+              if (existingScoreDd) existingScoreDd.remove();
+              if (parentLi) parentLi.removeAttribute("kudospercent");
+              return;
+            }
+
+            let rawScore = calculateWordBasedScore(kudos, hits, words);
               let displayScore = rawScore;
               if (CONFIG.useNormalization) {
                 displayScore = (rawScore / CONFIG.userMaxScore) * 100;
@@ -684,7 +685,6 @@
               }
 
               if (parentLi) parentLi.setAttribute("kudospercent", displayScore);
-            }
           }
         } catch (error) {
           console.error("Error calculating score:", error);
@@ -864,12 +864,8 @@
           const scoreValue = parseFloat(scoreText);
 
           let color;
-          const normalizedThresholdLow = CONFIG.useNormalization
-            ? CONFIG.colorThresholdLow
-            : CONFIG.colorThresholdLow;
-          const normalizedThresholdHigh = CONFIG.useNormalization
-            ? CONFIG.colorThresholdHigh
-            : CONFIG.colorThresholdHigh;
+          const normalizedThresholdLow = CONFIG.colorThresholdLow;
+          const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
           if (scoreValue >= normalizedThresholdHigh) {
             color = CONFIG.colorGreen;
@@ -891,12 +887,8 @@
           const scoreValue = parseFloat(kudoshitsDd.textContent);
 
           let color;
-          const normalizedThresholdLow = CONFIG.useNormalization
-            ? CONFIG.colorThresholdLow
-            : CONFIG.colorThresholdLow;
-          const normalizedThresholdHigh = CONFIG.useNormalization
-            ? CONFIG.colorThresholdHigh
-            : CONFIG.colorThresholdHigh;
+          const normalizedThresholdLow = CONFIG.colorThresholdLow;
+          const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
           if (scoreValue >= normalizedThresholdHigh) {
             color = CONFIG.colorGreen;
@@ -1300,19 +1292,19 @@
     const userMaxScoreLabel = document.createElement("label");
     userMaxScoreLabel.className = "setting-label";
     userMaxScoreLabel.setAttribute("for", "userMaxScore");
-    userMaxScoreLabel.textContent = "Best Possible Raw Score ";
+    userMaxScoreLabel.textContent = "Max Raw Score ";
 
     const normalizationLabel = document.createElement("span");
     normalizationLabel.id = "normalizationLabel";
     normalizationLabel.textContent = CONFIG.useNormalization
-      ? "(for 100%)"
+      ? "(100%)"
       : "";
     userMaxScoreLabel.appendChild(normalizationLabel);
 
     userMaxScoreLabel.appendChild(document.createTextNode(" "));
     userMaxScoreLabel.appendChild(
       window.AO3MenuHelpers.createTooltip(
-        "The highest score you've seen in your fandom. Used to scale other scores to percentages."
+        "The top score you want to treat as 100%. Use a solid high performer, not the single highest spike."
       )
     );
 
@@ -1419,8 +1411,9 @@
     const keepUnscoredCheckbox = window.AO3MenuHelpers.createCheckbox({
       id: "keepUnscoredVisible",
       label: "Show unscored works",
-      checked: CONFIG.keepUnscoredVisible,
+      checked: CONFIG.hideWorksEnabled ? true : CONFIG.keepUnscoredVisible,
     });
+
 
     const hideWorksSubsettings = window.AO3MenuHelpers.createSubsettings();
     hideWorksSubsettings.appendChild(hideWorksScoreLabel);
@@ -1716,15 +1709,15 @@
           thresholdLowLabel.textContent = "(%)";
           thresholdHighLabel.textContent = "(%)";
           userMaxScoreContainer.style.display = "";
-          thresholdLowInput.value = 50;
-          thresholdHighInput.value = 75;
+          thresholdLowInput.value = 40;
+          thresholdHighInput.value = 60;
         } else {
           normLabel.textContent = "";
           thresholdLowLabel.textContent = "";
           thresholdHighLabel.textContent = "";
           userMaxScoreContainer.style.display = "none";
-          thresholdLowInput.value = 12;
-          thresholdHighInput.value = 18;
+          thresholdLowInput.value = 8;
+          thresholdHighInput.value = 14;
         }
 
         const hideWorksScoreInput = dialog.querySelector("#hideWorksScore");
@@ -1733,11 +1726,11 @@
         );
         if (isNormalizationEnabled) {
           hideWorksScoreLabel.textContent = "(%)";
-          hideWorksScoreInput.value = 25;
+          hideWorksScoreInput.value = 20;
           hideWorksScoreInput.max = 100;
         } else {
           hideWorksScoreLabel.textContent = "";
-          hideWorksScoreInput.value = 6;
+          hideWorksScoreInput.value = 4;
           hideWorksScoreInput.max = 100;
         }
       });
@@ -1750,14 +1743,6 @@
       .querySelector("#alwaysCountQualityScore")
       .addEventListener("change", (e) => {
         autoCalculateSubsettings.style.display = e.target.checked ? "" : "none";
-      });
-
-    dialog
-      .querySelector("#alwaysSortQualityScore")
-      .addEventListener("change", (e) => {
-        excludeMyContentSubsetting.style.display = e.target.checked
-          ? ""
-          : "none";
       });
 
     dialog.querySelector("#closeButton").addEventListener("click", () => {
@@ -1841,9 +1826,11 @@
 
       CONFIG.hideWorksEnabled =
         dialog.querySelector("#hideWorksEnabled").checked;
-      CONFIG.keepUnscoredVisible = dialog.querySelector(
-        "#keepUnscoredVisible"
-      ).checked;
+      CONFIG.keepUnscoredVisible = dialog.querySelector("#keepUnscoredVisible").checked;
+      // If hideWorksEnabled is unchecked, force keepUnscoredVisible to false
+      if (!CONFIG.hideWorksEnabled) {
+        CONFIG.keepUnscoredVisible = false;
+      }
       CONFIG.hideWorksScore = parseFloat(
         dialog.querySelector("#hideWorksScore").value
       );
@@ -1981,46 +1968,6 @@
     if (/^\/works(\/|$)/.test(path)) return true;
     return false;
   }
-
-  const hideWorksBelowScore = () => {
-    if (!CONFIG.hideWorksEnabled) return;
-    console.log("[AO3] Hiding works below score:", CONFIG.hideWorksScore);
-    const username = detectAndStoreUsername();
-
-    // Don't hide works on user's own content pages
-    if (isMyContentPage(username)) {
-      return;
-    }
-
-    const works = $("li.work, li.bookmark");
-    works.forEach((work) => {
-      // Check if this work belongs to the current user
-      const authorLink = work.querySelector('a[href*="/users/"]');
-      if (authorLink && username) {
-        const authorHref = authorLink.getAttribute("href");
-        const authorUsername = authorHref.match(/\/users\/([^\/]+)/)?.[1];
-        if (authorUsername === username) {
-          work.style.display = "";
-          return;
-        }
-      }
-
-      const scoreAttr = work.getAttribute("kudospercent");
-      // If no score attribute, treat as unscored
-      if (scoreAttr === null || scoreAttr === undefined || scoreAttr === "") {
-        // Only hide unscored works if keepUnscoredVisible is false
-        work.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
-        return;
-      }
-      // Otherwise, check score (compare displayed score directly to threshold)
-      const displayScore = parseFloat(scoreAttr);
-      if (!isNaN(displayScore) && displayScore < CONFIG.hideWorksScore) {
-        work.style.display = "none";
-      } else {
-        work.style.display = "";
-      }
-    });
-  };
 
   const init = () => {
     checkCountable();
