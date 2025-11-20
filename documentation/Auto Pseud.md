@@ -14,6 +14,9 @@ Auto-selects your pseud for comments and bookmarks on AO3, based on fandom.
 
 ---
 
+
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_auto-pseud.png" alt="Auto Pseud" width="800" />
+
 ## 📝 How to Use
 
 1. **Edit Your Pseud:**
