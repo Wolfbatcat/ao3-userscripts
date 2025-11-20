@@ -7,7 +7,7 @@ Get a quick feel for any fic at a glance:
 - **Both features are independent** — use one or both
 
 > **v4 Update – Improved Quality Score Formula:**  
- > The Quality Score model has been updated to give more reliable results across all fic lengths. Short works no longer drop too low, and longfics aren’t pushed higher than they should be, leading to a more even score distribution overall. Because this changes how raw scores are calculated, your max score and threshold settings were reset to the new defaults (max score is now 24 instead of 32). If you're updating from an older version, you may want to adjust these based on the typical scores in your fandom.
+ > The Quality Score model has been updated to give more reliable results across all fic lengths. Short works no longer drop too low, and longfics aren’t pushed higher than they should be, leading to a more even score distribution overall. Because this changes how raw scores are calculated, your max score and threshold settings were reset to the new defaults (max raw score is now 22 instead of 32). If you're updating from an older version, you may want to adjust these based on the typical scores in your fandom.
 
 
 ---
@@ -33,12 +33,12 @@ Get a quick feel for any fic at a glance:
 - Word-based scoring avoids:  
   - Punishing long fics just for being long.  
   - Rewarding fics split into tiny chapters.  
-- **Normalization (optional):**  
-  - Converts raw scores into a 0–100 scale.  
-  - You choose the **“max score”** baseline (default: 24).  
-  - **Best practice:** set max score to the **highest raw score in your fandom** — that fic will be treated as “perfect.”  Keep in mind that smaller and medium-sized fandoms average higher scores than larger fandoms.
-  - Want more forgiving scores? Just set the max score lower.  
-  - Configurable thresholds color-code scores.  
+- **Normalization (optional):**
+  - Converts raw scores into a 0–100 scale.
+  - You choose the **“max raw score”** baseline (default: 22). Fics that score higher than that will appear as "100".
+  - **Best practice:** Pick a max score that matches the **strongest high-performing fics** in your fandom, not the single highest outlier. Larger fandoms usually peak a bit lower, smaller ones a bit higher.
+  - Want more forgiving scores? Set the max score lower.
+  - Configurable thresholds color-code scores.
   - **Hide works by score:** Optionally filter out works below a minimum quality score threshold.
 
 ![Quality Score](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_reading-time-quality-score-2.png "Quality Score Settings")
