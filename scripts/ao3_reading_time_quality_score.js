@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     3.8
-// @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
+// @version     4.0.0
+// @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting. Version 4 uses a new scoring model.
 // @author      BlackBatCat
 // @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*/works*
@@ -18,6 +18,8 @@
 
 (function () {
   "use strict";
+
+  const SCRIPT_VERSION = "4.0.0";
 
   // DEFAULT CONFIGURATION
   const DEFAULTS = {
@@ -36,11 +38,11 @@
     hideKudos: false,
     hideBookmarks: false,
     hideComments: false,
-    useNormalization: false,
-    userMaxScore: 32,
-    minKudosToShowScore: 100,
-    colorThresholdLow: 10,
-    colorThresholdHigh: 20,
+    useNormalization: true,
+    userMaxScore: 22,
+    minKudosToShowScore: 50,
+    colorThresholdLow: 8,
+    colorThresholdHigh: 14,
     colorStyle: "background",
     colorGreen: "#3e8fb0",
     colorYellow: "#f6c177",
@@ -51,8 +53,10 @@
     chapterTimeStyle: "default",
     username: "",
     hideWorksEnabled: false,
-    hideWorksScore: 15,
+    hideWorksScore: 4,
     keepUnscoredVisible: false,
+    lastSeenVersion: null,
+    scoringBannerSeenVersion: null,
   };
 
   let CONFIG = { ...DEFAULTS };
@@ -62,6 +66,15 @@
 
   const $ = (selector, root = document) => root.querySelectorAll(selector);
   const $1 = (selector, root = document) => root.querySelector(selector);
+
+  const saveAllSettings = () => {
+    if (typeof Storage !== "undefined") {
+      localStorage.setItem(
+        "ao3_reading_quality_config",
+        JSON.stringify(CONFIG)
+      );
+    }
+  };
 
   const loadUserSettings = () => {
     if (typeof Storage === "undefined") return;
@@ -77,14 +90,93 @@
     }
   };
 
-  const saveAllSettings = () => {
-    if (typeof Storage !== "undefined") {
-      localStorage.setItem(
-        "ao3_reading_quality_config",
-        JSON.stringify(CONFIG)
-      );
+  loadUserSettings();
+  migrateToV4IfNeeded();
+
+  function migrateToV4IfNeeded() {
+    const prev = CONFIG.lastSeenVersion || null;
+    if (prev === SCRIPT_VERSION) return;
+
+    // FORCE RESET of score-related settings for everyone:
+    CONFIG.userMaxScore = 22;
+    if (CONFIG.useNormalization) {
+      CONFIG.colorThresholdLow = 40;
+      CONFIG.colorThresholdHigh = 60;
+      CONFIG.hideWorksScore = 20;
+    } else {
+      CONFIG.colorThresholdLow = 8;
+      CONFIG.colorThresholdHigh = 14;
+      CONFIG.hideWorksScore = 4;
     }
-  };
+
+    CONFIG.lastSeenVersion = SCRIPT_VERSION;
+    saveAllSettings();
+  }
+
+  // Show migration banner if not seen for this version
+  if (CONFIG.scoringBannerSeenVersion !== SCRIPT_VERSION) {
+    showMigrationBanner();
+  }
+
+  function showMigrationBanner() {
+    // Inject CSS
+    const style = document.createElement("style");
+    style.textContent = `
+        .qs-migrate-banner {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            border: none;
+            border-bottom: 1px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            z-index: 99999;
+            border-radius: 0;
+            box-shadow: none;
+            margin-top: 0;
+        }
+        .qs-migrate-banner button {
+            background: none;
+            border: none;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            color: inherit;
+        }
+        .qs-migrate-banner button:hover {
+            background: none;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Create Banner
+    const banner = document.createElement("div");
+    banner.className = "qs-migrate-banner notice";
+    banner.innerHTML = `
+        <span>
+            <strong>AO3 Reading Time & Quality Score v4.1:</strong>
+            The scoring model has been improved. Score settings were updated to fit the new version. <a href="https://greasyfork.org/en/scripts/549777-ao3-reading-time-quality-score" target="_blank">Read more here.</a>
+        </span>
+        <button class="qs-close-btn">✕</button>
+    `;
+
+    // Insert at top of page
+    const target =
+      document.querySelector("#outer") || // AO3 main container
+      document.body;
+
+    target.prepend(banner);
+
+    // Close button behavior
+    banner.querySelector(".qs-close-btn").addEventListener("click", () => {
+      banner.remove();
+    });
+
+    // Mark as seen
+    CONFIG.scoringBannerSeenVersion = SCRIPT_VERSION;
+    saveAllSettings();
+  }
 
   function saveSetting(key, value) {
     CONFIG[key] = value;
@@ -97,6 +189,19 @@
         localStorage.removeItem("ao3_reading_quality_config");
       }
       CONFIG = { ...DEFAULTS };
+      CONFIG.userMaxScore = 22;
+      if (CONFIG.useNormalization) {
+        CONFIG.colorThresholdLow = 40;
+        CONFIG.colorThresholdHigh = 60;
+        CONFIG.hideWorksScore = 20;
+      } else {
+        CONFIG.colorThresholdLow = 8;
+        CONFIG.colorThresholdHigh = 14;
+        CONFIG.hideWorksScore = 4;
+      }
+      CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
+      CONFIG.scoringBannerSeenVersion = SCRIPT_VERSION;
+      saveAllSettings();
       if (
         (CONFIG.enableReadingTime || CONFIG.enableQualityScore) &&
         countable
@@ -367,9 +472,10 @@
   };
 
   const calculateWordBasedScore = (kudos, hits, words) => {
-    if (hits === 0 || words === 0 || kudos === 0) return 0;
-    const effectiveChapters = words / 5000;
-    const adjustedHits = hits / Math.sqrt(effectiveChapters);
+    if (!kudos || !hits || !words) return 0;
+
+    const eff = Math.max(1, words / 5000);
+    const adjustedHits = hits / Math.pow(eff, 0.4); // alpha model
     return (100 * kudos) / adjustedHits;
   };
 
@@ -389,12 +495,8 @@
     if (CONFIG.hideWorksEnabled) {
     }
 
-    const normalizedThresholdLow = CONFIG.useNormalization
-      ? Math.ceil((CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100)
-      : CONFIG.colorThresholdLow;
-    const normalizedThresholdHigh = CONFIG.useNormalization
-      ? Math.ceil((CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100)
-      : CONFIG.colorThresholdHigh;
+    const normalizedThresholdLow = CONFIG.colorThresholdLow;
+    const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
     const allStats = statsElements || Array.from($("dl.stats"));
     allStats.forEach((statsElement) => {
@@ -486,90 +588,102 @@
           const hits = getNumberFromElement(hitsElement);
           const kudos = getNumberFromElement(kudosElement);
 
-          if (!isNaN(hits) && !isNaN(kudos)) {
-            if (kudos >= CONFIG.minKudosToShowScore) {
-              let rawScore = calculateWordBasedScore(kudos, hits, words);
-              if (kudos < 10) rawScore = 1;
-              let displayScore = rawScore;
-              if (CONFIG.useNormalization) {
-                displayScore = (rawScore / CONFIG.userMaxScore) * 100;
-                displayScore = Math.min(100, displayScore);
-                displayScore = Math.ceil(displayScore);
-              } else {
-                displayScore = Math.round(displayScore * 10) / 10;
-              }
+          // Validate that we have valid numbers
+          if (isNaN(hits) || isNaN(kudos) || hits === 0) {
+            return;
+          }
 
-              let color;
-              if (displayScore >= normalizedThresholdHigh) {
-                color = CONFIG.colorGreen;
-              } else if (displayScore >= normalizedThresholdLow) {
-                color = CONFIG.colorYellow;
-              } else {
-                color = CONFIG.colorRed;
-              }
-
-              if (kudoshitsDt && forceRecalculation) {
-                const existingScoreElement = $1("dd.kudoshits", statsElement);
-                if (existingScoreElement) {
-                  if (CONFIG.useIcons) {
-                    const span = existingScoreElement.querySelector("span");
-                    if (span) {
-                      span.textContent = displayScore;
-                      span.style.cssText = `border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;`;
-                      if (CONFIG.colorStyle === "background") {
-                        span.style.backgroundColor = color;
-                        span.style.color = CONFIG.colorText;
-                        span.style.padding = "0 4px";
-                      } else if (CONFIG.colorStyle === "text") {
-                        span.style.color = color;
-                      }
-                    }
-                  } else {
-                    existingScoreElement.textContent = displayScore;
-                    existingScoreElement.style.cssText = `display: inline-block; vertical-align: baseline; border-radius: 4px; font-size: inherit; line-height: inherit;`;
-                    if (CONFIG.colorStyle === "background") {
-                      existingScoreElement.style.backgroundColor = color;
-                      existingScoreElement.style.color = CONFIG.colorText;
-                      existingScoreElement.style.padding = "0 4px";
-                    } else if (CONFIG.colorStyle === "text") {
-                      existingScoreElement.style.color = color;
-                    }
-                  }
-                }
-              } else if (!kudoshitsDt) {
-                let ddStyle =
-                  "display: inline-block; vertical-align: baseline;";
-                let spanStyle =
-                  "border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;";
-
-                if (CONFIG.colorStyle === "background") {
-                  spanStyle += ` background-color: ${color}; color: ${CONFIG.colorText}; padding: 0 4px;`;
-                } else if (CONFIG.colorStyle === "text") {
-                  spanStyle += ` color: ${color};`;
-                }
-
-                if (CONFIG.useIcons) {
-                  hitsElement.insertAdjacentHTML(
-                    "afterend",
-                    `<dt class="kudoshits"></dt><dd class="kudoshits" style="${ddStyle}"><span style="${spanStyle}">${displayScore}</span></dd>`
-                  );
-                } else {
-                  ddStyle +=
-                    " border-radius: 4px; font-size: inherit; line-height: inherit;";
-                  if (CONFIG.colorStyle === "background") {
-                    ddStyle += ` background-color: ${color}; color: ${CONFIG.colorText}; padding: 0 4px;`;
-                  } else if (CONFIG.colorStyle === "text") {
-                    ddStyle += ` color: ${color};`;
-                  }
-                  hitsElement.insertAdjacentHTML(
-                    "afterend",
-                    `<dt class="kudoshits">Score:</dt><dd class="kudoshits" style="${ddStyle}">${displayScore}</dd>`
-                  );
-                }
-              }
-
-              if (parentLi) parentLi.setAttribute("kudospercent", displayScore);
+          if (kudos >= CONFIG.minKudosToShowScore) {
+            // Skip scoring works with 0 words
+            if (words === 0) {
+              // Remove any existing score display and attribute
+              const existingScoreDt = $1("dt.kudoshits", statsElement);
+              const existingScoreDd = $1("dd.kudoshits", statsElement);
+              if (existingScoreDt) existingScoreDt.remove();
+              if (existingScoreDd) existingScoreDd.remove();
+              if (parentLi) parentLi.removeAttribute("kudospercent");
+              return;
             }
+
+            let rawScore = calculateWordBasedScore(kudos, hits, words);
+            let displayScore = rawScore;
+            if (CONFIG.useNormalization) {
+              displayScore = (rawScore / CONFIG.userMaxScore) * 100;
+              displayScore = Math.min(100, displayScore);
+              displayScore = Math.ceil(displayScore);
+            } else {
+              displayScore = Math.round(displayScore * 10) / 10;
+            }
+
+            let color;
+            if (displayScore >= normalizedThresholdHigh) {
+              color = CONFIG.colorGreen;
+            } else if (displayScore >= normalizedThresholdLow) {
+              color = CONFIG.colorYellow;
+            } else {
+              color = CONFIG.colorRed;
+            }
+
+            if (kudoshitsDt && forceRecalculation) {
+              const existingScoreElement = $1("dd.kudoshits", statsElement);
+              if (existingScoreElement) {
+                if (CONFIG.useIcons) {
+                  const span = existingScoreElement.querySelector("span");
+                  if (span) {
+                    span.textContent = displayScore;
+                    span.style.cssText = `border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;`;
+                    if (CONFIG.colorStyle === "background") {
+                      span.style.backgroundColor = color;
+                      span.style.color = CONFIG.colorText;
+                      span.style.padding = "0 4px";
+                    } else if (CONFIG.colorStyle === "text") {
+                      span.style.color = color;
+                    }
+                  }
+                } else {
+                  existingScoreElement.textContent = displayScore;
+                  existingScoreElement.style.cssText = `display: inline-block; vertical-align: baseline; border-radius: 4px; font-size: inherit; line-height: inherit;`;
+                  if (CONFIG.colorStyle === "background") {
+                    existingScoreElement.style.backgroundColor = color;
+                    existingScoreElement.style.color = CONFIG.colorText;
+                    existingScoreElement.style.padding = "0 4px";
+                  } else if (CONFIG.colorStyle === "text") {
+                    existingScoreElement.style.color = color;
+                  }
+                }
+              }
+            } else if (!kudoshitsDt) {
+              let ddStyle = "display: inline-block; vertical-align: baseline;";
+              let spanStyle =
+                "border-radius: 4px; display: inline-block; vertical-align: baseline; font-size: inherit; line-height: inherit;";
+
+              if (CONFIG.colorStyle === "background") {
+                spanStyle += ` background-color: ${color}; color: ${CONFIG.colorText}; padding: 0 4px;`;
+              } else if (CONFIG.colorStyle === "text") {
+                spanStyle += ` color: ${color};`;
+              }
+
+              if (CONFIG.useIcons) {
+                hitsElement.insertAdjacentHTML(
+                  "afterend",
+                  `<dt class="kudoshits"></dt><dd class="kudoshits" style="${ddStyle}"><span style="${spanStyle}">${displayScore}</span></dd>`
+                );
+              } else {
+                ddStyle +=
+                  " border-radius: 4px; font-size: inherit; line-height: inherit;";
+                if (CONFIG.colorStyle === "background") {
+                  ddStyle += ` background-color: ${color}; color: ${CONFIG.colorText}; padding: 0 4px;`;
+                } else if (CONFIG.colorStyle === "text") {
+                  ddStyle += ` color: ${color};`;
+                }
+                hitsElement.insertAdjacentHTML(
+                  "afterend",
+                  `<dt class="kudoshits">Score:</dt><dd class="kudoshits" style="${ddStyle}">${displayScore}</dd>`
+                );
+              }
+            }
+
+            if (parentLi) parentLi.setAttribute("kudospercent", displayScore);
           }
         } catch (error) {
           console.error("Error calculating score:", error);
@@ -617,12 +731,8 @@
             const displayScore = parseFloat(
               parentLi.getAttribute("kudospercent")
             );
-            let rawScore = displayScore;
-            if (CONFIG.useNormalization) {
-              rawScore = (displayScore / 100) * CONFIG.userMaxScore;
-            }
             parentLi.style.display =
-              rawScore < CONFIG.hideWorksScore ? "none" : "";
+              displayScore < CONFIG.hideWorksScore ? "none" : "";
           } else {
             parentLi.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
           }
@@ -753,12 +863,8 @@
           const scoreValue = parseFloat(scoreText);
 
           let color;
-          const normalizedThresholdLow = CONFIG.useNormalization
-            ? Math.ceil((CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100)
-            : CONFIG.colorThresholdLow;
-          const normalizedThresholdHigh = CONFIG.useNormalization
-            ? Math.ceil((CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100)
-            : CONFIG.colorThresholdHigh;
+          const normalizedThresholdLow = CONFIG.colorThresholdLow;
+          const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
           if (scoreValue >= normalizedThresholdHigh) {
             color = CONFIG.colorGreen;
@@ -780,12 +886,8 @@
           const scoreValue = parseFloat(kudoshitsDd.textContent);
 
           let color;
-          const normalizedThresholdLow = CONFIG.useNormalization
-            ? Math.ceil((CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100)
-            : CONFIG.colorThresholdLow;
-          const normalizedThresholdHigh = CONFIG.useNormalization
-            ? Math.ceil((CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100)
-            : CONFIG.colorThresholdHigh;
+          const normalizedThresholdLow = CONFIG.colorThresholdLow;
+          const normalizedThresholdHigh = CONFIG.colorThresholdHigh;
 
           if (scoreValue >= normalizedThresholdHigh) {
             color = CONFIG.colorGreen;
@@ -1029,16 +1131,10 @@
 
     const fragment = document.createDocumentFragment();
 
-    const displayThresholdLow = CONFIG.useNormalization
-      ? Math.ceil((CONFIG.colorThresholdLow / CONFIG.userMaxScore) * 100)
-      : CONFIG.colorThresholdLow;
-    const displayThresholdHigh = CONFIG.useNormalization
-      ? Math.ceil((CONFIG.colorThresholdHigh / CONFIG.userMaxScore) * 100)
-      : CONFIG.colorThresholdHigh;
+    const displayThresholdLow = CONFIG.colorThresholdLow;
+    const displayThresholdHigh = CONFIG.colorThresholdHigh;
 
-    const displayHideWorksScore = CONFIG.useNormalization
-      ? Math.round((CONFIG.hideWorksScore / CONFIG.userMaxScore) * 100)
-      : CONFIG.hideWorksScore;
+    const displayHideWorksScore = CONFIG.hideWorksScore;
 
     const readingTimeSection =
       window.AO3MenuHelpers.createSection("📚 Reading Time");
@@ -1173,7 +1269,6 @@
         label: "Minimum kudos to show score",
         value: CONFIG.minKudosToShowScore,
         min: 0,
-        max: 10000,
         step: 1,
       })
     );
@@ -1196,19 +1291,17 @@
     const userMaxScoreLabel = document.createElement("label");
     userMaxScoreLabel.className = "setting-label";
     userMaxScoreLabel.setAttribute("for", "userMaxScore");
-    userMaxScoreLabel.textContent = "Best Possible Raw Score ";
+    userMaxScoreLabel.textContent = "Max Raw Score ";
 
     const normalizationLabel = document.createElement("span");
     normalizationLabel.id = "normalizationLabel";
-    normalizationLabel.textContent = CONFIG.useNormalization
-      ? "(for 100%)"
-      : "";
+    normalizationLabel.textContent = CONFIG.useNormalization ? "(100%)" : "";
     userMaxScoreLabel.appendChild(normalizationLabel);
 
     userMaxScoreLabel.appendChild(document.createTextNode(" "));
     userMaxScoreLabel.appendChild(
       window.AO3MenuHelpers.createTooltip(
-        "The highest score you've seen in your fandom. Used to scale other scores to percentages."
+        "The top score you want to treat as 100%. Use a solid high performer, not the single highest spike."
       )
     );
 
@@ -1308,14 +1401,14 @@
       id: "hideWorksScore",
       value: displayHideWorksScore,
       min: 1,
-      max: CONFIG.useNormalization ? 100 : 1000,
+      max: 100,
       step: 1,
     });
 
     const keepUnscoredCheckbox = window.AO3MenuHelpers.createCheckbox({
       id: "keepUnscoredVisible",
       label: "Show unscored works",
-      checked: CONFIG.keepUnscoredVisible,
+      checked: CONFIG.hideWorksEnabled ? true : CONFIG.keepUnscoredVisible,
     });
 
     const hideWorksSubsettings = window.AO3MenuHelpers.createSubsettings();
@@ -1612,29 +1705,15 @@
           thresholdLowLabel.textContent = "(%)";
           thresholdHighLabel.textContent = "(%)";
           userMaxScoreContainer.style.display = "";
-          thresholdLowInput.value = Math.ceil(
-            (parseFloat(thresholdLowInput.value) /
-              parseFloat(userMaxScoreInput.value)) *
-              100
-          );
-          thresholdHighInput.value = Math.ceil(
-            (parseFloat(thresholdHighInput.value) /
-              parseFloat(userMaxScoreInput.value)) *
-              100
-          );
+          thresholdLowInput.value = 40;
+          thresholdHighInput.value = 60;
         } else {
           normLabel.textContent = "";
           thresholdLowLabel.textContent = "";
           thresholdHighLabel.textContent = "";
           userMaxScoreContainer.style.display = "none";
-          thresholdLowInput.value = Math.round(
-            (parseFloat(thresholdLowInput.value) / 100) *
-              parseFloat(userMaxScoreInput.value)
-          );
-          thresholdHighInput.value = Math.round(
-            (parseFloat(thresholdHighInput.value) / 100) *
-              parseFloat(userMaxScoreInput.value)
-          );
+          thresholdLowInput.value = 8;
+          thresholdHighInput.value = 14;
         }
 
         const hideWorksScoreInput = dialog.querySelector("#hideWorksScore");
@@ -1643,19 +1722,12 @@
         );
         if (isNormalizationEnabled) {
           hideWorksScoreLabel.textContent = "(%)";
-          hideWorksScoreInput.value = Math.round(
-            (parseFloat(hideWorksScoreInput.value) /
-              parseFloat(userMaxScoreInput.value)) *
-              100
-          );
+          hideWorksScoreInput.value = 20;
           hideWorksScoreInput.max = 100;
         } else {
           hideWorksScoreLabel.textContent = "";
-          hideWorksScoreInput.value = Math.round(
-            (parseFloat(hideWorksScoreInput.value) / 100) *
-              parseFloat(userMaxScoreInput.value)
-          );
-          hideWorksScoreInput.max = 1000;
+          hideWorksScoreInput.value = 4;
+          hideWorksScoreInput.max = 100;
         }
       });
 
@@ -1667,14 +1739,6 @@
       .querySelector("#alwaysCountQualityScore")
       .addEventListener("change", (e) => {
         autoCalculateSubsettings.style.display = e.target.checked ? "" : "none";
-      });
-
-    dialog
-      .querySelector("#alwaysSortQualityScore")
-      .addEventListener("change", (e) => {
-        excludeMyContentSubsetting.style.display = e.target.checked
-          ? ""
-          : "none";
       });
 
     dialog.querySelector("#closeButton").addEventListener("click", () => {
@@ -1693,11 +1757,6 @@
       );
       const isNormalizationEnabled =
         dialog.querySelector("#useNormalization").checked;
-
-      if (isNormalizationEnabled) {
-        thresholdLowValue = (thresholdLowValue / 100) * userMaxScoreValue;
-        thresholdHighValue = (thresholdHighValue / 100) * userMaxScoreValue;
-      }
 
       CONFIG.enableReadingTime =
         dialog.querySelector("#enableReadingTime").checked;
@@ -1766,13 +1825,13 @@
       CONFIG.keepUnscoredVisible = dialog.querySelector(
         "#keepUnscoredVisible"
       ).checked;
-      let hideWorksScoreValue = parseFloat(
+      // If hideWorksEnabled is unchecked, force keepUnscoredVisible to false
+      if (!CONFIG.hideWorksEnabled) {
+        CONFIG.keepUnscoredVisible = false;
+      }
+      CONFIG.hideWorksScore = parseFloat(
         dialog.querySelector("#hideWorksScore").value
       );
-      if (isNormalizationEnabled) {
-        hideWorksScoreValue = (hideWorksScoreValue / 100) * userMaxScoreValue;
-      }
-      CONFIG.hideWorksScore = hideWorksScoreValue;
 
       saveAllSettings();
       dialog.remove();
@@ -1907,43 +1966,6 @@
     if (/^\/works(\/|$)/.test(path)) return true;
     return false;
   }
-
-  const hideWorksBelowScore = () => {
-    if (!CONFIG.hideWorksEnabled) return;
-    console.log("[AO3] Hiding works below score:", CONFIG.hideWorksScore);
-    const username = detectAndStoreUsername();
-
-    // Don't hide works on user's own content pages
-    if (isMyContentPage(username)) {
-      return;
-    }
-
-    const works = $("li.work, li.bookmark");
-    works.forEach((work) => {
-      // Check if this work belongs to the current user
-      const authorLink = work.querySelector('a[href*="/users/"]');
-      if (authorLink && username) {
-        const authorHref = authorLink.getAttribute("href");
-        const authorUsername = authorHref.match(/\/users\/([^\/]+)/)?.[1];
-        if (authorUsername === username) {
-          work.style.display = "";
-          return;
-        }
-      }
-
-      const scoreAttr = work.getAttribute("kudospercent");
-      if (scoreAttr === null) {
-        work.style.display = CONFIG.keepUnscoredVisible ? "" : "none";
-      } else {
-        const displayScore = parseFloat(scoreAttr);
-        let rawScore = displayScore;
-        if (CONFIG.useNormalization) {
-          rawScore = (displayScore / 100) * CONFIG.userMaxScore;
-        }
-        work.style.display = rawScore < CONFIG.hideWorksScore ? "none" : "";
-      }
-    });
-  };
 
   const init = () => {
     checkCountable();
