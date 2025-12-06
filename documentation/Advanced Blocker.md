@@ -28,9 +28,9 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 - **Language Filter** – Only show works in specified languages.
 - **Fandom Limit** – Hide works with more fandoms than your threshold (useful for blocking crossovers).
 - **Staleness Filter** – Hide ongoing works not updated in X months.
-
-### **Completion & Primary Pairing**
 - **Block Complete/Ongoing** – Toggle to hide works based on completion status.
+
+### **Primary Pairing & Character Filtering**
 - **Primary Relationship Filtering** – Only show works where your favorite relationships appear in the first few relationship tags.
 - **Primary Character Filtering** – Only show works where your favorite characters appear in the first few character tags.
 - Customize the search window for both (how many tags to check from the top).
@@ -109,6 +109,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 **Primary Relationships & Characters**
 - Enter names exactly as they appear on AO3, including alternative names: `Luo Binghe/Shen Yuan | Shen Qingqiu`
 - **Tag Window** settings let you check only the first X tags (default: 1 for relationships, 5 for characters).
+- Supports limited conditional logic. Use `with:{Fandom}` to specify fandom context.
 
 **Language Filter**
 - Enter language names as they appear on AO3: `English`, `Русский`, `中文-普通话国语`

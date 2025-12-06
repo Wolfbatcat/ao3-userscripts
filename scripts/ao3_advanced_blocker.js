@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       4.0
+// @version       4.0.1
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*/works*
@@ -95,7 +95,7 @@
     enableStrictTagBlocking: false,
     strictTagBlacklist: "",
     conditionalTagBlacklist: [],
-    _version: "3.8",
+    _version: "4.0",
   };
 
   const STORAGE_KEY = "ao3_advanced_blocker_config";
@@ -222,7 +222,7 @@
             };
           })
       : [];
-    sanitized._version = "3.8";
+    sanitized._version = "4.0";
     return sanitized;
   }
 
@@ -364,27 +364,34 @@
     return { originalText: pattern, text: normalized, hasWildcard: false };
   }
 
-  function parseConditionalEntry(entry) {
+  function parseConditional(entry) {
     const trimmed = entry.trim();
     const withMatch = trimmed.match(/^(.+?)\s+with:\{(.+?)\}$/i);
     const unlessMatch = trimmed.match(/^(.+?)\s+unless:\{(.+?)\}$/i);
     if (withMatch) {
       return {
-        type: "conditional",
-        block: compilePattern(withMatch[1].trim()),
+        item: normalizeText(withMatch[1].trim()),
         operator: "with",
-        condition: withMatch[2].trim(),
+        condition: normalizeText(withMatch[2].trim()),
       };
     } else if (unlessMatch) {
       return {
-        type: "conditional",
-        block: compilePattern(unlessMatch[1].trim()),
+        item: normalizeText(unlessMatch[1].trim()),
         operator: "unless",
-        condition: unlessMatch[2].trim(),
+        condition: normalizeText(unlessMatch[2].trim()),
       };
     } else {
-      return { type: "simple", pattern: compilePattern(trimmed) };
+      return { item: normalizeText(trimmed) };
     }
+  }
+
+  function checkConditional(entry, conditionTags) {
+    if (!entry.condition || !entry.operator) return true;
+    const hasCondition = conditionTags.includes(entry.condition);
+    return (
+      (entry.operator === "with" && hasCondition) ||
+      (entry.operator === "unless" && !hasCondition)
+    );
   }
 
   function loadConfig() {
@@ -885,13 +892,37 @@
           .split(/,(?:\s)?/g)
           .map((i) => i.trim())
           .filter(Boolean)
-          .map(parseConditionalEntry),
+          .map((i) => {
+            const parsed = parseConditional(i);
+            if (parsed.operator) {
+              return {
+                type: "conditional",
+                block: compilePattern(parsed.item),
+                operator: parsed.operator,
+                condition: parsed.condition,
+              };
+            } else {
+              return { type: "simple", pattern: compilePattern(parsed.item) };
+            }
+          }),
         enableStrictTagBlocking: !!config.enableStrictTagBlocking,
         tagWhitelist: rawTagWhitelist
           .split(/,(?:\s)?/g)
           .map((i) => i.trim())
           .filter(Boolean)
-          .map(parseConditionalEntry),
+          .map((i) => {
+            const parsed = parseConditional(i);
+            if (parsed.operator) {
+              return {
+                type: "conditional",
+                block: compilePattern(parsed.item),
+                operator: parsed.operator,
+                condition: parsed.condition,
+              };
+            } else {
+              return { type: "simple", pattern: compilePattern(parsed.item) };
+            }
+          }),
         tagHighlights: rawTagHighlights
           .split(/,(?:\s)?/g)
           .map((i) => i.trim())
@@ -956,12 +987,18 @@
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean)
-          .map((s) => normalizeText(s)),
+          .map((s) => {
+            const parsed = parseConditional(s);
+            return parsed.operator ? parsed : { relationship: parsed.item };
+          }),
         primaryCharacters: rawPrimaryCharacters
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean)
-          .map((s) => normalizeText(s)),
+          .map((s) => {
+            const parsed = parseConditional(s);
+            return parsed.operator ? parsed : { character: parsed.item };
+          }),
         primaryRelpad: (() => {
           const val = config.primaryRelpad;
           const parsed = parseInt(val, 10);
@@ -1215,10 +1252,11 @@
       placeholder: "*Fix-It*, Enemies to Lovers",
       tooltip: "Make these works stand out. * for wildcards.",
     });
-    const highlightColorInput = window.AO3MenuHelpers.createColorPicker({
+    const highlightColorInput = window.AO3MenuHelpers.createTextInput({
       id: "highlight-color-input",
       label: "Highlight Color",
       value: config.highlightColor || "#eb6f92",
+      placeholder: "#hex or rgb(r,g,b)",
     });
     const highlightRow = window.AO3MenuHelpers.createTwoColumnLayout(
       tagHighlightsInput,
@@ -1236,9 +1274,9 @@
         label: "Primary Relationships",
         value: config._rawPrimaryRelationships,
         placeholder:
-          "Hua Cheng/Xie Lian (Tian Guan Ci Fu), Kim Dokja/Yoo Joonghyuk",
+          "Kim Dokja/Yoo Joonghyuk with:{전지적 독자 시점 - 싱숑 | Omniscient Reader - Sing-Shong}",
         tooltip:
-          "Only show works where these relationships are in the first few relationship tags.",
+          "Only show works where at least one ofthese relationships are in the first few relationship tags. Use 'with:{Fandom}' to specify fandom.",
       }),
       "primaryRelationships",
       config
@@ -1249,9 +1287,10 @@
         id: "primary-characters-input",
         label: "Primary Characters",
         value: config._rawPrimaryCharacters,
-        placeholder: "Hua Cheng (Tian Guan Ci Fu), Kim Dokja",
+        placeholder:
+          "Kim Dokja with:{전지적 독자 시점 - 싱숑 | Omniscient Reader - Sing-Shong}",
         tooltip:
-          "Only show works where these characters are in the first few character tags.",
+          "Only show works where at least one of these characters are in the first few character tags.Use 'with:{Fandom}' to specify fandom.",
       }),
       "primaryCharacters",
       config
@@ -1794,7 +1833,7 @@
             });
           return rules;
         })(),
-        _version: "3.8",
+        _version: "4.0",
       };
       if (saveConfig(updatedConfig)) {
         location.href =
@@ -2117,20 +2156,8 @@
     // Check conditional rules
     for (const rule of config.conditionalTagBlacklist) {
       if (!rule?.block) continue;
-
-      const condition = rule.condition || rule.unless;
-      const operator = rule.operator || (rule.unless ? "unless" : "with");
-
-      if (!condition || !operator) continue;
-
       if (normalizedTag !== normalizeText(rule.block)) continue;
-
-      const hasConditionTag = normalizedTagSet.has(normalizeText(condition));
-
-      if (
-        (operator === "unless" && !hasConditionTag) ||
-        (operator === "with" && hasConditionTag)
-      ) {
+      if (checkConditional(rule, normalizedTagSet)) {
         return true;
       }
     }
@@ -2151,27 +2178,99 @@
     const characterTags = categorizedTags.characters
       .slice(0, charpad)
       .map((tag) => normalizeText(tag));
-    let missingRelationships = [];
-    let missingCharacters = [];
-    if (primaryRelationships.length > 0) {
-      const hasPrimaryRelationship = primaryRelationships.some((rel) =>
-        relationshipTags.includes(rel)
-      );
-      if (!hasPrimaryRelationship) missingRelationships = primaryRelationships;
+    const fandomTags = categorizedTags.fandoms.map((tag) => normalizeText(tag));
+
+    // Group relationships by condition (OR logic within group)
+    const relGroups = new Map();
+    let hasGlobalRel = false;
+    for (const entry of primaryRelationships) {
+      const key = entry.condition || "global";
+      const item = entry.relationship || entry.item;
+      if (item) {
+        if (!relGroups.has(key)) relGroups.set(key, []);
+        relGroups.get(key).push(item);
+        if (key === "global") hasGlobalRel = true;
+      }
     }
-    if (primaryCharacters.length > 0) {
-      const hasPrimaryCharacter = primaryCharacters.some((char) =>
-        characterTags.includes(char)
-      );
-      if (!hasPrimaryCharacter) missingCharacters = primaryCharacters;
+
+    // Group characters by condition (OR logic within group)
+    const charGroups = new Map();
+    let hasGlobalChar = false;
+    for (const entry of primaryCharacters) {
+      const key = entry.condition || "global";
+      const item = entry.character || entry.item;
+      if (item) {
+        if (!charGroups.has(key)) charGroups.set(key, []);
+        charGroups.get(key).push(item);
+        if (key === "global") hasGlobalChar = true;
+      }
     }
-    if (missingRelationships.length > 0 && missingCharacters.length > 0) {
-      return { primaryPairing: `Missing relationship(s) and character(s)` };
-    } else if (missingRelationships.length > 0) {
-      return { primaryPairing: `Missing relationship(s)` };
-    } else if (missingCharacters.length > 0) {
-      return { primaryPairing: `Missing character(s)` };
+
+    // If all relationship requirements are conditional and none match current fandom, skip blocking
+    if (
+      relGroups.size > 0 &&
+      !hasGlobalRel &&
+      !Array.from(relGroups.keys()).some(
+        (cond) => cond !== "global" && fandomTags.includes(normalizeText(cond))
+      )
+    ) {
+      // No applicable relationship requirement for this fandom
+      return null;
     }
+    // Same for characters
+    if (
+      charGroups.size > 0 &&
+      !hasGlobalChar &&
+      !Array.from(charGroups.keys()).some(
+        (cond) => cond !== "global" && fandomTags.includes(normalizeText(cond))
+      )
+    ) {
+      // No applicable character requirement for this fandom
+      return null;
+    }
+
+    // OR logic: If any group is satisfied, permit the work
+    let relationshipGroupSatisfied = false;
+    for (const [condition, items] of relGroups) {
+      const conditionMet =
+        condition === "global" || fandomTags.includes(normalizeText(condition));
+      if (conditionMet) {
+        if (items.some((item) => relationshipTags.includes(item))) {
+          relationshipGroupSatisfied = true;
+          break;
+        }
+      }
+    }
+    // If there are no relationship requirements, treat as satisfied
+    if (relGroups.size === 0) relationshipGroupSatisfied = true;
+
+    let characterGroupSatisfied = false;
+    for (const [condition, items] of charGroups) {
+      const conditionMet =
+        condition === "global" || fandomTags.includes(normalizeText(condition));
+      if (conditionMet) {
+        if (items.some((item) => characterTags.includes(item))) {
+          characterGroupSatisfied = true;
+          break;
+        }
+      }
+    }
+    // If there are no character requirements, treat as satisfied
+    if (charGroups.size === 0) characterGroupSatisfied = true;
+
+    // Block if relationships are required and not satisfied
+    if (relGroups.size > 0 && !relationshipGroupSatisfied) {
+      return {
+        primaryPairing: `Missing required relationship(s)`,
+      };
+    }
+    // Block if characters are required and not satisfied
+    if (charGroups.size > 0 && !characterGroupSatisfied) {
+      return {
+        primaryPairing: `Missing required character(s)`,
+      };
+    }
+    // If neither are required, or both are satisfied, permit
     return null;
   }
 

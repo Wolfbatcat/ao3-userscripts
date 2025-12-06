@@ -116,6 +116,64 @@ console.log("[AO3: Auto Pseud] loaded.");
 
   // ==================== PSEUD EDIT PAGE ====================
 
+  // Show the fandom help modal
+  function showFandomHelpModal() {
+    // Remove any existing modal/background
+    const oldModal = document.getElementById('modal-wrap');
+    if (oldModal) oldModal.parentNode.removeChild(oldModal);
+    const oldBg = document.getElementById('modal-background');
+    if (oldBg) oldBg.parentNode.removeChild(oldBg);
+
+    // AO3 native modal uses overlay first, then modal-wrap
+    const background = document.createElement('div');
+    background.id = 'modal-background';
+    background.className = 'modal-closer';
+    background.style.display = 'block';
+    background.style.position = 'fixed';
+    background.style.top = '0';
+    background.style.left = '0';
+    background.style.width = '100%';
+    background.style.height = '100%';
+    background.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    background.style.zIndex = '1000';
+    document.body.appendChild(background);
+
+    const modalWrap = document.createElement('div');
+    modalWrap.id = 'modal-wrap';
+    modalWrap.className = 'modal-closer';
+    modalWrap.style.display = 'block';
+    modalWrap.style.position = 'fixed';
+    modalWrap.style.top = '50%';
+    modalWrap.style.left = '50%';
+    modalWrap.style.transform = 'translate(-50%, -50%)';
+    modalWrap.style.zIndex = '1001';
+    modalWrap.innerHTML = `
+      <div id="modal" style="display: inline-block;">
+        <div class="content userstuff">
+          <p>Associate fandoms with this pseud. When you comment on or bookmark works in these fandoms, this pseud will be suggested automatically.</p>
+        </div>
+        <div class="footer">
+          <span class="title">Associate fandoms with this pseud</span>
+          <a class="action modal-closer" href="#">Close</a>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modalWrap);
+
+    // Add close handler (click overlay or close link)
+    function closeHandler(e) {
+      if (e.target === background || e.target.classList.contains('action')) {
+        if (background.parentNode) background.parentNode.removeChild(background);
+        if (modalWrap.parentNode) modalWrap.parentNode.removeChild(modalWrap);
+      }
+    }
+    background.addEventListener('click', closeHandler);
+    modalWrap.querySelector('.action').addEventListener('click', closeHandler);
+  }
+
+  // Make it global for onclick
+  window.showFandomHelpModal = showFandomHelpModal;
+
   // Add fandom fieldset to the page
   function addFandomFieldset() {
     const form = document.querySelector("form.edit_pseud");
@@ -139,7 +197,7 @@ console.log("[AO3: Auto Pseud] loaded.");
     fandomDt.className = "fandom";
     fandomDt.innerHTML = `
             <label for="pseud_fandom_autocomplete" title="fandoms">Fandoms</label>
-            <a class="help symbol question modal modal-attached" title="Associate fandoms with this pseud for automatic selection when commenting and bookmarking" href="#" onclick="alert('Associate fandoms with this pseud. When you comment on or bookmark works in these fandoms, this pseud will be suggested automatically.'); return false;">
+            <a class="help symbol question" title="Associate fandoms with this pseud for automatic selection when commenting and bookmarking" href="#" onclick="window.showFandomHelpModal(); return false;">
                 <span class="symbol question"><span>?</span></span>
             </a>
         `;

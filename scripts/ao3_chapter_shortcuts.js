@@ -24,6 +24,7 @@
   const CHAPTER_SHORTCUTS_CONFIG_KEY = "ao3_chapter_shortcuts_config";
   const DEFAULT_CHAPTER_SHORTCUTS_CONFIG = {
     lastChapterSymbol: "»",
+    hideMenuOptions: false,
   };
   let CHAPTER_SHORTCUTS_CONFIG = { ...DEFAULT_CHAPTER_SHORTCUTS_CONFIG };
 
@@ -111,6 +112,15 @@
       });
     });
 
+    // Create hide menu checkbox
+    const hideMenuCheckbox = helpers.createCheckbox({
+      id: "hide-menu-option",
+      label: "Hide menu option",
+      checked: CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions,
+      tooltip: "When checked, the 'Chapter Shortcuts' menu item will only appear on the main AO3 page to reduce menu clutter, but the script will still work on all pages.",
+    });
+    dialog.appendChild(hideMenuCheckbox);
+
     // Create button group
     const buttons = helpers.createButtonGroup([
       {
@@ -120,6 +130,7 @@
         onClick: () => {
           CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol =
             helpers.getValue("custom-symbol") || "»";
+          CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions = helpers.getValue("hide-menu-option");
           saveChapterShortcutsConfig();
           dialog.remove();
           addChapterButtons(true);
@@ -249,12 +260,15 @@
   // Show startup message
   console.log("[AO3: Chapter Shortcuts] loaded.");
 
-  // Add to shared menu using library helper
-  helpers.addToSharedMenu({
-    id: "opencfg_chapter_shortcuts",
-    text: "Chapter Shortcuts",
-    onClick: showChapterShortcutsMenu,
-  });
+  // Add to shared menu using library helper (conditionally)
+  const isMainPage = window.location.href === "https://archiveofourown.org/" || window.location.href === "https://archiveofourown.org";
+  if (!CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions || isMainPage) {
+    helpers.addToSharedMenu({
+      id: "opencfg_chapter_shortcuts",
+      text: "Chapter Shortcuts",
+      onClick: showChapterShortcutsMenu,
+    });
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

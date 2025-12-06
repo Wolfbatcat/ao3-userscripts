@@ -1,9 +1,7 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     4.0.0
-// @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting. Version 4 uses a new scoring model.
-// @author      BlackBatCat
-// @match       *://archiveofourown.org/
+// @version     4.0.1
+// @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @match       *://archiveofourown.org/tags/*/works*
 // @match       *://archiveofourown.org/works*
 // @match       *://archiveofourown.org/chapters/*
@@ -19,7 +17,7 @@
 (function () {
   "use strict";
 
-  const SCRIPT_VERSION = "4.0.0";
+  const SCRIPT_VERSION = "4.0.1";
 
   // DEFAULT CONFIGURATION
   const DEFAULTS = {
@@ -56,7 +54,6 @@
     hideWorksScore: 4,
     keepUnscoredVisible: false,
     lastSeenVersion: null,
-    scoringBannerSeenVersion: null,
   };
 
   let CONFIG = { ...DEFAULTS };
@@ -113,71 +110,6 @@
     saveAllSettings();
   }
 
-  // Show migration banner if not seen for this version
-  if (CONFIG.scoringBannerSeenVersion !== SCRIPT_VERSION) {
-    showMigrationBanner();
-  }
-
-  function showMigrationBanner() {
-    // Inject CSS
-    const style = document.createElement("style");
-    style.textContent = `
-        .qs-migrate-banner {
-            padding: 8px 12px;
-            font-size: 0.9em;
-            border: none;
-            border-bottom: 1px solid;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            z-index: 99999;
-            border-radius: 0;
-            box-shadow: none;
-            margin-top: 0;
-        }
-        .qs-migrate-banner button {
-            background: none;
-            border: none;
-            padding: 2px 6px;
-            cursor: pointer;
-            font-size: 0.85em;
-            color: inherit;
-        }
-        .qs-migrate-banner button:hover {
-            background: none;
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Create Banner
-    const banner = document.createElement("div");
-    banner.className = "qs-migrate-banner notice";
-    banner.innerHTML = `
-        <span>
-            <strong>AO3 Reading Time & Quality Score v4.1:</strong>
-            The scoring model has been improved. Score settings were updated to fit the new version. <a href="https://greasyfork.org/en/scripts/549777-ao3-reading-time-quality-score" target="_blank">Read more here.</a>
-        </span>
-        <button class="qs-close-btn">✕</button>
-    `;
-
-    // Insert at top of page
-    const target =
-      document.querySelector("#outer") || // AO3 main container
-      document.body;
-
-    target.prepend(banner);
-
-    // Close button behavior
-    banner.querySelector(".qs-close-btn").addEventListener("click", () => {
-      banner.remove();
-    });
-
-    // Mark as seen
-    CONFIG.scoringBannerSeenVersion = SCRIPT_VERSION;
-    saveAllSettings();
-  }
-
   function saveSetting(key, value) {
     CONFIG[key] = value;
     saveAllSettings();
@@ -200,7 +132,6 @@
         CONFIG.hideWorksScore = 4;
       }
       CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
-      CONFIG.scoringBannerSeenVersion = SCRIPT_VERSION;
       saveAllSettings();
       if (
         (CONFIG.enableReadingTime || CONFIG.enableQualityScore) &&
@@ -1502,24 +1433,27 @@
     twoColumnColors.className = "two-column";
     twoColumnLayout.style.marginBottom = "0";
     twoColumnColors.appendChild(
-      window.AO3MenuHelpers.createColorPicker({
+      window.AO3MenuHelpers.createTextInput({
         id: "colorGreen",
         label: "Green",
         value: CONFIG.colorGreen,
+        placeholder: "#hex or rgb(r,g,b)",
       })
     );
     twoColumnColors.appendChild(
-      window.AO3MenuHelpers.createColorPicker({
+      window.AO3MenuHelpers.createTextInput({
         id: "colorYellow",
         label: "Yellow",
         value: CONFIG.colorYellow,
+        placeholder: "#hex or rgb(r,g,b)",
       })
     );
     twoColumnColors.appendChild(
-      window.AO3MenuHelpers.createColorPicker({
+      window.AO3MenuHelpers.createTextInput({
         id: "colorRed",
         label: "Red",
         value: CONFIG.colorRed,
+        placeholder: "#hex or rgb(r,g,b)",
       })
     );
 
@@ -1528,10 +1462,11 @@
     textColorContainer.style.display =
       CONFIG.colorStyle === "background" ? "" : "none";
     textColorContainer.appendChild(
-      window.AO3MenuHelpers.createColorPicker({
+      window.AO3MenuHelpers.createTextInput({
         id: "colorText",
         label: "Text color",
         value: CONFIG.colorText,
+        placeholder: "#hex or rgb(r,g,b)",
       })
     );
     twoColumnColors.appendChild(textColorContainer);
@@ -1566,10 +1501,11 @@
     customIconColorPicker.id = "customIconColorPicker";
     customIconColorPicker.style.display = CONFIG.iconColor ? "" : "none";
     customIconColorPicker.appendChild(
-      window.AO3MenuHelpers.createColorPicker({
+      window.AO3MenuHelpers.createTextInput({
         id: "iconColor",
         label: "Icon color",
         value: CONFIG.iconColor || "#000000",
+        placeholder: "#hex or rgb(r,g,b)",
       })
     );
     iconColorSettings.appendChild(customIconColorPicker);

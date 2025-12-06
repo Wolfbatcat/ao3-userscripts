@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
 // @version       3.6
-// @description   Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
+// @description   Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences and colors.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
 // @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
 // @grant         none
-// @run-at        document-end
+// @run-at        document-start
 // ==/UserScript==
 
 (function () {
@@ -31,6 +31,10 @@
     codeFontStyle: "normal",
     codeFontSize: "",
     expandCodeFontUsage: false,
+    backgroundColor: "",
+    textColor: "",
+    headerColor: "",
+    accentColor: "",
   };
 
   const WORKS_PAGE_REGEX =
@@ -182,6 +186,10 @@
       codeFontStyle,
       codeFontSize,
       expandCodeFontUsage,
+      backgroundColor,
+      textColor,
+      headerColor,
+      accentColor,
     } = FORMATTER_CONFIG;
 
     const rules = [];
@@ -305,6 +313,264 @@
     );
 
     cachedElements.siteStyle.textContent = rules.join("\n");
+    applyColorStyles();
+  }
+
+  function applyColorStyles() {
+    const colorStyleId = "ao3-color-style";
+    let colorStyle = document.getElementById(colorStyleId);
+
+    const { backgroundColor, textColor, headerColor, accentColor } =
+      FORMATTER_CONFIG;
+
+    // Remove existing color styles if all colors are blank
+    if (!backgroundColor && !textColor && !headerColor && !accentColor) {
+      if (colorStyle) {
+        colorStyle.remove();
+      }
+      return;
+    }
+
+    // Create style element if it doesn't exist
+    if (!colorStyle) {
+      colorStyle = getOrCreateStyle(colorStyleId);
+      if (!colorStyle) return;
+    }
+
+    const rules = [];
+    const rootVars = [];
+
+    // Build CSS custom properties
+    if (backgroundColor)
+      rootVars.push(`--background-color: ${backgroundColor}`);
+    if (textColor) rootVars.push(`--text-color: ${textColor}`);
+    if (headerColor) rootVars.push(`--header-color: ${headerColor}`);
+    if (accentColor) rootVars.push(`--accent-color: ${accentColor}`);
+
+    // Add single :root declaration
+    if (rootVars.length > 0) {
+      rules.push(`:root {\n    ${rootVars.join(";\n    ")};\n}`);
+    }
+
+    // Apply styles matching ao3_sw_colors.css structure exactly
+    if (backgroundColor) {
+      rules.push(`#outer {\n    background-color: var(--background-color);\n}`);
+      rules.push(
+        `.listbox .index {\n    background: var(--background-color);\n}`
+      );
+    }
+
+    if (headerColor) {
+      rules.push(`#header .primary,
+#footer,
+.autocomplete .dropdown ul li:hover,
+.autocomplete .dropdown li.selected,
+a.tag:hover,
+.listbox .heading a.tag:visited:hover,
+.splash .favorite li:nth-of-type(2n+1) a:hover,
+.splash .favorite li:nth-of-type(2n+1) a:focus,
+#tos_prompt .heading {
+    background-image: none;
+    background-color: var(--header-color);
+}`);
+    }
+
+    if (textColor) {
+      rules.push(`h2,
+a,
+a:link,
+a:visited,
+a:hover,
+#header a,
+#header a:visited,
+#header .primary .open a,
+#header .primary .dropdown:hover a,
+#header .primary .dropdown a:focus,
+#header .primary .menu a,
+#dashboard a,
+#dashboard span,
+a.tag,
+.listbox>.heading,
+.listbox .heading a:visited,
+.filters dt a:hover {
+    color: var(--text-color);
+}`);
+    }
+
+    if (headerColor) {
+      rules.push(`#dashboard,
+#dashboard.own {
+    border-color: var(--header-color);
+}`);
+    }
+
+    if (accentColor) {
+      rules.push(`#dashboard a:hover,
+#dashboard .current,
+li.relationships a {
+    background: var(--accent-color);
+}`);
+    }
+
+    if (accentColor) {
+      rules.push(`table,
+thead td,
+#header .actions a:hover,
+#header .actions a:focus,
+#header .dropdown:hover a,
+#header .open a,
+#header .menu,
+#small_login,
+fieldset,
+form dl,
+fieldset dl dl,
+fieldset fieldset fieldset,
+fieldset fieldset dl dl,
+.ui-sortable li,
+.ui-sortable li:hover,
+dd.hideme,
+form blockquote.userstuff,
+dl.index dd,
+.statistics .index li:nth-of-type(2n),
+.listbox,
+fieldset fieldset.listbox,
+.item dl.visibility,
+.reading h4.viewed,
+.comment h4.byline,
+.splash .favorite li:nth-of-type(2n+1) a,
+.splash .module div.account,
+.search [role="tooltip"] {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}`);
+
+      // Preserve box-shadow for fieldset elements
+      rules.push(`fieldset {
+    box-shadow: inset 1px 0 5px rgba(0, 0, 0, 0.5);
+}`);
+    }
+
+    if (headerColor) {
+      rules.push(`#header .heading a,
+#header .user a:hover,
+#header .user a:focus,
+#dashboard a:hover,
+.actions a:hover,
+.actions button:hover,
+.actions input:hover,
+.actions a:focus,
+.actions button:focus,
+.actions input:focus,
+label.action:hover,
+.action:hover,
+.action:focus,
+a.cloud1,
+a.cloud2,
+a.cloud3,
+a.cloud4,
+a.cloud5,
+a.cloud6,
+a.cloud7,
+a.cloud8,
+a.work,
+.blurb h4 a:link,
+.splash .module h3,
+.splash .browse li a::before {
+    color: var(--header-color);
+}`);
+    }
+
+    if (textColor) {
+      rules.push(`body,
+.toggled form,
+.dynamic form,
+.secondary,
+.dropdown,
+#header .search,
+form dd.required,
+.post .required .warnings,
+dd.required,
+.required .autocomplete,
+span.series .divider,
+.filters .expander,
+.userstuff h2 {
+    color: var(--text-color);
+}`);
+    }
+
+    if (accentColor) {
+      rules.push(`li.blurb,
+fieldset,
+form dl,
+thead,
+tfoot,
+tfoot td,
+th,
+tr:hover,
+col.name,
+#dashboard ul,
+.toggled form,
+.dynamic form,
+form.verbose legend,
+.verbose form legend,
+.secondary,
+.work.navigation .download,
+.javascript .work.navigation .download .secondary,
+dl.meta,
+.bookmark .user,
+div.comment,
+li.comment,
+.comment div.icon,
+.splash .news li,
+.userstuff blockquote {
+    border-color: var(--accent-color);
+}`);
+    }
+
+    if (backgroundColor) {
+      rules.push(`body,
+.toggled form,
+.dynamic form,
+.secondary,
+.dropdown,
+th,
+tr:hover,
+col.name,
+div.dynamic,
+fieldset fieldset,
+fieldset dl dl,
+form blockquote.userstuff,
+form.verbose legend,
+.verbose form legend,
+#modal,
+.work.navigation .download,
+.javascript .work.navigation .download .secondary,
+.own,
+.draft,
+.draft .wrapper,
+.unread,
+.child,
+.unwrangled,
+.unreviewed,
+.thread .even,
+.listbox .index,
+.nomination dt,
+#tos_prompt {
+    background: var(--background-color);
+}`);
+    }
+
+    if (textColor) {
+      rules.push(`form dt,
+.filters .group dt.bookmarker,
+.faq .categories h3,
+.splash .module h3,
+.userstuff h3 {
+    border-color: var(--text-color);
+}`);
+    }
+
+    colorStyle.textContent = rules.join("\n\n");
   }
 
   // --- PARAGRAPH SPACING FIX ---
@@ -681,6 +947,74 @@
 
     dialog.appendChild(elementSection);
 
+    // Colors Section
+    const colorSection = window.AO3MenuHelpers.createSection("🎨 Colors");
+
+    const colorNotes = document.createElement("p");
+    colorNotes.className = "notes";
+    colorNotes.innerHTML =
+      'You may wish to refer to this <a href="https://www.w3schools.com/colors/colors_names.asp">handy list of colors</a>.';
+    colorSection.appendChild(colorNotes);
+
+    const backgroundGroup = window.AO3MenuHelpers.createSettingGroup();
+    backgroundGroup.appendChild(
+      window.AO3MenuHelpers.createLabel(
+        "Background Color",
+        "skin_background_color"
+      )
+    );
+    const backgroundInput = document.createElement("input");
+    backgroundInput.type = "text";
+    backgroundInput.id = "skin_background_color";
+    backgroundInput.value = FORMATTER_CONFIG.backgroundColor;
+    backgroundInput.placeholder = "#fff";
+    backgroundGroup.appendChild(backgroundInput);
+    colorSection.appendChild(backgroundGroup);
+
+    const textGroup = window.AO3MenuHelpers.createSettingGroup();
+    textGroup.appendChild(
+      window.AO3MenuHelpers.createLabel("Text Color", "skin_foreground_color")
+    );
+    const textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.id = "skin_foreground_color";
+    textInput.value = FORMATTER_CONFIG.textColor;
+    textInput.placeholder = "#2a2a2a";
+    textGroup.appendChild(textInput);
+    colorSection.appendChild(textGroup);
+
+    const headerGroup = window.AO3MenuHelpers.createSettingGroup();
+    headerGroup.appendChild(
+      window.AO3MenuHelpers.createLabel("Header Color", "skin_headercolor")
+    );
+    const headerInput = document.createElement("input");
+    headerInput.type = "text";
+    headerInput.id = "skin_headercolor";
+    headerInput.value = FORMATTER_CONFIG.headerColor;
+    headerInput.placeholder = "#900";
+    headerGroup.appendChild(headerInput);
+    colorSection.appendChild(headerGroup);
+
+    const accentGroup = window.AO3MenuHelpers.createSettingGroup();
+    const accentLabel = window.AO3MenuHelpers.createLabel(
+      "Accent Color",
+      "skin_accent_color"
+    );
+    const accentTooltip = window.AO3MenuHelpers.createTooltip(
+      "Skins wizard accent color"
+    );
+    accentLabel.appendChild(accentTooltip);
+    accentGroup.appendChild(accentLabel);
+    const accentInput = document.createElement("input");
+    accentInput.type = "text";
+    accentInput.id = "skin_accent_color";
+    accentInput.value = FORMATTER_CONFIG.accentColor;
+    accentInput.placeholder = "#ddd";
+    accentGroup.appendChild(accentInput);
+    colorSection.appendChild(accentGroup);
+
+    dialog.appendChild(colorSection);
+
     // Buttons
     const buttons = window.AO3MenuHelpers.createButtonGroup([
       { text: "Save", id: "formatter-save" },
@@ -738,6 +1072,14 @@
         window.AO3MenuHelpers.getValue("code-fontsize-input") || "";
       FORMATTER_CONFIG.expandCodeFontUsage =
         window.AO3MenuHelpers.getValue("expand-code-font-checkbox") ?? false;
+      FORMATTER_CONFIG.backgroundColor =
+        window.AO3MenuHelpers.getValue("skin_background_color") || "";
+      FORMATTER_CONFIG.textColor =
+        window.AO3MenuHelpers.getValue("skin_foreground_color") || "";
+      FORMATTER_CONFIG.headerColor =
+        window.AO3MenuHelpers.getValue("skin_headercolor") || "";
+      FORMATTER_CONFIG.accentColor =
+        window.AO3MenuHelpers.getValue("skin_accent_color") || "";
 
       saveFormatterConfig();
       dialog.remove();
