@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
 // @version       3.6
-// @description   Make AO3 easier to read: customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences and colors.
+// @description   Make AO3 easier to read: customize fonts and sizes, set site colors, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
@@ -35,6 +35,7 @@
     textColor: "",
     headerColor: "",
     accentColor: "",
+    logoColor: "",
   };
 
   const WORKS_PAGE_REGEX =
@@ -320,11 +321,17 @@
     const colorStyleId = "ao3-color-style";
     let colorStyle = document.getElementById(colorStyleId);
 
-    const { backgroundColor, textColor, headerColor, accentColor } =
+    const { backgroundColor, textColor, headerColor, accentColor, logoColor } =
       FORMATTER_CONFIG;
 
     // Remove existing color styles if all colors are blank
-    if (!backgroundColor && !textColor && !headerColor && !accentColor) {
+    if (
+      !backgroundColor &&
+      !textColor &&
+      !headerColor &&
+      !accentColor &&
+      !logoColor
+    ) {
       if (colorStyle) {
         colorStyle.remove();
       }
@@ -346,6 +353,7 @@
     if (textColor) rootVars.push(`--text-color: ${textColor}`);
     if (headerColor) rootVars.push(`--header-color: ${headerColor}`);
     if (accentColor) rootVars.push(`--accent-color: ${accentColor}`);
+    if (logoColor) rootVars.push(`--logo-filter: ${logoColor}`);
 
     // Add single :root declaration
     if (rootVars.length > 0) {
@@ -394,8 +402,16 @@ a.tag,
 .listbox .heading a:visited,
 .filters dt a:hover {
     color: var(--text-color);
+}
+.qtip-content, .notice:not(.required), .comment_notice, .kudos_notice, ul.notes, .caution, .notice a, .error, .comment_error, .kudos_error, .alert.flash, form .notice {
+    color: #2a2a2a !important;
 }`);
     }
+
+    // Always apply white text to userscripts dropdown menu
+    rules.push(`#scriptconfig > a:nth-child(1) {
+    color: #fff !important;
+}`);
 
     if (headerColor) {
       rules.push(`#dashboard,
@@ -568,6 +584,10 @@ form.verbose legend,
 .userstuff h3 {
     border-color: var(--text-color);
 }`);
+    }
+
+    if (logoColor) {
+      rules.push(`#header .logo { filter: var(--logo-filter); }`);
     }
 
     colorStyle.textContent = rules.join("\n\n");
@@ -960,45 +980,42 @@ form.verbose legend,
     backgroundGroup.appendChild(
       window.AO3MenuHelpers.createLabel(
         "Background Color",
-        "skin_background_color"
+        "sw_background_color"
       )
     );
     const backgroundInput = document.createElement("input");
     backgroundInput.type = "text";
-    backgroundInput.id = "skin_background_color";
+    backgroundInput.id = "sw_background_color";
     backgroundInput.value = FORMATTER_CONFIG.backgroundColor;
     backgroundInput.placeholder = "#fff";
     backgroundGroup.appendChild(backgroundInput);
-    colorSection.appendChild(backgroundGroup);
 
     const textGroup = window.AO3MenuHelpers.createSettingGroup();
     textGroup.appendChild(
-      window.AO3MenuHelpers.createLabel("Text Color", "skin_foreground_color")
+      window.AO3MenuHelpers.createLabel("Text Color", "sw_foreground_color")
     );
     const textInput = document.createElement("input");
     textInput.type = "text";
-    textInput.id = "skin_foreground_color";
+    textInput.id = "sw_foreground_color";
     textInput.value = FORMATTER_CONFIG.textColor;
     textInput.placeholder = "#2a2a2a";
     textGroup.appendChild(textInput);
-    colorSection.appendChild(textGroup);
 
     const headerGroup = window.AO3MenuHelpers.createSettingGroup();
     headerGroup.appendChild(
-      window.AO3MenuHelpers.createLabel("Header Color", "skin_headercolor")
+      window.AO3MenuHelpers.createLabel("Header Color", "sw_headercolor")
     );
     const headerInput = document.createElement("input");
     headerInput.type = "text";
-    headerInput.id = "skin_headercolor";
+    headerInput.id = "sw_headercolor";
     headerInput.value = FORMATTER_CONFIG.headerColor;
     headerInput.placeholder = "#900";
     headerGroup.appendChild(headerInput);
-    colorSection.appendChild(headerGroup);
 
     const accentGroup = window.AO3MenuHelpers.createSettingGroup();
     const accentLabel = window.AO3MenuHelpers.createLabel(
-      "Accent Color",
-      "skin_accent_color"
+      "Accent Color ",
+      "sw_accent_color"
     );
     const accentTooltip = window.AO3MenuHelpers.createTooltip(
       "Skins wizard accent color"
@@ -1007,11 +1024,51 @@ form.verbose legend,
     accentGroup.appendChild(accentLabel);
     const accentInput = document.createElement("input");
     accentInput.type = "text";
-    accentInput.id = "skin_accent_color";
+    accentInput.id = "sw_accent_color";
     accentInput.value = FORMATTER_CONFIG.accentColor;
     accentInput.placeholder = "#ddd";
     accentGroup.appendChild(accentInput);
-    colorSection.appendChild(accentGroup);
+
+    const firstRow = window.AO3MenuHelpers.createTwoColumnLayout(
+      backgroundGroup,
+      textGroup
+    );
+    colorSection.appendChild(firstRow);
+
+    const secondRow = window.AO3MenuHelpers.createTwoColumnLayout(
+      headerGroup,
+      accentGroup
+    );
+    colorSection.appendChild(secondRow);
+
+    const logoGroup = window.AO3MenuHelpers.createSettingGroup();
+    const logoLabel = window.AO3MenuHelpers.createLabel(
+      "Logo Color ",
+      "sw_logo_color"
+    );
+    const logoTooltip = window.AO3MenuHelpers.createTooltip(
+      "Change the color of the AO3 logo.Requires a CSS filter value (without 'filter:'). Generate at https://angel-rs.github.io/css-color-filter-generator/."
+    );
+    logoLabel.appendChild(logoTooltip);
+
+    // Add clickable link emoji
+    const linkEmoji = document.createElement("a");
+    linkEmoji.href = "https://angel-rs.github.io/css-color-filter-generator/";
+    linkEmoji.target = "_blank";
+    linkEmoji.textContent = " 🔗";
+    linkEmoji.style.marginLeft = "4px";
+    linkEmoji.style.fontSize = "0.8em";
+    logoLabel.appendChild(linkEmoji);
+    logoGroup.appendChild(logoLabel);
+    const logoInput = document.createElement("input");
+    logoInput.type = "text";
+    logoInput.id = "sw_logo_color";
+    logoInput.value = FORMATTER_CONFIG.logoColor;
+    logoInput.placeholder =
+      "brightness(0) saturate(100%) invert(7%) sepia(83%) saturate(5831%) hue-rotate(358deg) brightness(108%) contrast(109%)";
+    logoGroup.appendChild(logoInput);
+
+    colorSection.appendChild(logoGroup);
 
     dialog.appendChild(colorSection);
 
@@ -1033,6 +1090,75 @@ form.verbose legend,
       }
     );
     dialog.appendChild(resetLink);
+
+    // Export/Import Settings
+    const exportBtn = document.createElement("button");
+    exportBtn.id = "formatter-export";
+    exportBtn.textContent = "Export Settings";
+    exportBtn.style.marginRight = "8px";
+
+    const fileInput = window.AO3MenuHelpers.createFileInput({
+      id: "formatter-import",
+      buttonText: "Import Settings",
+      accept: "application/json",
+      onChange: (file) => {
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+          try {
+            const importedConfig = JSON.parse(evt.target.result);
+            if (typeof importedConfig !== "object" || !importedConfig)
+              throw new Error("Invalid JSON");
+            const validConfig = { ...DEFAULT_FORMATTER_CONFIG };
+            Object.keys(validConfig).forEach((key) => {
+              if (importedConfig.hasOwnProperty(key))
+                validConfig[key] = importedConfig[key];
+            });
+            FORMATTER_CONFIG = validConfig;
+            saveFormatterConfig();
+            alert("Settings imported! Reloading...");
+            location.reload();
+          } catch (err) {
+            alert("Import failed: " + (err && err.message ? err.message : err));
+          }
+        };
+        reader.readAsText(file);
+      },
+    });
+
+    const importExportContainer = document.createElement("div");
+    importExportContainer.className = "reset-link";
+    importExportContainer.style.marginTop = "18px";
+    importExportContainer.appendChild(exportBtn);
+    importExportContainer.appendChild(fileInput.button);
+    importExportContainer.appendChild(fileInput.input);
+    dialog.appendChild(importExportContainer);
+
+    exportBtn.addEventListener("click", function () {
+      try {
+        const now = new Date();
+        const pad = (n) => n.toString().padStart(2, "0");
+        const yyyy = now.getFullYear();
+        const mm = pad(now.getMonth() + 1);
+        const dd = pad(now.getDate());
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const filename = `ao3_site_wizard_config_${dateStr}.json`;
+        const blob = new Blob([JSON.stringify(FORMATTER_CONFIG, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+      } catch (e) {
+        alert("Export failed: " + (e && e.message ? e.message : e));
+      }
+    });
 
     // Event Handlers
     dialog.querySelector("#formatter-save").addEventListener("click", () => {
@@ -1073,17 +1199,20 @@ form.verbose legend,
       FORMATTER_CONFIG.expandCodeFontUsage =
         window.AO3MenuHelpers.getValue("expand-code-font-checkbox") ?? false;
       FORMATTER_CONFIG.backgroundColor =
-        window.AO3MenuHelpers.getValue("skin_background_color") || "";
+        window.AO3MenuHelpers.getValue("sw_background_color") || "";
       FORMATTER_CONFIG.textColor =
-        window.AO3MenuHelpers.getValue("skin_foreground_color") || "";
+        window.AO3MenuHelpers.getValue("sw_foreground_color") || "";
       FORMATTER_CONFIG.headerColor =
-        window.AO3MenuHelpers.getValue("skin_headercolor") || "";
+        window.AO3MenuHelpers.getValue("sw_headercolor") || "";
       FORMATTER_CONFIG.accentColor =
-        window.AO3MenuHelpers.getValue("skin_accent_color") || "";
+        window.AO3MenuHelpers.getValue("sw_accent_color") || "";
+      FORMATTER_CONFIG.logoColor =
+        window.AO3MenuHelpers.getValue("sw_logo_color") || "";
 
       saveFormatterConfig();
       dialog.remove();
       applyParagraphWidth();
+      applyColorStyles();
 
       if (FORMATTER_CONFIG.paragraphTextAlign === "right") {
         location.reload();

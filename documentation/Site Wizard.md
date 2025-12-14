@@ -1,7 +1,8 @@
 # AO3: Site Wizard
 
 Transform your AO3 reading experience with complete font and layout control:
-- **🎨 Site-Wide Font Customization** — Change fonts, sizes, and weights across the entire site.
+- **✏️ Site-Wide Font Customization** — Change fonts, sizes, and weights across the entire site.
+- **🎨 Custom Colors** — Personalize site colors and the AO3 logo appearance.
 - **📖 Work-Specific Formatting** — Customize how stories appear with width, alignment, and spacing controls.
 - **🎯 Element-Specific Fonts** — Set different fonts for headers, code blocks, and other elements.
 - **✨ Automatic Spacing Fix** — Eliminates excessive paragraph spacing in poorly formatted works.
@@ -32,6 +33,13 @@ Transform your AO3 reading experience with complete font and layout control:
 - **Code Font Style**: Choose normal or italic styling for code elements.
 - **Code Font Size**: Scale code text relative to surrounding content.
 - **Apply code font to comments**: Use code font on all textareas.
+
+#### **Colors**
+- **Background Color**: Customize the background color of the entire site.
+- **Text Color**: Change the default text color across AO3.
+- **Header Color**: Set a custom color for headers and primary UI elements.
+- **Accent Color**: Control the color of accent elements like borders and highlights.
+- **Logo Color**: Transform the AO3 logo color using CSS filters. Use the [color filter generator](https://angel-rs.github.io/css-color-filter-generator/) to create custom filter values for any desired logo color.
 
 ---
 ### ⚙️ How to Use
