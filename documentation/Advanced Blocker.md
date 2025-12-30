@@ -68,6 +68,13 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 4. Configure your filters and click **Save**.
 
 ---
+### 💾 Backup Your Settings
+
+- **Export Settings**: Download your configuration as a timestamped JSON file for backup or transfer.
+- **Import Settings**: Upload a previously exported JSON file to restore your customizations.
+- **Reset to Defaults**: Restore all settings to their original values.
+
+---
 
 ## ⚙️ Settings Guide
 

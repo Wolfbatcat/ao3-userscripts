@@ -35,6 +35,8 @@ Transform your AO3 reading experience with complete font and layout control:
 - **Apply code font to comments**: Use code font on all textareas.
 
 #### **Colors**
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_site-wizard-4.png" alt="Color Settings" width="50%">
+
 - **Background Color**: Customize the background color of the entire site.
 - **Text Color**: Change the default text color across AO3.
 - **Header Color**: Set a custom color for headers and primary UI elements.
@@ -55,6 +57,13 @@ Transform your AO3 reading experience with complete font and layout control:
 3. Click **Userscripts** in the header menu, then **Site Wizard** to customize.
 4. Adjust fonts, sizes, alignment, and spacing to your preference.
 5. Click **Save** — changes persist across browser sessions.
+
+---
+### 💾 Backup Your Settings
+
+- **Export Settings**: Download your configuration as a timestamped JSON file for backup or transfer.
+- **Import Settings**: Upload a previously exported JSON file to restore your customizations.
+- **Reset to Defaults**: Restore all settings to their original values.
 
 ---
 ### 🎨 Customization Tips

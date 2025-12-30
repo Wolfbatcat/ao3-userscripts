@@ -40,6 +40,7 @@ Get a quick feel for any fic at a glance:
   - Want more forgiving scores? Set the max score lower.
   - Configurable thresholds color-code scores.
   - **Hide works by score:** Optionally filter out works below a minimum quality score threshold.
+- **Hide scores on specific works:** Exclude specific works from scoring by work ID—useful for authors who don't want to see scores on their own works.
 
 ![Quality Score](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_reading-time-quality-score-2.png "Quality Score Settings")
 
