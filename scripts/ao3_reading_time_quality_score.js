@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     4.0.1
+// @version     4.0.2
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
-// @match       *://archiveofourown.org/tags/*/works*
+// @match       *://archiveofourown.org/tags/*
 // @match       *://archiveofourown.org/works*
 // @match       *://archiveofourown.org/chapters/*
 // @match       *://archiveofourown.org/users/*
@@ -19,7 +19,6 @@
 
   const SCRIPT_VERSION = "4.0.1";
 
-  // DEFAULT CONFIGURATION
   const DEFAULTS = {
     enableReadingTime: true,
     enableQualityScore: true,
@@ -53,6 +52,8 @@
     hideWorksEnabled: false,
     hideWorksScore: 4,
     keepUnscoredVisible: false,
+    hideScoreWorksEnabled: false,
+    hideScoreWorks: "",
     lastSeenVersion: null,
   };
 
@@ -66,9 +67,10 @@
 
   const saveAllSettings = () => {
     if (typeof Storage !== "undefined") {
+      const { _hideScoreWorksSet, ...configToSave } = CONFIG;
       localStorage.setItem(
         "ao3_reading_quality_config",
-        JSON.stringify(CONFIG)
+        JSON.stringify(configToSave)
       );
     }
   };
@@ -79,6 +81,7 @@
     if (savedConfig) {
       try {
         const parsedConfig = JSON.parse(savedConfig);
+        delete parsedConfig._hideScoreWorksSet;
         CONFIG = { ...DEFAULTS, ...parsedConfig };
       } catch (e) {
         console.error("Error loading saved config, using defaults:", e);
@@ -88,13 +91,27 @@
   };
 
   loadUserSettings();
+
+  const buildHideScoreWorksSet = () => {
+    if (!CONFIG.hideScoreWorks) {
+      CONFIG._hideScoreWorksSet = new Set();
+      return;
+    }
+    const rawIds = CONFIG.hideScoreWorks;
+    const ids = rawIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => /^\d+$/.test(id));
+    CONFIG._hideScoreWorksSet = new Set(ids);
+  };
+
+  buildHideScoreWorksSet();
   migrateToV4IfNeeded();
 
   function migrateToV4IfNeeded() {
     const prev = CONFIG.lastSeenVersion || null;
     if (prev === SCRIPT_VERSION) return;
 
-    // FORCE RESET of score-related settings for everyone:
     CONFIG.userMaxScore = 22;
     if (CONFIG.useNormalization) {
       CONFIG.colorThresholdLow = 40;
@@ -133,6 +150,7 @@
       }
       CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
       saveAllSettings();
+      buildHideScoreWorksSet();
       if (
         (CONFIG.enableReadingTime || CONFIG.enableQualityScore) &&
         countable
@@ -204,6 +222,21 @@
       }
     }
     return false;
+  };
+
+  const getWorkIdFromElement = (workElement) => {
+    if (!workElement) return null;
+    const titleLink = workElement.querySelector(
+      ".header .heading a:first-child"
+    );
+    if (!titleLink) return null;
+    const match = titleLink.href.match(/\/works\/(\d+)/);
+    return match ? match[1] : null;
+  };
+
+  const getWorkIdFromUrl = () => {
+    const match = window.location.href.match(/\/works\/(\d+)/);
+    return match ? match[1] : null;
   };
 
   const getNumberFromElement = (element) => {
@@ -406,7 +439,7 @@
     if (!kudos || !hits || !words) return 0;
 
     const eff = Math.max(1, words / 5000);
-    const adjustedHits = hits / Math.pow(eff, 0.4); // alpha model
+    const adjustedHits = hits / Math.pow(eff, 0.4);
     return (100 * kudos) / adjustedHits;
   };
 
@@ -457,9 +490,31 @@
         (!kudoshitsDt || forceRecalculation);
       const needsHiding = CONFIG.hideMetrics && !statsPage;
       const needsWorkHiding = CONFIG.hideWorksEnabled;
+      const needsScoreHiding = CONFIG.hideScoreWorksEnabled && kudoshitsDt;
 
-      if (!needsReadingTime && !needsScore && !needsHiding && !needsWorkHiding)
+      if (
+        !needsReadingTime &&
+        !needsScore &&
+        !needsHiding &&
+        !needsWorkHiding &&
+        !needsScoreHiding
+      )
         return;
+
+      if (needsScoreHiding && CONFIG._hideScoreWorksSet instanceof Set) {
+        let workId = parentLi ? getWorkIdFromElement(parentLi) : null;
+        if (!workId) {
+          workId = getWorkIdFromUrl();
+        }
+        if (workId && CONFIG._hideScoreWorksSet.has(workId)) {
+          const existingScoreDt = $1("dt.kudoshits", statsElement);
+          const existingScoreDd = $1("dd.kudoshits", statsElement);
+          if (existingScoreDt) existingScoreDt.remove();
+          if (existingScoreDd) existingScoreDd.remove();
+          if (parentLi) parentLi.removeAttribute("kudospercent");
+          return;
+        }
+      }
 
       if (needsReadingTime) {
         const minutes = words / CONFIG.wpm;
@@ -507,6 +562,19 @@
       }
 
       if (needsScore) {
+        if (
+          CONFIG.hideScoreWorksEnabled &&
+          CONFIG._hideScoreWorksSet instanceof Set
+        ) {
+          let workId = parentLi ? getWorkIdFromElement(parentLi) : null;
+          if (!workId) {
+            workId = getWorkIdFromUrl();
+          }
+          if (workId && CONFIG._hideScoreWorksSet.has(workId)) {
+            return;
+          }
+        }
+
         const existingScoreElement = $1("dd.kudoshits", statsElement);
         if (existingScoreElement && !forceRecalculation) {
           if (parentLi && !parentLi.hasAttribute("kudospercent")) {
@@ -519,15 +587,12 @@
           const hits = getNumberFromElement(hitsElement);
           const kudos = getNumberFromElement(kudosElement);
 
-          // Validate that we have valid numbers
           if (isNaN(hits) || isNaN(kudos) || hits === 0) {
             return;
           }
 
           if (kudos >= CONFIG.minKudosToShowScore) {
-            // Skip scoring works with 0 words
             if (words === 0) {
-              // Remove any existing score display and attribute
               const existingScoreDt = $1("dt.kudoshits", statsElement);
               const existingScoreDd = $1("dd.kudoshits", statsElement);
               if (existingScoreDt) existingScoreDt.remove();
@@ -754,6 +819,24 @@
   const updateExistingVisualStyles = () => {
     const allStats = Array.from($("dl.stats"));
     allStats.forEach((statsElement) => {
+      if (
+        CONFIG.hideScoreWorksEnabled &&
+        CONFIG._hideScoreWorksSet instanceof Set
+      ) {
+        const parentLi = statsElement.closest("li.work, li.bookmark");
+        let workId = parentLi ? getWorkIdFromElement(parentLi) : null;
+        if (!workId) {
+          workId = getWorkIdFromUrl();
+        }
+        if (workId && CONFIG._hideScoreWorksSet.has(workId)) {
+          const kudoshitsDt = $1("dt.kudoshits", statsElement);
+          const kudoshitsDd = $1("dd.kudoshits", statsElement);
+          if (kudoshitsDt) kudoshitsDt.remove();
+          if (kudoshitsDd) kudoshitsDd.remove();
+          if (parentLi) parentLi.removeAttribute("kudospercent");
+        }
+      }
+
       const readtimeDd = $1("dd.readtime", statsElement);
       if (readtimeDd) {
         const span = readtimeDd.querySelector("span");
@@ -928,7 +1011,7 @@
       } else if (CONFIG.chapterTimeStyle === "timeonly") {
         if (!statsElement.classList.contains("ao3-chapter-stats-timeonly")) {
           statsElement.className = "ao3-chapter-stats-timeonly";
-          statsElement.tagName = "p"; // Change to p if it was ul
+          statsElement.tagName = "p";
           statsElement.textContent = `~${timeOnlyStr}`;
         }
       }
@@ -1294,7 +1377,7 @@
         min: 0.1,
         max: 100,
         step: 0.1,
-      }).querySelector("input") // Extract just the input, not the wrapper
+      }).querySelector("input")
     );
 
     const colorThresholdHighInput = document.createElement("div");
@@ -1308,7 +1391,7 @@
         min: 0.1,
         max: 100,
         step: 0.1,
-      }).querySelector("input") // Extract just the input, not the wrapper
+      }).querySelector("input")
     );
 
     const thresholdTwoColumn = window.AO3MenuHelpers.createTwoColumnLayout(
@@ -1360,6 +1443,32 @@
     hideWorksConditional.style.marginTop = "10px";
 
     qualityScoreSubsettings.appendChild(hideWorksConditional);
+
+    const hideScoreWorksSubsettings = window.AO3MenuHelpers.createSubsettings();
+    hideScoreWorksSubsettings.appendChild(
+      window.AO3MenuHelpers.createTextarea({
+        id: "hideScoreWorks-input",
+        label: "Work IDs",
+        value: CONFIG.hideScoreWorks,
+        placeholder: "73294031, 12345678",
+        tooltip:
+          "Enter work IDs (8-digit numbers from the work URL), separated by commas. Invalid IDs will be filtered out.",
+      })
+    );
+
+    const hideScoreWorksConditional =
+      window.AO3MenuHelpers.createConditionalCheckbox({
+        id: "hideScoreWorksEnabled",
+        label: "Hide scores on specific works",
+        checked: CONFIG.hideScoreWorksEnabled,
+        tooltip:
+          "Hide quality scores on works by their ID. Scores will not be calculated or displayed for these works.",
+        subsettings: [hideScoreWorksSubsettings],
+      });
+
+    hideScoreWorksConditional.style.marginTop = "10px";
+
+    qualityScoreSubsettings.appendChild(hideScoreWorksConditional);
 
     qualityScoreGroup.appendChild(qualityScoreSubsettings);
     qualityScoreSection.appendChild(qualityScoreGroup);
@@ -1716,13 +1825,11 @@
         "#alwaysCountQualityScore"
       ).checked;
 
-      // Handle sort state change - restore original order if disabling auto-sort
       const wasAutoSortEnabled = CONFIG.alwaysSortQualityScore;
       CONFIG.alwaysSortQualityScore = dialog.querySelector(
         "#alwaysSortQualityScore"
       ).checked;
 
-      // If disabling auto-sort, restore original order
       if (wasAutoSortEnabled && !CONFIG.alwaysSortQualityScore) {
         restoreOriginalOrder();
       }
@@ -1761,7 +1868,6 @@
       CONFIG.keepUnscoredVisible = dialog.querySelector(
         "#keepUnscoredVisible"
       ).checked;
-      // If hideWorksEnabled is unchecked, force keepUnscoredVisible to false
       if (!CONFIG.hideWorksEnabled) {
         CONFIG.keepUnscoredVisible = false;
       }
@@ -1769,17 +1875,29 @@
         dialog.querySelector("#hideWorksScore").value
       );
 
+      const hideScoreWorksChanged =
+        CONFIG.hideScoreWorksEnabled !==
+          dialog.querySelector("#hideScoreWorksEnabled").checked ||
+        CONFIG.hideScoreWorks !==
+          dialog.querySelector("#hideScoreWorks-input").value;
+
+      CONFIG.hideScoreWorksEnabled = dialog.querySelector(
+        "#hideScoreWorksEnabled"
+      ).checked;
+      CONFIG.hideScoreWorks = dialog.querySelector(
+        "#hideScoreWorks-input"
+      ).value;
+      buildHideScoreWorksSet();
+
       saveAllSettings();
       dialog.remove();
 
-      // Reapply styles without reload
       const existingIconStyles = document.getElementById(
         "ao3-userscript-icon-styles"
       );
       if (existingIconStyles) existingIconStyles.remove();
       if (CONFIG.useIcons) addIconStyles();
 
-      // Update existing elements with new visual style
       updateExistingVisualStyles();
 
       updateExistingChapterTimeStyles();
@@ -1790,7 +1908,6 @@
         CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore;
 
       if (readingTimeDisabled || qualityScoreDisabled) {
-        // Remove existing calculation elements
         const allStats = Array.from($("dl.stats"));
         allStats.forEach((statsElement) => {
           if (readingTimeDisabled) {
@@ -1808,8 +1925,8 @@
         });
       }
 
-      // Recalculate metrics if automatic calculation is enabled
       if (
+        hideScoreWorksChanged ||
         (CONFIG.alwaysCountReadingTime && CONFIG.enableReadingTime) ||
         (CONFIG.alwaysCountQualityScore && CONFIG.enableQualityScore)
       ) {
@@ -1838,12 +1955,9 @@
         onClick: showSettingsPopup,
       });
 
-      // Add separator if we have conditional items
       if (CONFIG.enableReadingTime || CONFIG.enableQualityScore) {
-        // Note: separator is handled automatically by the library
       }
 
-      // Reading Time manual calculation only if 'Calculate automatically' is unchecked
       if (CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime) {
         window.AO3MenuHelpers.addToSharedMenu({
           id: "calc_reading_time",
@@ -1852,7 +1966,6 @@
         });
       }
 
-      // Quality Score manual calculation only if 'Calculate automatically' is unchecked
       if (CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore) {
         window.AO3MenuHelpers.addToSharedMenu({
           id: "calc_quality_score",
@@ -1861,8 +1974,6 @@
         });
       }
 
-      // Show manual 'Sort by Score' when 'Sort by score automatically' is unchecked,
-      // or when both 'Sort by score automatically' and 'Exclude my content' are checked and on my content pages
       const username = detectAndStoreUsername();
       const isWorksPage = /^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/.test(
         window.location.pathname
@@ -1931,7 +2042,6 @@
         }
       }
 
-      // Handle hiding metrics separately
       if (CONFIG.hideMetrics) {
         calculateMetrics(cachedElements.allStats, false, false);
       }
@@ -1948,14 +2058,9 @@
     }
   };
 
-  loadUserSettings();
-
-  // Only inject icon styles if icons are enabled
   if (CONFIG.useIcons) {
     addIconStyles();
   }
-
-  // Script initialization complete
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

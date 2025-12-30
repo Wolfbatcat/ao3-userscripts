@@ -3,7 +3,7 @@
 // @version       4.0.1
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
-// @match         *://archiveofourown.org/tags/*/works*
+// @match         *://archiveofourown.org/tags/*
 // @match         *://archiveofourown.org/works
 // @match         *://archiveofourown.org/works?*
 // @match         *://archiveofourown.org/works/search*
