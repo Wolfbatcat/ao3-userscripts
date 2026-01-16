@@ -8,9 +8,6 @@
 // @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
 // @grant         none
 // @run-at        document-start
-// @namespace https://greasyfork.org/users/1498004
-// @downloadURL https://update.greasyfork.org/scripts/550537/AO3%3A%20Site%20Wizard.user.js
-// @updateURL https://update.greasyfork.org/scripts/550537/AO3%3A%20Site%20Wizard.meta.js
 // ==/UserScript==
 
 (function () {

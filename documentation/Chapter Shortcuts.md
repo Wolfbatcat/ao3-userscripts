@@ -32,6 +32,7 @@ Tired of extra clicks just to get to the latest chapter? This script adds handy 
 
 
 ### 📜 Check out my other scripts:
+
 - [AO3: Advanced Blocker](https://greasyfork.org/en/scripts/549942-ao3-advanced-blocker) - Block works on AO3 based on tags, authors, titles, word counts, language, completion status, and much more. 
 - [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537-ao3-site-wizard) - Customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 - [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820-ao3-skin-switcher) - Change skins from anywhere on AO3.

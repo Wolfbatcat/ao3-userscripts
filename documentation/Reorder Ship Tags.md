@@ -4,12 +4,26 @@ Automatically reorders relationship tags on work blurbs so romantic ships (/) al
 
 ---
 
-### ⚙️ How It Works
+## ✨ Features
 
 The script runs automatically on all AO3 work list pages:
 - Detects relationship tags containing `/` (romantic) or `&` (platonic)
 - Reorders them so romantic relationships appear first
 - Only processes works that have both types of relationships
+
+---
+
+### ⚙️ How to Use
+
+>  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
+
+
+1. Install with a userscript manager:  
+   - **Tampermonkey**
+     - [Chrome/Chromium](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)  
+     - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
+     - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
+     - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
 
 ---
 
