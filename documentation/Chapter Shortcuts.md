@@ -37,3 +37,5 @@ Tired of extra clicks just to get to the latest chapter? This script adds handy 
 - [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820-ao3-skin-switcher) - Change skins from anywhere on AO3.
 - [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/549777-ao3-reading-time-quality-score) - Adds reading time estimates and quality indicators to works.
 - [AO3: No Re-Kudos](https://greasyfork.org/en/scripts/551623-ao3-no-re-kudos) - Hide kudos button if you've already left kudos.
+- [AO3: Reorder Ship Tags](https://greasyfork.org/en/scripts/562812-ao3-reorder-ship-tags) - Automatically reorder romantic ships (/) before platonic ships (&).
+- [AO3: Auto Pseud](https://greasyfork.org/en/scripts/556232-ao3-auto-pseud) - Auto-select pseuds based on fandom when commenting and bookmarking.
