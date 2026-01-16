@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
-// @version       3.6
+// @version       3.7
 // @description   Make AO3 easier to read: customize fonts and sizes, set site colors, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author        Blackbatcat
 // @match         *://archiveofourown.org/*
@@ -8,6 +8,9 @@
 // @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
 // @grant         none
 // @run-at        document-start
+// @namespace https://greasyfork.org/users/1498004
+// @downloadURL https://update.greasyfork.org/scripts/550537/AO3%3A%20Site%20Wizard.user.js
+// @updateURL https://update.greasyfork.org/scripts/550537/AO3%3A%20Site%20Wizard.meta.js
 // ==/UserScript==
 
 (function () {
@@ -118,6 +121,16 @@
           max-width: ${paragraphWidthPercent}vw !important;
           font-size: ${paragraphFontSizePercent}% !important;
         }
+        #chapters .userstuff,
+        #chapters .userstuff p,
+        #chapters .userstuff li,
+        #chapters .userstuff blockquote,
+        .chapter .userstuff,
+        .chapter .userstuff p,
+        .chapter .userstuff li,
+        .chapter .userstuff blockquote {
+          font-size: inherit !important;
+        }
         #workskin p {
           margin-bottom: ${paragraphGap}em !important;
         }
@@ -225,11 +238,27 @@
       if (headerFontFamily) {
         rules.push(
           `#workskin:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6),
-           #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(h1 *):not(h2 *):not(h3 *):not(h4 *):not(h5 *):not(h6 *)${textareaExclusion} { font-family: ${paragraphFontFamily} !important; }`
+           #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(h1 *):not(h2 *):not(h3 *):not(h4 *):not(h5 *):not(h6 *)${textareaExclusion},
+           #chapters .userstuff,
+           #chapters .userstuff p,
+           #chapters .userstuff li,
+           #chapters .userstuff blockquote,
+           .chapter .userstuff,
+           .chapter .userstuff p,
+           .chapter .userstuff li,
+           .chapter .userstuff blockquote { font-family: ${paragraphFontFamily} !important; }`
         );
       } else {
         rules.push(
-          `#workskin, #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var)${textareaExclusion} { font-family: ${paragraphFontFamily} !important; }`
+          `#workskin, #workskin *:not(code):not(pre):not(tt):not(kbd):not(samp):not(var)${textareaExclusion},
+           #chapters .userstuff,
+           #chapters .userstuff p,
+           #chapters .userstuff li,
+           #chapters .userstuff blockquote,
+           .chapter .userstuff,
+           .chapter .userstuff p,
+           .chapter .userstuff li,
+           .chapter .userstuff blockquote { font-family: ${paragraphFontFamily} !important; }`
         );
       }
     }
