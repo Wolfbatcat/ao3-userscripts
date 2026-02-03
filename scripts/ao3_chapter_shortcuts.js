@@ -25,6 +25,12 @@
   const DEFAULT_CHAPTER_SHORTCUTS_CONFIG = {
     lastChapterSymbol: "»",
     hideMenuOptions: false,
+    addBottomButtons: false,
+    bottomChapterButtons: true,
+    bottomEntireWork: false,
+    bottomChapterIndex: false,
+    bottomShare: false,
+    bottomDownload: false,
   };
   let CHAPTER_SHORTCUTS_CONFIG = { ...DEFAULT_CHAPTER_SHORTCUTS_CONFIG };
 
@@ -32,10 +38,13 @@
     try {
       const saved = localStorage.getItem(CHAPTER_SHORTCUTS_CONFIG_KEY);
       if (saved) {
-        CHAPTER_SHORTCUTS_CONFIG = {
-          ...DEFAULT_CHAPTER_SHORTCUTS_CONFIG,
-          ...JSON.parse(saved),
-        };
+        const parsed = JSON.parse(saved);
+        CHAPTER_SHORTCUTS_CONFIG = { ...DEFAULT_CHAPTER_SHORTCUTS_CONFIG };
+        for (const key in DEFAULT_CHAPTER_SHORTCUTS_CONFIG) {
+          if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+            CHAPTER_SHORTCUTS_CONFIG[key] = parsed[key];
+          }
+        }
       }
     } catch (e) {
       console.error("Error loading config:", e);
@@ -115,11 +124,69 @@
     // Create hide menu checkbox
     const hideMenuCheckbox = helpers.createCheckbox({
       id: "hide-menu-option",
-      label: "Hide menu option",
+      label: "Show menu on homepage only",
       checked: CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions,
       tooltip: "When checked, the 'Chapter Shortcuts' menu item will only appear on the main AO3 page to reduce menu clutter, but the script will still work on all pages.",
     });
     dialog.appendChild(hideMenuCheckbox);
+
+    // Create add bottom buttons checkbox with nested options
+    const bottomButtonsSubsettings = helpers.createSubsettings();
+
+    // Chapter Buttons (First/Last)
+    const chapterButtonsCheckbox = helpers.createCheckbox({
+      id: "bottom-chapter-buttons",
+      label: "Chapter Buttons (First/Last)",
+      checked: CHAPTER_SHORTCUTS_CONFIG.bottomChapterButtons,
+      tooltip: "Show First and Last Chapter buttons at the bottom.",
+    });
+    bottomButtonsSubsettings.appendChild(chapterButtonsCheckbox);
+
+    // Entire Work
+    const entireWorkCheckbox = helpers.createCheckbox({
+      id: "bottom-entire-work",
+      label: "Entire Work",
+      checked: CHAPTER_SHORTCUTS_CONFIG.bottomEntireWork,
+      tooltip: "Show 'Entire Work' button at the bottom.",
+    });
+    bottomButtonsSubsettings.appendChild(entireWorkCheckbox);
+
+    // Chapter Index
+    const chapterIndexCheckbox = helpers.createCheckbox({
+      id: "bottom-chapter-index",
+      label: "Chapter Index",
+      checked: CHAPTER_SHORTCUTS_CONFIG.bottomChapterIndex,
+      tooltip: "Show 'Chapter Index' button at the bottom.",
+    });
+    bottomButtonsSubsettings.appendChild(chapterIndexCheckbox);
+
+    // Share
+    const shareCheckbox = helpers.createCheckbox({
+      id: "bottom-share",
+      label: "Share",
+      checked: CHAPTER_SHORTCUTS_CONFIG.bottomShare,
+      tooltip: "Show 'Share' button at the bottom.",
+    });
+    bottomButtonsSubsettings.appendChild(shareCheckbox);
+
+    // Download
+    const downloadCheckbox = helpers.createCheckbox({
+      id: "bottom-download",
+      label: "Download",
+      checked: CHAPTER_SHORTCUTS_CONFIG.bottomDownload,
+      tooltip: "Show 'Download' button at the bottom.",
+    });
+    bottomButtonsSubsettings.appendChild(downloadCheckbox);
+
+    // Main checkbox with nested options
+    const addBottomCheckbox = helpers.createConditionalCheckbox({
+      id: "add-bottom-buttons",
+      label: "Add buttons to page bottom",
+      checked: CHAPTER_SHORTCUTS_CONFIG.addBottomButtons,
+      tooltip: "Show additional navigation and action buttons at the bottom of the page.",
+      subsettings: bottomButtonsSubsettings,
+    });
+    dialog.appendChild(addBottomCheckbox);
 
     // Create button group
     const buttons = helpers.createButtonGroup([
@@ -128,9 +195,14 @@
         id: "chapter-shortcuts-save",
         primary: true,
         onClick: () => {
-          CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol =
-            helpers.getValue("custom-symbol") || "»";
+          CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol = helpers.getValue("custom-symbol") || "»";
           CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions = helpers.getValue("hide-menu-option");
+          CHAPTER_SHORTCUTS_CONFIG.addBottomButtons = helpers.getValue("add-bottom-buttons");
+          CHAPTER_SHORTCUTS_CONFIG.bottomChapterButtons = helpers.getValue("bottom-chapter-buttons");
+          CHAPTER_SHORTCUTS_CONFIG.bottomEntireWork = helpers.getValue("bottom-entire-work");
+          CHAPTER_SHORTCUTS_CONFIG.bottomChapterIndex = helpers.getValue("bottom-chapter-index");
+          CHAPTER_SHORTCUTS_CONFIG.bottomShare = helpers.getValue("bottom-share");
+          CHAPTER_SHORTCUTS_CONFIG.bottomDownload = helpers.getValue("bottom-download");
           saveChapterShortcutsConfig();
           dialog.remove();
           addChapterButtons(true);
@@ -178,7 +250,7 @@
     // Remove any previous custom links/buttons if rerendering
     if (forceRerender) {
       document
-        .querySelectorAll("#go_to_last_chap, #go_to_first_chap")
+        .querySelectorAll("#go_to_last_chap, #go_to_first_chap, #go_to_last_chap_bottom, #go_to_first_chap_bottom")
         .forEach((el) => el.remove());
       document
         .querySelectorAll(".ao3-last-chapter-link")
@@ -214,6 +286,114 @@
           window.location.href = `/works/${getStoryId()}`;
         });
         workNav.prepend(firstChapterBtn);
+      }
+    }
+
+    // Add chapter buttons to bottom actions if enabled
+    if (CHAPTER_SHORTCUTS_CONFIG.addBottomButtons) {
+      const actionsUl = document.querySelector('#feedback ul.actions');
+      if (actionsUl) {
+        const topLi = actionsUl.querySelector('li a[href="#main"]');
+        // Insert Chapter Buttons (First/Last) immediately after Top button
+        if (topLi && topLi.parentElement && CHAPTER_SHORTCUTS_CONFIG.bottomChapterButtons) {
+          let insertAfter = topLi.parentElement;
+          // Add Last Chapter button
+          if (document.querySelector(".next")) {
+            const lastChapterBtn = document.createElement("li");
+            lastChapterBtn.id = "go_to_last_chap_bottom";
+            lastChapterBtn.innerHTML = `<a>Last Chapter</a>`;
+            lastChapterBtn.addEventListener("click", function () {
+              const select = document.querySelector("#selected_id");
+              if (select && select.options.length > 0) {
+                const lastChapterId = select.options[select.options.length - 1].value;
+                window.location.href = `/works/${getStoryId()}/chapters/${lastChapterId}`;
+              }
+            });
+            insertAfter.insertAdjacentElement('afterend', lastChapterBtn);
+            insertAfter = lastChapterBtn;
+          }
+          // Add First Chapter button
+          if (document.querySelector(".previous")) {
+            const firstChapterBtn = document.createElement("li");
+            firstChapterBtn.id = "go_to_first_chap_bottom";
+            firstChapterBtn.innerHTML = "<a>First Chapter</a>";
+            firstChapterBtn.addEventListener("click", function () {
+              window.location.href = `/works/${getStoryId()}`;
+            });
+            insertAfter.insertAdjacentElement('afterend', firstChapterBtn);
+            insertAfter = firstChapterBtn;
+          }
+
+          // Now insert non-chapter buttons after the Chapter buttons
+          const nonChapterButtons = [];
+          if (CHAPTER_SHORTCUTS_CONFIG.bottomEntireWork) {
+            const entireWorkBtn = document.createElement("li");
+            entireWorkBtn.id = "go_to_entire_work_bottom";
+            entireWorkBtn.innerHTML = `<a>Entire Work</a>`;
+            entireWorkBtn.addEventListener("click", function () {
+              window.location.href = `/works/${getStoryId()}?view_full_work=true`;
+            });
+            nonChapterButtons.push(entireWorkBtn);
+          }
+          if (CHAPTER_SHORTCUTS_CONFIG.bottomChapterIndex) {
+            const chapterIndexBtn = document.createElement("li");
+            chapterIndexBtn.id = "go_to_chapter_index_bottom";
+            chapterIndexBtn.innerHTML = `<a>Chapter Index</a>`;
+            chapterIndexBtn.addEventListener("click", function () {
+              window.location.href = `/works/${getStoryId()}/navigate`;
+            });
+            nonChapterButtons.push(chapterIndexBtn);
+          }
+          if (CHAPTER_SHORTCUTS_CONFIG.bottomShare) {
+            const shareBtn = document.createElement("li");
+            shareBtn.id = "go_to_share_bottom";
+            shareBtn.innerHTML = `<a>Share</a>`;
+            shareBtn.addEventListener("click", function () {
+              navigator.clipboard.writeText(window.location.href).then(() => {
+                shareBtn.querySelector('a').textContent = 'Copied!';
+                setTimeout(() => {
+                  shareBtn.querySelector('a').textContent = 'Share';
+                }, 1200);
+              });
+            });
+            nonChapterButtons.push(shareBtn);
+          }
+          if (CHAPTER_SHORTCUTS_CONFIG.bottomDownload) {
+            const downloadBtn = document.createElement("li");
+            downloadBtn.id = "go_to_download_bottom";
+            downloadBtn.innerHTML = `<a>Download</a>`;
+            downloadBtn.addEventListener("click", function () {
+              window.location.href = `/downloads/${getStoryId()}`;
+            });
+            nonChapterButtons.push(downloadBtn);
+          }
+
+          // Find Previous/Next/Bookmark/other AO3 buttons to insert before
+          let insertBefore = null;
+          // Find Previous Chapter button
+          const prevLi = Array.from(actionsUl.querySelectorAll('li')).find(li => {
+            const a = li.querySelector('a');
+            return a && a.textContent.includes('Previous Chapter');
+          });
+          if (prevLi) {
+            insertBefore = prevLi;
+          } else {
+            // Fallback: find Bookmark button
+            const bookmarkLi = actionsUl.querySelector('li .bookmark_form_placement_open')?.closest('li');
+            if (bookmarkLi) {
+              insertBefore = bookmarkLi;
+            }
+          }
+
+          // Insert each non-chapter button in order
+          nonChapterButtons.forEach((btn) => {
+            if (insertBefore) {
+              actionsUl.insertBefore(btn, insertBefore);
+            } else {
+              actionsUl.appendChild(btn);
+            }
+          });
+        }
       }
     }
 

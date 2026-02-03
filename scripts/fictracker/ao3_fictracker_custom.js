@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3 FicTracker
 // @author       infiniMotis
-// @version      1.6.6.2
+// @version      1.6.6.3
 // @namespace    https://github.com/infiniMotis/AO3-FicTracker
 // @description  Track your favorite, finished, to-read and disliked fanfics on AO3 with sync across devices. Customizable tags and highlights make it easy to manage and spot your tracked works. Full UI customization on the preferences page.
 // @license      GNU GPLv3
@@ -128,8 +128,8 @@
         syncWidgetOpacity: .5,
         exportStatusesConfig: true,
         collapseAndHideOnBookmarks: false,
-        displayMyNotesButton: true
-
+        displayMyNotesButton: true,
+        displayOnPageSorting: true
     };
 
     // Toggle debug info
@@ -1507,6 +1507,10 @@
             // Listen for clicks on quick tag buttons
             this.setupQuickTagListener();
 
+            // Display on page sorting controls if enabled
+            if (settings.displayOnPageSorting) {
+                this.setupOnPageSorting();
+            }
         }
 
 
@@ -1746,7 +1750,107 @@
             }
         }
 
-        
+        // Setup on-page sorting functionality on own bookmarks page
+        setupOnPageSorting() {
+            if (isOwnBookmarksPage() && document.querySelector('form#bookmark-filters')) {
+                this.injectSortUI();
+                this.setupSortListener();
+            }
+        }
+
+        // Inject sorting UI into the filters form
+        injectSortUI() {
+            const filtersForm = document.querySelector('form#bookmark-filters fieldset dl');
+            if (filtersForm) {
+                const sortUI = `
+                    <dt class="sort">
+                        <label style="cursor: help;" for="ft_onpage_sort" title="AO3's regular sort only works on works search, not bookmarks. This on-page sort lets you reorder the items currently loaded on this page. Note: it only sorts the works visible on this page, not across multiple pages.">Sort by (on-page)</label>
+                    </dt>
+                    <dd class="sort" style="margin-bottom: 30px;">
+                        <select id="ft_onpage_sort">
+                            <option value="">-</option>
+                            <option value="authors_to_sort_on">Creator</option>
+                            <option value="title_to_sort_on">Title</option>
+                            <option value="revised_at">Date Updated</option>
+                            <option value="word_count">Word Count</option>
+                            <option value="hits">Hits</option>
+                            <option value="kudos_count">Kudos</option>
+                            <option value="comments_count">Comments</option>
+                            <option value="bookmarks_count">Bookmarks</option>
+                        </select>
+                    </dd>
+                `;
+                filtersForm.insertAdjacentHTML('afterbegin', sortUI);
+            }
+        }
+
+        // Setup listener for sort selection changes
+        setupSortListener() {
+            const sortSelect = document.getElementById('ft_onpage_sort');
+            if (sortSelect) {
+                sortSelect.addEventListener('change', (event) => {
+                    const sortBy = event.target.value;
+                    if (sortBy) {
+                        this.sortBookmarks(sortBy);
+                    }
+                });
+            }
+        }
+
+        // Sort bookmarks on the page based on selected criteria
+        sortBookmarks(sortBy) {
+            const container = document.querySelector('ol.bookmark.index.group');
+            if (!container) return;
+
+            const bookmarks = Array.from(container.querySelectorAll('li.bookmark.blurb'));
+
+            const getSortableValue = (bookmark, criteria) => {
+                let value;
+                switch (criteria) {
+                    case 'authors_to_sort_on':
+                        value = bookmark.querySelector('a[rel="author"]')?.textContent.trim().toLowerCase();
+                        return value || '';
+                    case 'title_to_sort_on':
+                        value = bookmark.querySelector('h4.heading a')?.textContent.trim().toLowerCase();
+                        return value || '';
+                    case 'revised_at':
+                        value = bookmark.querySelector('p.datetime').textContent.trim();
+                        return new Date(bookmark.querySelector('p.datetime').textContent.trim()).getTime() || 0;
+                    case 'word_count':
+                        value = bookmark.querySelector('dd.words')?.textContent.replace(/,/g, '');
+                        return parseInt(value) || 0;
+                    case 'hits':
+                        value = bookmark.querySelector('dd.hits')?.textContent.replace(/,/g, '');
+                        return parseInt(value) || 0;
+                    case 'kudos_count':
+                        value = bookmark.querySelector('dd.kudos a')?.textContent.replace(/,/g, '');
+                        return parseInt(value) || 0;
+                    case 'comments_count':
+                        value = bookmark.querySelector('dd.comments a')?.textContent.replace(/,/g, '');
+                        return parseInt(value) || 0;
+                    case 'bookmarks_count':
+                        value = bookmark.querySelector('dd.bookmarks a')?.textContent.replace(/,/g, '');
+                        return parseInt(value) || 0;
+                    default:
+                        return 0;
+                }
+            };
+
+            bookmarks.sort((a, b) => {
+                const valA = getSortableValue(a, sortBy);
+                const valB = getSortableValue(b, sortBy);
+
+                if (typeof valA === 'string') {
+                    return valA.localeCompare(valB);
+                } else {
+                    // For numeric values, sort descending (more is better)
+                    return valB - valA;
+                }
+            });
+
+            // Re-append sorted bookmarks
+            bookmarks.forEach(bookmark => container.appendChild(bookmark));
+        }
 
 
     }
@@ -1917,6 +2021,13 @@
                             <label for="toggle_displayMyNotesBtn" 
                                 title="Show or hide the 'My Notes' button in the navigation bar for quick access/search">
                                 Display "My Notes" button at the navigation bar
+                            </label>
+                        </li>
+                        <li>
+                            <input type="checkbox" id="toggle_displayOnPageSorting" v-model="ficTrackerSettings.displayOnPageSorting">
+                            <label for="toggle_displayOnPageSorting" 
+                                title="On-page sort lets you dynamically sort the works currently loaded on page. Note: it only sorts the works visible on this page, not across multiple pages">
+                                Display on-page sort conrols
                             </label>
                         </li>
                         <li>
@@ -2147,17 +2258,14 @@
                     const hasBorder = borderSize > 0;
                     const bOpacity = Math.round((s?.borderOpacity ?? 255)).toString(16)
 
-                    const style = {
+                    return {
                         height: '50px',
+                        border: hasBorder ? `${s.borderSize}px solid ${s.highlightColor + bOpacity}` : 'none',
+                        boxShadow: hasBorder ?
+                            `0 0 10px ${s.highlightColor + bOpacity}, 0 0 20px ${s.highlightColor + bOpacity}` :
+                            'none',
                         opacity: s.opacity
                     };
-                    
-                    if (hasBorder) {
-                        style.border = `${s.borderSize}px solid ${s.highlightColor + bOpacity}`;
-                        style.boxShadow = `0 0 10px ${s.highlightColor + bOpacity}, 0 0 20px ${s.highlightColor + bOpacity}`;
-                    }
-                    
-                    return style;
                 },
 
                 get lastSyncTimeFormatted() {
@@ -2836,11 +2944,10 @@
                         );
                     }
                 });
+                DEBUG && console.log('[FicTracker] Successfully added dropdown options!');
             } else {
                 DEBUG && console.warn('[FicTracker] Cannot parse the username!');
             }
-
-            DEBUG && console.log('[FicTracker] Successfully added dropdown options!');
         }
 
 
@@ -2888,7 +2995,7 @@
 
             // Handler for fanfic pages (chapters, entire work, one shot)
             urlHandler.addHandler(
-                [/\/works\/.*(?:chapters|view_full_work)/, /works\/\d+(#\w+-?\w*)?$/, /\/chapters\/\d+\?show_comments/],
+                [/\/works\/.*(?:chapters|view_full_work)/, /works\/\d+(#\w+-?\w*)?(\?.*)?$/, /\/chapters\/\d+\?show_comments/],
                 () => {
                     const bookmarkManager = new BookmarkManager("https://archiveofourown.org/");
                 }
