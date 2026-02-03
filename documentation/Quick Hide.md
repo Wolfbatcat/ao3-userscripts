@@ -11,8 +11,24 @@ Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state i
 - **Hide/Show Bookmarks:** Collapse bookmarks on bookmark pages or lists.
 - **Hide/Show Comments:** Collapse individual comments or entire threads on works.
 - **Collapse/Expand All:** Use the buttons to hide or show all items at once.
-- **Multiple Visual Styles:** Choose from default, minimal, or FicTracker collapse styles to customize how collapsed items appear.
+- **Multiple Visual Styles:** Choose from default, minimal, or FicTracker collapse styles to customize how collapsed items appear. Change opacity of faded works.
 - **Remembers State:** Hidden items stay hidden even after reloads or returning to the page.
+
+---
+
+## 🎨 Visual Styles
+
+![Default Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-0.png)
+
+*Default: Shows title, author, date, and ratings.*
+
+![Minimal Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-1.png)
+
+*Minimal: Shows only title, author, and date.*
+
+![FicTracker Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-2.png)
+
+*FicTracker: Shows title, author, date, ratings, stats, and [FicTracker](https://greasyfork.org/en/scripts/513435-ao3-fictracker) notes (if enabled).*
 
 ---
 
