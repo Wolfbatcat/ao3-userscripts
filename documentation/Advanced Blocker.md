@@ -10,7 +10,7 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 ### **Tag Filtering**
 - **Blacklist Tags** – Hide works containing specific tags (ratings, warnings, fandoms, ships, characters, freeforms, and more).
 - **Whitelist Tags** – Always show works even if they match the blacklist.
-- **Highlight Tags** – Make works with certain tags stand out with custom colors.
+- **Highlight Tags** – Make works with certain tags stand out with custom colors. Optionally, bold highlighted tags.
 - **Wildcard Support** – Use `*` to match partial tags. For example: `Abandoned*` matches "Abandoned Work" and "Abandoned WIP."
 - **Conditional Blocking** – Block tags based on the presence or absence of other tags:
   - `unless:{tag}` – Block UNLESS the condition tag is present. Example: `F/M unless:{Multi}` blocks F/M works that don't have Multi.
@@ -90,13 +90,18 @@ Block works on AO3 based on tags, authors, titles, word counts, and more. Filter
 **Conditional Blocking Syntax**
 - Use `Tag unless:{ConditionTag}` or `Tag with:{ConditionTag}` to create smart filters
 - Works in both tag blacklists and whitelist.
-- **unless** – Blocks the tag UNLESS the condition tag is also present
-- **with** – Blocks the tag ONLY IF the condition tag is also present
-- Examples:
+- **unless** – Blocks when the condition tag is **NOT** present (blocks unless condition exists)
+- **with** – Blocks when the condition tag **IS** present (blocks only with condition)
+- Wildcards are supported in both the main tag and the condition tag
+- Blacklist Examples:
   - `F/M unless:{Multi}` – Blocks F/M works that don't have Multi
   - `Angst unless:{Fluff}` – Blocks angsty works that don't have Fluff
   - `Major Character Death with:{Unhappy Ending}` – Only blocks Major Character Death when it's tagged as Unhappy Ending
   - `Explicit with:{Dead Dove: Do Not Eat}` – Only blocks Explicit works that also have the Dead Dove tag
+  - `Angst unless:{*Happy*Ending*}` – Blocks Angst works unless they have any tag containing "Happy" (e.g., "Happy Ending", "Eventual Happy Ending")
+- Whitelist Examples:
+  - `Angst with:{*Fix-It*}` – Always shows Angst works that also have any "Fix" tag (e.g., "Fix-It", "Time Travel Fix-It"), even if Angst is blacklisted
+  - `Major Character Death unless:{No Happy Ending}` – Always shows MCD works unless they have "No Happy Ending", overriding the blacklist
 
 **Hide Completely Toggles**
 - All filters have an eye icon (👁️) next to the input field. Clicking this toggle switches between showing a placeholder (which can be clicked to reveal the blocked work) and hiding the work completely. This allows fine-grained control over how different types of blocks are displayed.
