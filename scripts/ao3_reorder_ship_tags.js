@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Reorder Ship Tags
-// @version       1.0.1
+// @version       1.0.2
 // @description   Reorders relationship tags on blurbs so platonic ships (&) appear after romantic ships (/)
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*
@@ -24,26 +24,35 @@
     if (items.length <= 1) return;
 
     const romantic = [];
+    const minorOrBackground = [];
     const platonic = [];
     let needsReorder = false;
 
     for (let i = 0; i < items.length; i++) {
       const text = items[i].textContent;
-      if (text.includes("/")) {
+      const link = items[i].querySelector('a');
+      const href = link ? link.getAttribute('href') : '';
+
+      if (href.includes('/tags/Minor%20or%20Background%20Relationship(s)/works')) {
         if (platonic.length > 0) needsReorder = true;
+        minorOrBackground.push(items[i]);
+      } else if (text.includes("/")) {
+        if (platonic.length > 0 || minorOrBackground.length > 0) needsReorder = true;
         romantic.push(items[i]);
       } else if (text.includes("&")) {
         platonic.push(items[i]);
       }
     }
 
-    if (!needsReorder || romantic.length === 0 || platonic.length === 0) return;
+    if (!needsReorder || (romantic.length === 0 && minorOrBackground.length === 0) || platonic.length === 0) return;
 
     romantic.forEach((li) => li.remove());
+    minorOrBackground.forEach((li) => li.remove());
     platonic.forEach((li) => li.remove());
 
     const fragment = document.createDocumentFragment();
     romantic.forEach((li) => fragment.appendChild(li));
+    minorOrBackground.forEach((li) => fragment.appendChild(li));
     platonic.forEach((li) => fragment.appendChild(li));
 
     if (insertBefore) {
