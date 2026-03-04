@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Reorder Ship Tags
-// @version       1.0.2
+// @version       1.0.3
 // @description   Reorders relationship tags on blurbs so platonic ships (&) appear after romantic ships (/)
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/tags/*
@@ -44,7 +44,7 @@
       }
     }
 
-    if (!needsReorder || (romantic.length === 0 && minorOrBackground.length === 0) || platonic.length === 0) return;
+    if (!needsReorder || (romantic.length === 0 && minorOrBackground.length === 0)) return;
 
     romantic.forEach((li) => li.remove());
     minorOrBackground.forEach((li) => li.remove());
