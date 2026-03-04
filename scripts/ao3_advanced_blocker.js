@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       4.0.9
+// @version       4.1.0
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
+// @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*
 // @match         *://archiveofourown.org/works*
 // @match         *://archiveofourown.org/works?*
@@ -12,7 +13,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
+// @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -73,7 +74,7 @@
   const normalizationCache = new Map();
 
   const CSS_NAMESPACE = "ao3-blocker";
-  const VERSION = "4.0.9"; // Keep in sync with @version in userscript header
+  const VERSION = "4.1.0"; // Keep in sync with @version in userscript header
   const WORKS_PAGE_REGEX =
     /^https?:\/\/archiveofourown\.org\/(works|chapters)\/\d+/;
 
@@ -107,6 +108,7 @@
     primaryCharpad: "5",
     pauseBlocking: false,
     hideCompletelyRules: {},
+    hideMenu: false,
     quickAddKey: "Alt",
     enableStrictTagBlocking: false,
     strictTagBlacklist: "",
@@ -165,6 +167,7 @@
       "enableStrictTagBlocking",
       "boldHighlightedTags",
       "disableCollapseTransitions",
+      "hideMenu",
     ];
     boolFields.forEach((field) => {
       sanitized[field] =
@@ -382,7 +385,11 @@
     if (hasWildcard) {
       const parts = pattern.split("*").map((part) => {
         const normalized = normalizeText(part);
-        return normalized.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+        const escaped = normalized.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+        if (!escaped) return escaped;
+        const prefix = /^[a-z0-9]/.test(escaped) ? "(?<![a-z0-9])" : "";
+        const suffix = /[a-z0-9]$/.test(escaped) ? "(?![a-z0-9])" : "";
+        return prefix + escaped + suffix;
       });
       const regexPattern = parts.join(".*");
       const normalized = normalizeText(pattern.replace(/\*/g, ""));
@@ -1302,6 +1309,7 @@
         pauseBlocking: !!config.pauseBlocking,
         boldHighlightedTags: !!config.boldHighlightedTags,
         disableCollapseTransitions: !!config.disableCollapseTransitions,
+        hideMenu: !!config.hideMenu,
         hideCompletelyRules: config.hideCompletelyRules || {},
         username: config.username || null,
         // Store raw strings for cache validation
@@ -1356,6 +1364,8 @@
   function initSharedMenu() {
     if (WORKS_PAGE_REGEX.test(window.location.href)) return;
 
+    const config = window.ao3Blocker.config;
+
     let menuContainer = document.getElementById("scriptconfig");
 
     if (!menuContainer) {
@@ -1377,12 +1387,11 @@
 
     const menu = menuContainer.querySelector(".dropdown-menu");
     if (menu) {
-      const config = window.ao3Blocker.config;
       const username = config.username || detectUsername(config);
       const isOnMyContent =
         config.disableOnMyContent && username && isMyContentPage(username);
 
-      if (!menu.querySelector("#opencfg_advanced_blocker")) {
+      if (!menu.querySelector("#opencfg_advanced_blocker") && (!config.hideMenu || window.AO3MenuHelpers?.isAO3Homepage())) {
         const settingsItem = document.createElement("li");
         settingsItem.innerHTML =
           '<a href="javascript:void(0);" id="opencfg_advanced_blocker">Advanced Blocker</a>';
@@ -1891,10 +1900,20 @@
     );
     displaySection.appendChild(displayRow2);
 
+    const hideMenuCheckbox = window.AO3MenuHelpers.createHideMenuCheckbox({
+      id: "hide-menu-checkbox",
+      checked: config.hideMenu,
+    });
+
     const displayRow3 = document.createElement("div");
     displayRow3.className = "ao3mh-row";
-    displayRow3.appendChild(quickAddKeyInput);
+    displayRow3.appendChild(hideMenuCheckbox);
     displaySection.appendChild(displayRow3);
+
+    const displayRow4 = document.createElement("div");
+    displayRow4.className = "ao3mh-row";
+    displayRow4.appendChild(quickAddKeyInput);
+    displaySection.appendChild(displayRow4);
 
     dialog.appendChild(displaySection);
 
@@ -2113,6 +2132,7 @@
         enableHighlightingOnMyContent: window.AO3MenuHelpers.getValue(
           "enable-highlighting-on-my-content-checkbox",
         ),
+        hideMenu: window.AO3MenuHelpers.getValue("hide-menu-checkbox"),
         username: config.username || null,
         primaryRelationships:
           window.AO3MenuHelpers.getValue("primary-relationships-input") || "",

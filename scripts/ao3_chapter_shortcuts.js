@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.5
+// @version       2.7
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
-// @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
+// @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7
 // @grant         none
 // @namespace https://greasyfork.org/users/1498004
 // ==/UserScript==
@@ -35,6 +35,9 @@
     lastChapterSymbol: "»",
     hideMenuOptions: false,
     enableBottomButtons: true,
+    hideEntireWorkButton: false,
+    hideShareButton: false,
+    hideDownloadButton: false,
   };
   let CHAPTER_SHORTCUTS_CONFIG = { ...DEFAULT_CHAPTER_SHORTCUTS_CONFIG };
 
@@ -127,16 +130,46 @@
       id: "enable-bottom-buttons",
       label: "Enable bottom navigation buttons",
       checked: CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons,
-      tooltip: "When checked, First/Last Chapter buttons will also appear in the bottom navigation bar.",
     });
     dialog.appendChild(enableBottomCheckbox);
 
+    // Create hide buttons subsettings
+    const hideButtonsSubsettings = helpers.createSubsettings();
+
+    const hideEntireWorkCheckbox = helpers.createCheckbox({
+      id: "hide-entire-work-button",
+      label: "Entire Work",
+      checked: CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton,
+    });
+    hideButtonsSubsettings.appendChild(hideEntireWorkCheckbox);
+
+    const hideShareCheckbox = helpers.createCheckbox({
+      id: "hide-share-button",
+      label: "Share",
+      checked: CHAPTER_SHORTCUTS_CONFIG.hideShareButton,
+    });
+    hideButtonsSubsettings.appendChild(hideShareCheckbox);
+
+    const hideDownloadCheckbox = helpers.createCheckbox({
+      id: "hide-download-button",
+      label: "Download",
+      checked: CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton,
+    });
+    hideButtonsSubsettings.appendChild(hideDownloadCheckbox);
+
+    // Create hide buttons conditional checkbox with nested options
+    const hideButtonsCheckbox = helpers.createConditionalCheckbox({
+      id: "hide-buttons-option",
+      label: "Hide buttons on work pages",
+      checked: CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton || CHAPTER_SHORTCUTS_CONFIG.hideShareButton || CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton,
+      subsettings: hideButtonsSubsettings,
+    });
+    dialog.appendChild(hideButtonsCheckbox);
+
     // Create hide menu checkbox
-    const hideMenuCheckbox = helpers.createCheckbox({
+    const hideMenuCheckbox = helpers.createHideMenuCheckbox({
       id: "hide-menu-option",
-      label: "Hide menu option",
       checked: CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions,
-      tooltip: "When checked, the 'Chapter Shortcuts' menu item will only appear on the main AO3 page to reduce menu clutter, but the script will still work on all pages.",
     });
     dialog.appendChild(hideMenuCheckbox);
 
@@ -151,9 +184,13 @@
             helpers.getValue("custom-symbol") || "»";
           CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions = helpers.getValue("hide-menu-option");
           CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons = helpers.getValue("enable-bottom-buttons");
+          CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton = helpers.getValue("hide-entire-work-button");
+          CHAPTER_SHORTCUTS_CONFIG.hideShareButton = helpers.getValue("hide-share-button");
+          CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton = helpers.getValue("hide-download-button");
           saveChapterShortcutsConfig();
           dialog.remove();
           addChapterButtons(true);
+          hideWorkPageButtons();
         },
       },
       {
@@ -173,6 +210,32 @@
     dialog.addEventListener("click", (e) => {
       if (e.target === dialog) dialog.remove();
     });
+  }
+
+  // --- HIDE WORK PAGE BUTTONS ---
+  function hideWorkPageButtons() {
+    // Hide Entire Work button
+    if (CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton) {
+      document.querySelectorAll("li.chapter.entire").forEach((el) => {
+        el.style.display = "none";
+      });
+    }
+
+    // Hide Share button
+    if (CHAPTER_SHORTCUTS_CONFIG.hideShareButton) {
+      document
+        .querySelectorAll('a.modal[title="Share Work"]')
+        .forEach((el) => {
+          el.parentElement.style.display = "none";
+        });
+    }
+
+    // Hide Download button
+    if (CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton) {
+      document.querySelectorAll("li.download").forEach((el) => {
+        el.style.display = "none";
+      });
+    }
   }
 
   // --- GET STORY ID ---
@@ -210,7 +273,7 @@
     const navList = document.querySelector("ul.work.navigation.actions");
     const indexList = document.querySelector("ul.index");
     const hasNext = navList && navList.querySelector("li.next");
-    const hasPrev = document.querySelector(".previous");
+    const hasPrev = navList && navList.querySelector("li.previous");
     if (workNav && !indexList) {
       // Insert First Chapter button before Last Chapter button (top nav)
       let firstChapterBtn = null;
@@ -326,8 +389,7 @@
   console.log("[AO3: Chapter Shortcuts] loaded.");
 
   // Add to shared menu using library helper (conditionally)
-  const isMainPage = window.location.href === "https://archiveofourown.org/" || window.location.href === "https://archiveofourown.org";
-  if (!CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions || isMainPage) {
+  if (!CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions || helpers.isAO3Homepage()) {
     helpers.addToSharedMenu({
       id: "opencfg_chapter_shortcuts",
       text: "Chapter Shortcuts",
@@ -338,10 +400,12 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       addChapterButtons();
+      hideWorkPageButtons();
       setupBottomNavObserver();
     });
   } else {
     addChapterButtons();
+    hideWorkPageButtons();
     setupBottomNavObserver();
   }
 
@@ -364,6 +428,7 @@
                   const topLi = topLink.parentElement;
                   const navList = document.querySelector("ul.work.navigation.actions");
                   const hasNext = navList && navList.querySelector("li.next");
+                  const hasPrev = navList && navList.querySelector("li.previous");
 
                   // Add First Chapter button if not on the first chapter
                   if (hasPrev) {

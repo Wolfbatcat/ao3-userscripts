@@ -1,17 +1,18 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.0.1
+// @version       1.0.3
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*
 // @match         *://archiveofourown.org/works*
+// @match         *://archiveofourown.org/chapters/*
 // @match         *://archiveofourown.org/users/*
 // @match         *://archiveofourown.org/collections/*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
+// @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -376,17 +377,14 @@
       }),
     );
 
-    behaviorSection.appendChild(
-      MH.createCheckbox({
-        id: "hideMenuOptions",
-        label: "Show menu on homepage only",
-        checked: SETTINGS.hideMenuOptions,
-        tooltip:
-          "Only show menu item on AO3 homepage to reduce clutter. Quick Hide still works everywhere.",
-      }),
-    );
+  behaviorSection.appendChild(
+    MH.createHideMenuCheckbox({
+      id: "hideMenuOptions",
+      checked: SETTINGS.hideMenuOptions,
+    }),
+  );
 
-    dialog.appendChild(behaviorSection);
+  dialog.appendChild(behaviorSection);
 
     dialog.appendChild(
       MH.createButtonGroup([
@@ -642,10 +640,7 @@
       return;
     }
 
-    const isMainPage =
-      window.location.href === "https://archiveofourown.org/" ||
-      window.location.href === "https://archiveofourown.org";
-    if (!SETTINGS.hideMenuOptions || isMainPage) {
+    if (!SETTINGS.hideMenuOptions || window.AO3MenuHelpers.isAO3Homepage()) {
       window.AO3MenuHelpers.addToSharedMenu({
         id: "collapsible-comments-settings",
         text: "Quick Hide",

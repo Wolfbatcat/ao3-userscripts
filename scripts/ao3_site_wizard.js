@@ -5,7 +5,7 @@
 // @author        BlackBatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
+// @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7
 // @grant         none
 // @run-at        document-start
 // ==/UserScript==
@@ -21,6 +21,7 @@
     paragraphTextAlign: "left",
     paragraphFontFamily: "",
     fixParagraphSpacing: true,
+    removeIndentation: false,
     paragraphGap: 1.286,
     siteFontFamily: "",
     siteFontWeight: "",
@@ -764,6 +765,34 @@ form.verbose legend,
     };
   })();
 
+  const removeParaIndentation = (() => {
+    return function () {
+      if (!WORKS_PAGE_REGEX.test(window.location.href)) return;
+
+      document
+        .querySelectorAll(
+          "#workskin .userstuff:not([data-formatter-indent-fixed])"
+        )
+        .forEach((userstuff) => {
+          userstuff.setAttribute("data-formatter-indent-fixed", "true");
+
+          userstuff.querySelectorAll("p").forEach((p) => {
+            // Walk into inline wrappers (span, em, strong, etc.) to find first text node
+            let node = p.firstChild;
+            while (node && node.nodeType === Node.ELEMENT_NODE && node.childNodes.length > 0) {
+              const tag = node.tagName.toLowerCase();
+              // Stop at block-level elements
+              if (["br", "hr", "div", "blockquote", "ul", "ol", "table"].includes(tag)) break;
+              node = node.firstChild;
+            }
+            if (node && node.nodeType === Node.TEXT_NODE) {
+              node.textContent = node.textContent.replace(/^[\u00A0 \t]+/, "");
+            }
+          });
+        });
+    };
+  })();
+
   // --- SETTINGS MENU ---
   function showFormatterMenu() {
     // Safety check: ensure library is loaded
@@ -909,6 +938,14 @@ form.verbose legend,
       tooltip: "Remove unnecessary blank space between paragraphs",
     });
     workSection.appendChild(fixSpacing);
+
+    const removeIndentation = window.AO3MenuHelpers.createCheckbox({
+      id: "remove-indentation-checkbox",
+      label: "Remove paragraph indentation",
+      checked: FORMATTER_CONFIG.removeIndentation,
+      tooltip: "Remove manual indentation (non-breaking spaces) added at the start of paragraphs by some authors.",
+    });
+    workSection.appendChild(removeIndentation);
 
     dialog.appendChild(workSection);
 
@@ -1212,6 +1249,9 @@ form.verbose legend,
       FORMATTER_CONFIG.fixParagraphSpacing =
         window.AO3MenuHelpers.getValue("fix-paragraph-spacing-checkbox") ??
         false;
+      FORMATTER_CONFIG.removeIndentation =
+        window.AO3MenuHelpers.getValue("remove-indentation-checkbox") ??
+        false;
       FORMATTER_CONFIG.headerFontFamily =
         window.AO3MenuHelpers.getValue("header-fontfamily-input") || "";
       FORMATTER_CONFIG.headerFontWeight =
@@ -1290,15 +1330,26 @@ form.verbose legend,
     }
   }
 
+  function runIndentRemovalIfEnabled() {
+    if (
+      FORMATTER_CONFIG.removeIndentation &&
+      WORKS_PAGE_REGEX.test(window.location.href)
+    ) {
+      removeParaIndentation();
+    }
+  }
+
   initStyles();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       runParagraphSpacingFixIfEnabled();
+      runIndentRemovalIfEnabled();
       initSharedMenu();
     });
   } else {
     runParagraphSpacingFixIfEnabled();
+    runIndentRemovalIfEnabled();
     initSharedMenu();
   }
 })();

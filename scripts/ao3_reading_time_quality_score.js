@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     4.0.3
+// @version     4.0.4
 // @author       BlackBatCat
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
+// @match       *://archiveofourown.org/
 // @match       *://archiveofourown.org/tags/*
 // @match       *://archiveofourown.org/works*
 // @match       *://archiveofourown.org/chapters/*
@@ -11,14 +12,14 @@
 // @match       *://archiveofourown.org/bookmarks*
 // @match       *://archiveofourown.org/series/*
 // @license     MIT
-// @require     https://update.greasyfork.org/scripts/554170/1693013/AO3%3A%20Menu%20Helpers%20Library%20v2.js?v=2.1.6
+// @require     https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7
 // @grant       none
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  const SCRIPT_VERSION = "4.0.3";
+  const SCRIPT_VERSION = "4.0.4";
 
   const DEFAULTS = {
     enableReadingTime: true,
@@ -236,8 +237,20 @@
   };
 
   const getWorkIdFromUrl = () => {
-    const match = window.location.href.match(/\/works\/(\d+)/);
-    return match ? match[1] : null;
+    // First try the URL (works for /works/* pages)
+    let match = window.location.href.match(/\/works\/(\d+)/);
+    if (match) return match[1];
+    
+    // If we're on a chapter page, check the subscription form's hidden input
+    const subInput = document.querySelector('input[name="subscription[subscribable_id]"]');
+    if (subInput && subInput.value) {
+      const workTypeInput = document.querySelector('input[name="subscription[subscribable_type]"]');
+      if (workTypeInput && workTypeInput.value === "Work") {
+        return subInput.value;
+      }
+    }
+    
+    return null;
   };
 
   const getNumberFromElement = (element) => {
