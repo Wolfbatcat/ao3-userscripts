@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.0.3
+// @version       1.0.5
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -45,6 +45,7 @@
     collapseStyle: "default", // "default", "minimal", "fictracker"
     collapsedOpacity: 0.4,
     hoverExpand: true,
+    overrideFicTrackerStyle: true,
     hideMenuOptions: false,
     username: null,
   };
@@ -143,9 +144,9 @@
 
   function updateHoverClass() {
     if (SETTINGS.hoverExpand) {
-      document.documentElement.classList.add('ao3-hover-expand-enabled');
+      document.documentElement.classList.add("ao3-hover-expand-enabled");
     } else {
-      document.documentElement.classList.remove('ao3-hover-expand-enabled');
+      document.documentElement.classList.remove("ao3-hover-expand-enabled");
     }
   }
 
@@ -377,14 +378,27 @@
       }),
     );
 
-  behaviorSection.appendChild(
-    MH.createHideMenuCheckbox({
-      id: "hideMenuOptions",
-      checked: SETTINGS.hideMenuOptions,
-    }),
-  );
+    if (isFicTrackerDetected()) {
+      const overrideFTCheckbox = MH.createCheckbox({
+        id: "overrideFicTrackerStyle",
+        label: "Apply Collapse Style to FicTracker",
+        checked: SETTINGS.overrideFicTrackerStyle,
+      });
+      const overrideFTTooltip = MH.createTooltip(
+        "Makes FicTracker-collapsed works use Quick Hide's current collapse style and opacity",
+      );
+      overrideFTCheckbox.querySelector("label").appendChild(overrideFTTooltip);
+      behaviorSection.appendChild(overrideFTCheckbox);
+    }
 
-  dialog.appendChild(behaviorSection);
+    behaviorSection.appendChild(
+      MH.createHideMenuCheckbox({
+        id: "hideMenuOptions",
+        checked: SETTINGS.hideMenuOptions,
+      }),
+    );
+
+    dialog.appendChild(behaviorSection);
 
     dialog.appendChild(
       MH.createButtonGroup([
@@ -573,6 +587,13 @@
       SETTINGS.hoverExpand = e.target.checked;
     });
 
+    dialog
+      .querySelector("#overrideFicTrackerStyle")
+      ?.addEventListener("change", (e) => {
+        SETTINGS.overrideFicTrackerStyle = e.target.checked;
+        updateStyles();
+      });
+
     dialog.querySelector("#hideMenuOptions").addEventListener("change", (e) => {
       SETTINGS.hideMenuOptions = e.target.checked;
     });
@@ -602,6 +623,9 @@
 
       // Update styles without removing/re-injecting to prevent flicker
       updateStyles();
+      if (SETTINGS.overrideFicTrackerStyle) {
+        setupFicTrackerCollapses();
+      }
 
       dialog.remove();
 
@@ -751,7 +775,7 @@
       /* Remove extra spacing from header when collapsed */
       .ao3-blurb-collapsed .header {
         padding-bottom: 0 !important;
-        ${isMinimal || isFicTracker ? 'min-height: 0 !important;' : ''}
+        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
       }
       
       /* Minimal mode - hide required-tags, stats, and notes */
@@ -819,7 +843,7 @@
       /* Remove extra spacing from header when collapsed */
       .ao3-bookmark-collapsed .header {
         padding-bottom: 0 !important;
-        ${isMinimal || isFicTracker ? 'min-height: 0 !important;' : ''}
+        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
       }
       
       /* Minimal mode - hide required-tags, stats, and notes */
@@ -872,6 +896,51 @@
       li.bookmark.blurb textarea,
       li.bookmark.blurb select {
         cursor: default;
+      }
+
+      /* FicTracker collapse style override */
+      ${
+        SETTINGS.overrideFicTrackerStyle
+          ? `
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .landmark,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .tags,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .series,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) h5.fandoms.heading,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .userstuff,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) ul.actions {
+        display: none !important;
+      }
+
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .header {
+        padding-bottom: 0 !important;
+        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
+      }
+
+      ${
+        isMinimal
+          ? `
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .required-tags,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .stats,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .user-note-preview {
+        display: none !important;
+      }
+      `
+          : !isFicTracker
+            ? `
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .stats,
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .user-note-preview {
+        display: none !important;
+      }
+      `
+            : ""
+      }
+
+      li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) {
+        opacity: var(--ao3-collapse-opacity) !important;
+        cursor: pointer;
+      }
+      `
+          : ""
       }
     `;
   }
@@ -1082,6 +1151,9 @@
   }
 
   function addToggleAllButtons() {
+    // Don't add buttons on inbox page
+    if (window.location.pathname.includes("/inbox")) return;
+
     // Toggle buttons for pagination areas (works for comments, blurbs, and bookmarks)
     const paginations = document.querySelectorAll(
       "ol.pagination.actions:not(.ao3-toggle-button-added)",
@@ -1188,10 +1260,17 @@
     });
   }
 
+  function isFicTrackerDetected() {
+    // Check for FicTracker UI elements on the current page.
+    // localStorage is intentionally not checked — FT_ keys persist after the script is disabled.
+    return !!document.querySelector('.FT_collapsable, .work_quicktag_btn');
+  }
+
   function shouldSkipElement(element) {
     // Skip if processed by Advanced Blocker
     if (
       element.classList.contains("ao3-blocker-work") ||
+      element.classList.contains("ao3-blocker-hidden") ||
       element.classList.contains("ao3-blocker-unhide") ||
       element.querySelector(
         ".ao3-blocker-cut, .ao3-blocker-fold, .ao3-blocker-toggle",
@@ -1237,6 +1316,8 @@
 
   // Helper function to add touch expand behavior
   function addTouchExpandBehavior(element, collapsedClass) {
+    if (!SETTINGS.hoverExpand) return;
+
     element.addEventListener("touchstart", function (e) {
       if (element.classList.contains(collapsedClass)) {
         const timer = setTimeout(() => {
@@ -1311,6 +1392,14 @@
         return;
       }
 
+      // Skip elements FicTracker is already collapsing — handled by setupFicTrackerCollapses
+      if (
+        SETTINGS.overrideFicTrackerStyle &&
+        blurb.classList.contains("FT_collapsable")
+      ) {
+        return;
+      }
+
       // Skip if already setup
       if (blurb.classList.contains("ao3-blurb-collapse-setup")) {
         return;
@@ -1325,6 +1414,14 @@
       blurb.addEventListener("click", function (e) {
         // Check if element should be skipped (e.g., FicTracker marked it after our setup)
         if (shouldSkipElement(blurb)) {
+          return;
+        }
+
+        // Defer to setupFicTrackerCollapses if FicTracker claimed this element after setup
+        if (
+          SETTINGS.overrideFicTrackerStyle &&
+          blurb.classList.contains("FT_collapsable")
+        ) {
           return;
         }
 
@@ -1383,6 +1480,14 @@
         return;
       }
 
+      // Skip elements FicTracker is already collapsing — handled by setupFicTrackerCollapses
+      if (
+        SETTINGS.overrideFicTrackerStyle &&
+        bookmark.classList.contains("FT_collapsable")
+      ) {
+        return;
+      }
+
       // Skip if already setup
       if (bookmark.classList.contains("ao3-bookmark-collapse-setup")) {
         return;
@@ -1398,6 +1503,14 @@
       bookmark.addEventListener("click", function (e) {
         // Check if element should be skipped (e.g., FicTracker marked it after our setup)
         if (shouldSkipElement(bookmark)) {
+          return;
+        }
+
+        // Defer to setupFicTrackerCollapses if FicTracker claimed this element after setup
+        if (
+          SETTINGS.overrideFicTrackerStyle &&
+          bookmark.classList.contains("FT_collapsable")
+        ) {
           return;
         }
 
@@ -1423,6 +1536,61 @@
     });
   }
 
+  function setupFicTrackerCollapses() {
+    if (!SETTINGS.overrideFicTrackerStyle) return;
+
+    const ftWorks = document.querySelectorAll(
+      "li.work.blurb.FT_collapsable:not(.ao3-ft-collapse-setup), li.bookmark.blurb.FT_collapsable:not(.ao3-ft-collapse-setup)",
+    );
+    if (ftWorks.length === 0) return;
+
+    ftWorks.forEach((el) => {
+      el.classList.add("ao3-ft-collapse-setup");
+
+      if (shouldSkipElement(el)) return;
+
+      if (SETTINGS.hoverExpand) {
+        el.addEventListener("mouseenter", function () {
+          el.classList.add("ao3-ft-user-expanded");
+        });
+        el.addEventListener("mouseleave", function () {
+          el.classList.remove("ao3-ft-user-expanded");
+        });
+      } else {
+        el.addEventListener("click", function (e) {
+          if (shouldIgnoreClick(e.target)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          el.classList.toggle("ao3-ft-user-expanded");
+          // When expanding, also clear any Quick Hide collapse state so QH CSS doesn't keep content hidden
+          if (el.classList.contains("ao3-ft-user-expanded")) {
+            if (el.classList.contains("ao3-blurb-collapsed")) {
+              el.classList.remove("ao3-blurb-collapsed");
+              const blurbWorkId = getBlurbWorkId(el);
+              if (blurbWorkId) {
+                const config = loadConfig();
+                delete config.works[blurbWorkId];
+                saveConfig(config);
+              }
+            }
+            if (el.classList.contains("ao3-bookmark-collapsed")) {
+              el.classList.remove("ao3-bookmark-collapsed");
+              const workId = getWorkIdFromBookmark(el);
+              if (workId) {
+                const config = loadConfig();
+                const storageKey = SETTINGS.linkWorkBookmarkStates
+                  ? "works"
+                  : "bookmarksUnlinked";
+                delete config[storageKey][workId];
+                saveConfig(config);
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
   // Track if initial setup has completed to avoid redundant fallback processing
   let initialSetupComplete = false;
 
@@ -1440,7 +1608,11 @@
     }
     setupBlurbs();
     setupBookmarks();
+    setupFicTrackerCollapses();
     addToggleAllButtons();
+
+    // Catch FicTracker class additions that may occur after Quick Hide initializes
+    setTimeout(() => setupFicTrackerCollapses(), 300);
 
     // Watch for AJAX-loaded content (pagination, infinite scroll, etc.)
     const mainContent = document.querySelector("main, #main, body");
@@ -1494,6 +1666,7 @@
           if (hasNewWorks) {
             setupBlurbs();
             setupBookmarks();
+            setupFicTrackerCollapses();
             addToggleAllButtons();
           }
         }, TIMING.MUTATION_OBSERVER_DEBOUNCE);
@@ -1517,6 +1690,7 @@
         }
         setupBlurbs();
         setupBookmarks();
+        setupFicTrackerCollapses();
         addToggleAllButtons();
         initialSetupComplete = true;
       }
