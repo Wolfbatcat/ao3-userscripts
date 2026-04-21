@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.0.5
+// @version       1.0.6
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -381,7 +381,7 @@
     if (isFicTrackerDetected()) {
       const overrideFTCheckbox = MH.createCheckbox({
         id: "overrideFicTrackerStyle",
-        label: "Apply Collapse Style to FicTracker",
+        label: "Apply Collapse Style to FicTracker ",
         checked: SETTINGS.overrideFicTrackerStyle,
       });
       const overrideFTTooltip = MH.createTooltip(
@@ -775,7 +775,7 @@
       /* Remove extra spacing from header when collapsed */
       .ao3-blurb-collapsed .header {
         padding-bottom: 0 !important;
-        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
+        ${isMinimal ? "min-height: 0 !important;" : ""}
       }
       
       /* Minimal mode - hide required-tags, stats, and notes */
@@ -843,7 +843,7 @@
       /* Remove extra spacing from header when collapsed */
       .ao3-bookmark-collapsed .header {
         padding-bottom: 0 !important;
-        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
+        ${isMinimal ? "min-height: 0 !important;" : ""}
       }
       
       /* Minimal mode - hide required-tags, stats, and notes */
@@ -913,7 +913,7 @@
 
       li.FT_collapsable:not(.ao3-ft-user-expanded):not(.ao3-blocker-work):not(.ao3-blocker-hidden) .header {
         padding-bottom: 0 !important;
-        ${isMinimal || isFicTracker ? "min-height: 0 !important;" : ""}
+        ${isMinimal ? "min-height: 0 !important;" : ""}
       }
 
       ${
@@ -1162,10 +1162,19 @@
     if (paginations.length === 0) return;
 
     // Cache content checks once for all paginations to avoid redundant DOM queries
-    const hasComments = document.querySelector(SELECTORS.COMMENTS) !== null;
+    // Only count a content type if it's both present and enabled in settings
+    const hasComments =
+      SETTINGS.enableComments &&
+      document.querySelector(SELECTORS.COMMENTS) !== null;
     const hasWorkBlurbs =
+      SETTINGS.enableWorks &&
       document.querySelector(SELECTORS.WORK_BLURBS) !== null;
-    const hasBookmarks = document.querySelector(SELECTORS.BOOKMARKS) !== null;
+    const hasBookmarks =
+      SETTINGS.enableBookmarks &&
+      document.querySelector(SELECTORS.BOOKMARKS) !== null;
+
+    // Don't add buttons if no enabled content types are present on this page
+    if (!hasComments && !hasWorkBlurbs && !hasBookmarks) return;
 
     paginations.forEach((pagination) => {
       pagination.classList.add("ao3-toggle-button-added");
@@ -1263,7 +1272,7 @@
   function isFicTrackerDetected() {
     // Check for FicTracker UI elements on the current page.
     // localStorage is intentionally not checked — FT_ keys persist after the script is disabled.
-    return !!document.querySelector('.FT_collapsable, .work_quicktag_btn');
+    return !!document.querySelector(".FT_collapsable, .work_quicktag_btn");
   }
 
   function shouldSkipElement(element) {
