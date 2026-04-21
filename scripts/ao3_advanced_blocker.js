@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       4.1.0
+// @version       4.1.1
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -258,7 +258,7 @@
   const STYLE = `
   html body .ao3-blocker-hidden { display: none !important; }
   .ao3-blocker-cut {
-    display: block;
+    display: flow-root;
     overflow: hidden;
     max-height: 0;
     opacity: 0;
@@ -275,6 +275,7 @@
   .ao3-blocker-fold {
     align-items: center; display: flex; justify-content: space-between !important;
     gap: 10px !important; width: 100% !important;
+    margin-bottom: 0; transition: margin-bottom 0.25s ease;
   }
   .ao3-blocker-unhide .ao3-blocker-fold {
     border-bottom: 1px dashed; border-bottom-color: inherit;
@@ -1436,6 +1437,10 @@
       css = css.replace(
         "    transition: max-height 0.25s ease, opacity 0.25s ease;",
         "    transition: none;",
+      );
+      css = css.replace(
+        "    margin-bottom: 0; transition: margin-bottom 0.25s ease;",
+        "    margin-bottom: 0;",
       );
     }
     // Remove existing style if present
