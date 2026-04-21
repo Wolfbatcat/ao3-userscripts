@@ -2,7 +2,7 @@
 // @name          AO3: Skin Switcher
 // @version       2.8
 // @description   Change site skins from anywhere without leaving the page.
-// @author        BlackBatcat
+// @author        BlackBatCat
 // @match         *://archiveofourown.org/*
 // @license       MIT
 // @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.1.7

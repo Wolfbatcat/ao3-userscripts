@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: No Re-Kudos
 // @version      1.1
-// @author       BlackCatBat
+// @author       BlackBatCat
 // @description  Hide kudos button if you've already left kudos.
 // @license      MIT
 // @match        *://archiveofourown.org/works/*
