@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     4.0.4
+// @version     4.0.5
 // @author       BlackBatCat
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @match       *://archiveofourown.org/
@@ -56,6 +56,7 @@
     keepUnscoredVisible: false,
     hideScoreWorksEnabled: false,
     hideScoreWorks: "",
+    hideMenuOptions: false,
     lastSeenVersion: null,
   };
 
@@ -1732,6 +1733,13 @@
     hideMetricsGroup.appendChild(hideMetricsSubsettings);
     visualSection.appendChild(hideMetricsGroup);
 
+    visualSection.appendChild(
+      window.AO3MenuHelpers.createHideMenuCheckbox({
+        id: "hideMenuOptions",
+        checked: CONFIG.hideMenuOptions,
+      })
+    );
+
     fragment.appendChild(visualSection);
 
     fragment.appendChild(
@@ -1951,6 +1959,8 @@
       ).value;
       buildHideScoreWorksSet();
 
+      CONFIG.hideMenuOptions = dialog.querySelector("#hideMenuOptions").checked;
+
       saveAllSettings();
       dialog.remove();
 
@@ -2011,46 +2021,48 @@
 
   function initSharedMenu() {
     if (window.AO3MenuHelpers) {
-      window.AO3MenuHelpers.addToSharedMenu({
-        id: "opencfg_reading_quality",
-        text: "Reading Time & Quality Score",
-        onClick: showSettingsPopup,
-      });
-
-      if (CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime) {
+      if (!CONFIG.hideMenuOptions || window.AO3MenuHelpers.isAO3Homepage()) {
         window.AO3MenuHelpers.addToSharedMenu({
-          id: "calc_reading_time",
-          text: "Reading Time: Calculate Times",
-          onClick: calculateReadtime,
+          id: "opencfg_reading_quality",
+          text: "Reading Time & Quality Score",
+          onClick: showSettingsPopup,
         });
-      }
 
-      if (CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore) {
-        window.AO3MenuHelpers.addToSharedMenu({
-          id: "calc_quality_score",
-          text: "Quality Score: Calculate Scores",
-          onClick: countRatio,
-        });
-      }
+        if (CONFIG.enableReadingTime && !CONFIG.alwaysCountReadingTime) {
+          window.AO3MenuHelpers.addToSharedMenu({
+            id: "calc_reading_time",
+            text: "Reading Time: Calculate Times",
+            onClick: calculateReadtime,
+          });
+        }
 
-      const username = detectAndStoreUsername();
-      const isWorksPage = /^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/.test(
-        window.location.pathname
-      );
-      if (
-        isAllowedMenuPage() &&
-        CONFIG.enableQualityScore &&
-        (!CONFIG.alwaysSortQualityScore ||
-          (CONFIG.alwaysSortQualityScore &&
-            CONFIG.excludeMyContentFromSort &&
-            isMyContentPage(username))) &&
-        !isWorksPage
-      ) {
-        window.AO3MenuHelpers.addToSharedMenu({
-          id: "sort_by_score",
-          text: "Quality Score: Sort by Score",
-          onClick: () => sortByRatio(),
-        });
+        if (CONFIG.enableQualityScore && !CONFIG.alwaysCountQualityScore) {
+          window.AO3MenuHelpers.addToSharedMenu({
+            id: "calc_quality_score",
+            text: "Quality Score: Calculate Scores",
+            onClick: countRatio,
+          });
+        }
+
+        const username = detectAndStoreUsername();
+        const isWorksPage = /^\/works\/(\d+)(\/chapters\/\d+)?(\/|$)/.test(
+          window.location.pathname
+        );
+        if (
+          isAllowedMenuPage() &&
+          CONFIG.enableQualityScore &&
+          (!CONFIG.alwaysSortQualityScore ||
+            (CONFIG.alwaysSortQualityScore &&
+              CONFIG.excludeMyContentFromSort &&
+              isMyContentPage(username))) &&
+          !isWorksPage
+        ) {
+          window.AO3MenuHelpers.addToSharedMenu({
+            id: "sort_by_score",
+            text: "Quality Score: Sort by Score",
+            onClick: () => sortByRatio(),
+          });
+        }
       }
     }
   }
