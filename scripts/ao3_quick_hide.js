@@ -1151,18 +1151,14 @@
   }
 
   function addToggleAllButtons() {
-    // Don't add buttons on inbox page
     if (window.location.pathname.includes("/inbox")) return;
 
-    // Toggle buttons for pagination areas (works for comments, blurbs, and bookmarks)
     const paginations = document.querySelectorAll(
       "ol.pagination.actions:not(.ao3-toggle-button-added)",
     );
 
     if (paginations.length === 0) return;
 
-    // Cache content checks once for all paginations to avoid redundant DOM queries
-    // Only count a content type if it's both present and enabled in settings
     const hasComments =
       SETTINGS.enableComments &&
       document.querySelector(SELECTORS.COMMENTS) !== null;
@@ -1173,7 +1169,6 @@
       SETTINGS.enableBookmarks &&
       document.querySelector(SELECTORS.BOOKMARKS) !== null;
 
-    // Don't add buttons if no enabled content types are present on this page
     if (!hasComments && !hasWorkBlurbs && !hasBookmarks) return;
 
     paginations.forEach((pagination) => {
@@ -1271,7 +1266,6 @@
 
   function isFicTrackerDetected() {
     // Check for FicTracker UI elements on the current page.
-    // localStorage is intentionally not checked — FT_ keys persist after the script is disabled.
     return !!document.querySelector(".FT_collapsable, .work_quicktag_btn");
   }
 
