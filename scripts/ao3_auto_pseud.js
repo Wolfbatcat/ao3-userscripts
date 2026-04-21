@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Auto Pseud
-// @version      1.0.0
+// @version      1.0.1
 // @description  Assign pseuds based on fandoms when commenting and bookmarking works
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/users/*/pseuds/*/edit
@@ -119,34 +119,34 @@ console.log("[AO3: Auto Pseud] loaded.");
   // Show the fandom help modal
   function showFandomHelpModal() {
     // Remove any existing modal/background
-    const oldModal = document.getElementById('modal-wrap');
+    const oldModal = document.getElementById("modal-wrap");
     if (oldModal) oldModal.parentNode.removeChild(oldModal);
-    const oldBg = document.getElementById('modal-background');
+    const oldBg = document.getElementById("modal-background");
     if (oldBg) oldBg.parentNode.removeChild(oldBg);
 
     // AO3 native modal uses overlay first, then modal-wrap
-    const background = document.createElement('div');
-    background.id = 'modal-background';
-    background.className = 'modal-closer';
-    background.style.display = 'block';
-    background.style.position = 'fixed';
-    background.style.top = '0';
-    background.style.left = '0';
-    background.style.width = '100%';
-    background.style.height = '100%';
-    background.style.backgroundColor = 'rgba(0,0,0,0.5)';
-    background.style.zIndex = '1000';
+    const background = document.createElement("div");
+    background.id = "modal-background";
+    background.className = "modal-closer";
+    background.style.display = "block";
+    background.style.position = "fixed";
+    background.style.top = "0";
+    background.style.left = "0";
+    background.style.width = "100%";
+    background.style.height = "100%";
+    background.style.backgroundColor = "rgba(0,0,0,0.5)";
+    background.style.zIndex = "1000";
     document.body.appendChild(background);
 
-    const modalWrap = document.createElement('div');
-    modalWrap.id = 'modal-wrap';
-    modalWrap.className = 'modal-closer';
-    modalWrap.style.display = 'block';
-    modalWrap.style.position = 'fixed';
-    modalWrap.style.top = '50%';
-    modalWrap.style.left = '50%';
-    modalWrap.style.transform = 'translate(-50%, -50%)';
-    modalWrap.style.zIndex = '1001';
+    const modalWrap = document.createElement("div");
+    modalWrap.id = "modal-wrap";
+    modalWrap.className = "modal-closer";
+    modalWrap.style.display = "block";
+    modalWrap.style.position = "fixed";
+    modalWrap.style.top = "50%";
+    modalWrap.style.left = "50%";
+    modalWrap.style.transform = "translate(-50%, -50%)";
+    modalWrap.style.zIndex = "1001";
     modalWrap.innerHTML = `
       <div id="modal" style="display: inline-block;">
         <div class="content userstuff">
@@ -162,13 +162,14 @@ console.log("[AO3: Auto Pseud] loaded.");
 
     // Add close handler (click overlay or close link)
     function closeHandler(e) {
-      if (e.target === background || e.target.classList.contains('action')) {
-        if (background.parentNode) background.parentNode.removeChild(background);
+      if (e.target === background || e.target.classList.contains("action")) {
+        if (background.parentNode)
+          background.parentNode.removeChild(background);
         if (modalWrap.parentNode) modalWrap.parentNode.removeChild(modalWrap);
       }
     }
-    background.addEventListener('click', closeHandler);
-    modalWrap.querySelector('.action').addEventListener('click', closeHandler);
+    background.addEventListener("click", closeHandler);
+    modalWrap.querySelector(".action").addEventListener("click", closeHandler);
   }
 
   // Make it global for onclick
@@ -256,7 +257,7 @@ console.log("[AO3: Auto Pseud] loaded.");
 
         fandomInput.disabled = true;
         const autocompleteInput = document.querySelector(
-          "#pseud_fandom_autocomplete"
+          "#pseud_fandom_autocomplete",
         );
         if (autocompleteInput) autocompleteInput.disabled = true;
       }
@@ -303,7 +304,7 @@ console.log("[AO3: Auto Pseud] loaded.");
       if (!blurb) {
         // Try to find a <li> with class containing work-<id>
         blurb = Array.from(
-          document.querySelectorAll("li.bookmark, li.blurb, li.group")
+          document.querySelectorAll("li.bookmark, li.blurb, li.group"),
         ).find((el) => el.className && el.className.includes(`work-${workId}`));
       }
       if (!blurb) {
@@ -320,7 +321,7 @@ console.log("[AO3: Auto Pseud] loaded.");
           fandomTags = blurb.querySelectorAll("a.tag");
         }
         const fandoms = Array.from(fandomTags).map((tag) =>
-          tag.textContent.trim()
+          tag.textContent.trim(),
         );
         return fandoms;
       }
@@ -346,7 +347,7 @@ console.log("[AO3: Auto Pseud] loaded.");
   // Build pseud name-to-ID map from comment form select options
   function buildPseudMapFromCommentForm() {
     const commentSelect = document.querySelector(
-      'select[name="comment[pseud_id]"]'
+      'select[name="comment[pseud_id]"]',
     );
     if (!commentSelect) return;
 
@@ -361,7 +362,7 @@ console.log("[AO3: Auto Pseud] loaded.");
   // Build pseud name-to-ID map from bookmark form select options
   function buildPseudMapFromBookmarkForm() {
     const bookmarkSelect = document.querySelector(
-      'select[name="bookmark[pseud_id]"]'
+      'select[name="bookmark[pseud_id]"]',
     );
     if (!bookmarkSelect) return;
 
@@ -387,7 +388,7 @@ console.log("[AO3: Auto Pseud] loaded.");
     if (!matchingPseudId) return;
 
     const commentSelects = document.querySelectorAll(
-      'select[name="comment[pseud_id]"]'
+      'select[name="comment[pseud_id]"]',
     );
     commentSelects.forEach((select) => {
       const option = select.querySelector(`option[value="${matchingPseudId}"]`);
@@ -401,7 +402,8 @@ console.log("[AO3: Auto Pseud] loaded.");
   function observeCommentFieldsets() {
     const commentLegends = document.querySelectorAll("fieldset legend");
     commentLegends.forEach((legend) => {
-      if (legend.textContent.trim() === "Comment") {
+      const legendText = legend.textContent.trim();
+      if (legendText === "Comment" || legendText === "Post Comment") {
         const fieldset = legend.closest("fieldset");
         if (!fieldset) return;
         const observer = new MutationObserver((mutations) => {
@@ -421,7 +423,7 @@ console.log("[AO3: Auto Pseud] loaded.");
         observer.observe(fieldset, { childList: true, subtree: true });
         // Also check if select is already there
         const existingSelect = fieldset.querySelector(
-          'select[name="comment[pseud_id]"]'
+          'select[name="comment[pseud_id]"]',
         );
         if (existingSelect) {
           switchCommentPseud();
@@ -454,13 +456,37 @@ console.log("[AO3: Auto Pseud] loaded.");
         observer.observe(fieldset, { childList: true, subtree: true });
         // Also check if select is already there
         const existingSelect = fieldset.querySelector(
-          'select[name="bookmark[pseud_id]"]'
+          'select[name="bookmark[pseud_id]"]',
         );
         if (existingSelect) {
           switchBookmarkPseud();
         }
       }
     });
+  }
+
+  // Observe for new comment fieldsets being added to the page (e.g. reply forms)
+  function observeForNewCommentFieldsets() {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          // Collect the node itself if it's a fieldset, plus any nested fieldsets
+          const candidates = node.matches("fieldset") ? [node] : [];
+          node.querySelectorAll("fieldset").forEach((f) => candidates.push(f));
+          for (const fieldset of candidates) {
+            const legend = fieldset.querySelector("legend");
+            if (!legend) continue;
+            const legendText = legend.textContent.trim();
+            if (legendText === "Comment" || legendText === "Post Comment") {
+              switchCommentPseud();
+              return;
+            }
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   // Observe for new bookmark fieldsets being added to the page
@@ -494,7 +520,7 @@ console.log("[AO3: Auto Pseud] loaded.");
             formObserver.observe(node, { childList: true, subtree: true });
             // Also check if select is already there
             const existingSelect = node.querySelector(
-              'select[name="bookmark[pseud_id]"]'
+              'select[name="bookmark[pseud_id]"]',
             );
             if (existingSelect) {
               switchBookmarkPseud();
@@ -513,7 +539,7 @@ console.log("[AO3: Auto Pseud] loaded.");
     }
 
     const bookmarkSelects = document.querySelectorAll(
-      'select[name="bookmark[pseud_id]"]'
+      'select[name="bookmark[pseud_id]"]',
     );
     if (bookmarkSelects.length === 0) {
       return;
@@ -550,6 +576,7 @@ console.log("[AO3: Auto Pseud] loaded.");
     switchBookmarkPseud();
     observeCommentFieldsets();
     observeBookmarkFieldsets();
+    observeForNewCommentFieldsets();
     observeForNewBookmarkFieldsets();
   }
 
