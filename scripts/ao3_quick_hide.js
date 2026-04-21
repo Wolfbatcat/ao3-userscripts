@@ -52,7 +52,6 @@
 
   let SETTINGS = { ...DEFAULTS };
 
-  // Cache config to reduce localStorage reads
   let configCache = null;
   let saveTimer = null;
 
@@ -77,7 +76,6 @@
           Object.assign(configCache.works, configCache.bookmarks);
           delete configCache.bookmarks;
         }
-        // Save migrated config
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(configCache));
         } catch (e) {
@@ -85,7 +83,6 @@
         }
       }
 
-      // Initialize bookmarksUnlinked if it doesn't exist
       if (!configCache.bookmarksUnlinked) {
         configCache.bookmarksUnlinked = {};
       }
@@ -93,16 +90,13 @@
       return configCache;
     } catch (e) {
       handleError("Failed to load config", e);
-      // Return fresh config without setting cache on error
       return { comments: {}, works: {}, bookmarksUnlinked: {} };
     }
   }
 
   function saveConfig(config) {
-    // Update cache immediately to prevent desyncs
     configCache = config;
 
-    // Debounce localStorage writes to reduce I/O on rapid toggles
     if (saveTimer) clearTimeout(saveTimer);
 
     saveTimer = setTimeout(() => {
@@ -150,22 +144,18 @@
     }
   }
 
-  // Load settings on script start
   loadSettings();
 
-  // Centralized error handling for consistent logging
   function handleError(context, error) {
     const message = `[AO3: Quick Hide] ${context}`;
     console.error(message, error);
   }
 
-  // Cache username to avoid repeated DOM queries (like Advanced Blocker)
   let cachedUsername = null;
 
   function detectUsername() {
     if (cachedUsername) return cachedUsername;
 
-    // Load from settings if available
     if (SETTINGS.username) {
       cachedUsername = SETTINGS.username;
       return SETTINGS.username;
@@ -186,7 +176,6 @@
     }
 
     // Fallback: Extract from URL if we're on a user's page
-    // This is safe because once username is detected and saved, it won't be re-detected
     const urlMatch = window.location.href.match(/\/users\/([^\/]+)/);
     if (urlMatch && urlMatch[1]) {
       const username = urlMatch[1];
@@ -207,7 +196,6 @@
     const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const path = window.location.pathname;
 
-    // Check if on /users/{username}/bookmarks or /users/{username}/pseuds/{pseudo}/bookmarks
     const myBookmarksRegex = new RegExp(
       `^/users/${escapedUsername}(?:/pseuds/[^/]+)?/bookmarks/?(?:$|[?#])`,
       "i",
@@ -245,7 +233,6 @@
       maxWidth: "600px",
     });
 
-    // General Section
     const generalSection = MH.createSection("⚙️ General Settings");
 
     generalSection.appendChild(
@@ -293,10 +280,8 @@
 
     dialog.appendChild(generalSection);
 
-    // Visual Settings Section
     const visualSection = MH.createSection("🎨 Visual Styling");
 
-    // Collapse Style radio group
     const styleGroup = document.createElement("div");
     styleGroup.className = "setting-group";
 
@@ -368,7 +353,6 @@
 
     dialog.appendChild(visualSection);
 
-    // Behavior Section
     const behaviorSection = MH.createSection("🔧 Behavior");
     behaviorSection.appendChild(
       MH.createCheckbox({
@@ -431,7 +415,6 @@
       }),
     );
 
-    // Export/Import Section
     const exportImportContainer = document.createElement("div");
     exportImportContainer.className = "reset-link";
     exportImportContainer.style.marginTop = "18px";
@@ -451,7 +434,6 @@
           try {
             const importedData = JSON.parse(evt.target.result);
 
-            // Validate data structure
             if (
               typeof importedData !== "object" ||
               !importedData ||
@@ -461,14 +443,12 @@
               throw new Error("Invalid file format");
             }
 
-            // Merge settings (replace)
             SETTINGS = { ...DEFAULTS, ...importedData.settings };
             saveSettings();
 
             // Merge config (add new collapsed items, don't remove existing)
             const currentConfig = loadConfig();
 
-            // Merge comments
             if (importedData.config.comments) {
               Object.keys(importedData.config.comments).forEach((workId) => {
                 if (!currentConfig.comments[workId]) {
@@ -481,12 +461,10 @@
               });
             }
 
-            // Merge works
             if (importedData.config.works) {
               Object.assign(currentConfig.works, importedData.config.works);
             }
 
-            // Merge bookmarksUnlinked
             if (importedData.config.bookmarksUnlinked) {
               Object.assign(
                 currentConfig.bookmarksUnlinked,
@@ -511,7 +489,6 @@
     exportImportContainer.appendChild(fileInput.input);
     dialog.appendChild(exportImportContainer);
 
-    // Add event listeners after dialog is created
     exportBtn.addEventListener("click", function () {
       try {
         const config = loadConfig();
@@ -548,7 +525,6 @@
       }
     });
 
-    // Add event listeners after dialog is created
     dialog.querySelector("#enableComments").addEventListener("change", (e) => {
       SETTINGS.enableComments = e.target.checked;
     });
@@ -611,11 +587,9 @@
       if (oldLinkSetting !== SETTINGS.linkWorkBookmarkStates) {
         const config = loadConfig();
         if (SETTINGS.linkWorkBookmarkStates) {
-          // Moving to linked: merge bookmarksUnlinked into works
           Object.assign(config.works, config.bookmarksUnlinked);
           config.bookmarksUnlinked = {};
         } else {
-          // Moving to unlinked: copy works to bookmarksUnlinked (don't delete works)
           Object.assign(config.bookmarksUnlinked, config.works);
         }
         saveConfig(config);
@@ -674,7 +648,6 @@
   }
 
   function getWorkId() {
-    // Try to get work ID from URL (works or chapters)
     let match = window.location.pathname.match(/\/works\/(\d+)/);
     if (match) return match[1];
 
@@ -712,7 +685,6 @@
   }
 
   function getWorkIdFromBookmark(element) {
-    // Try to get work ID from the work link within the bookmark
     const workLink = element.querySelector('a[href*="/works/"]');
     if (workLink) {
       const match = workLink.href.match(/\/works\/(\d+)/);
@@ -735,7 +707,6 @@
         display: none !important;
       }
       
-      /* Apply opacity fade to entire comment when collapsed */
       .ao3-comment-collapsed {
         opacity: var(--ao3-collapse-opacity);
       }
@@ -762,7 +733,6 @@
         cursor: default;
       }
       
-      /* Blurb styles - Hide specific elements when collapsed */
       .ao3-blurb-collapsed .landmark,
       .ao3-blurb-collapsed .tags,
       .ao3-blurb-collapsed .series,
@@ -772,7 +742,6 @@
         display: none !important;
       }
       
-      /* Remove extra spacing from header when collapsed */
       .ao3-blurb-collapsed .header {
         padding-bottom: 0 !important;
         ${isMinimal ? "min-height: 0 !important;" : ""}
@@ -821,7 +790,6 @@
         cursor: pointer;
       }
       
-      /* Keep normal cursor for interactive elements in blurbs */
       li.work.blurb a,
       li.work.blurb button,
       li.work.blurb input,
@@ -830,7 +798,6 @@
         cursor: default;
       }
       
-      /* Bookmark styles - Hide specific elements when collapsed */
       .ao3-bookmark-collapsed .landmark,
       .ao3-bookmark-collapsed .tags,
       .ao3-bookmark-collapsed .series,
@@ -840,7 +807,6 @@
         display: none !important;
       }
       
-      /* Remove extra spacing from header when collapsed */
       .ao3-bookmark-collapsed .header {
         padding-bottom: 0 !important;
         ${isMinimal ? "min-height: 0 !important;" : ""}
@@ -889,7 +855,6 @@
         cursor: pointer;
       }
       
-      /* Keep normal cursor for interactive elements in bookmarks */
       li.bookmark.blurb a,
       li.bookmark.blurb button,
       li.bookmark.blurb input,
@@ -970,7 +935,6 @@
       "ao3-comment-collapsed",
     );
 
-    // Load config if not provided (for single toggle operations)
     const shouldSave = !config;
     if (!config) {
       config = loadConfig();
@@ -989,7 +953,6 @@
       }
     }
 
-    // Only save if config wasn't provided (single operation)
     if (shouldSave) {
       saveConfig(config);
     }
@@ -1003,7 +966,6 @@
 
     const isCollapsed = blurbElement.classList.toggle("ao3-blurb-collapsed");
 
-    // Load config if not provided (for single toggle operations)
     const shouldSave = !config;
     if (!config) {
       config = loadConfig();
@@ -1015,7 +977,6 @@
       delete config.works[blurbWorkId];
     }
 
-    // Only save if config wasn't provided (single operation)
     if (shouldSave) {
       saveConfig(config);
     }
@@ -1031,7 +992,6 @@
       "ao3-bookmark-collapsed",
     );
 
-    // Load config if not provided (for single toggle operations)
     const shouldSave = !config;
     if (!config) {
       config = loadConfig();
@@ -1047,7 +1007,6 @@
       delete config[storageKey][workId];
     }
 
-    // Only save if config wasn't provided (single operation)
     if (shouldSave) {
       saveConfig(config);
     }
@@ -1067,9 +1026,7 @@
     const allComments = document.querySelectorAll(SELECTORS.COMMENTS);
 
     allComments.forEach((comment) => {
-      // When collapsing, only target top-level comments
-      // Nested replies automatically collapse with their parent via CSS
-      // When expanding, target all comments to ensure nested ones expand too
+      // When collapsing, only target top-level comments (replies collapse via CSS)
       if (collapse) {
         const parentThread = comment.parentElement;
         const isTopLevel =
@@ -1094,12 +1051,10 @@
       }
     });
 
-    // Clean up empty work config to reduce storage size
     if (Object.keys(config.comments[workId]).length === 0) {
       delete config.comments[workId];
     }
 
-    // Single save after all changes
     saveConfig(config);
   }
 
@@ -1228,7 +1183,6 @@
       const commentId = getCommentId(comment);
       if (!commentId) return;
 
-      // Skip if already setup
       if (comment.classList.contains("ao3-collapse-setup")) {
         return;
       }
@@ -1258,19 +1212,16 @@
         toggleComment(comment, workId);
       });
 
-      // Add hover and touch expand behaviors
       addHoverExpandBehavior(comment, "ao3-comment-collapsed");
       addTouchExpandBehavior(comment, "ao3-comment-collapsed");
     });
   }
 
   function isFicTrackerDetected() {
-    // Check for FicTracker UI elements on the current page.
     return !!document.querySelector(".FT_collapsable, .work_quicktag_btn");
   }
 
   function shouldSkipElement(element) {
-    // Skip if processed by Advanced Blocker
     if (
       element.classList.contains("ao3-blocker-work") ||
       element.classList.contains("ao3-blocker-hidden") ||
@@ -1287,7 +1238,6 @@
     return false;
   }
 
-  // Helper function for consistent element matching
   function elementMatchesOrContains(node, selector) {
     return (
       (node.matches && node.matches(selector)) ||
@@ -1295,10 +1245,8 @@
     );
   }
 
-  // Store touch timers to allow cleanup
   const touchTimers = new WeakMap();
 
-  // Helper function to add hover expand behavior
   function addHoverExpandBehavior(element, collapsedClass) {
     if (!SETTINGS.hoverExpand) return;
 
@@ -1317,7 +1265,6 @@
     });
   }
 
-  // Helper function to add touch expand behavior
   function addTouchExpandBehavior(element, collapsedClass) {
     if (!SETTINGS.hoverExpand) return;
 
@@ -1361,7 +1308,6 @@
     });
   }
 
-  // Helper function to check if a click should be ignored (clicked on interactive element)
   function shouldIgnoreClick(target) {
     return (
       target.tagName === "A" ||
@@ -1403,7 +1349,6 @@
         return;
       }
 
-      // Skip if already setup
       if (blurb.classList.contains("ao3-blurb-collapse-setup")) {
         return;
       }
@@ -1444,7 +1389,6 @@
         toggleBlurb(blurb);
       });
 
-      // Add hover and touch expand behaviors
       addHoverExpandBehavior(blurb, "ao3-blurb-collapsed");
       addTouchExpandBehavior(blurb, "ao3-blurb-collapsed");
     });
@@ -1491,14 +1435,12 @@
         return;
       }
 
-      // Skip if already setup
       if (bookmark.classList.contains("ao3-bookmark-collapse-setup")) {
         return;
       }
 
       bookmark.classList.add("ao3-bookmark-collapse-setup");
 
-      // Apply saved collapse state
       if (config[storageKey][workId]) {
         bookmark.classList.add("ao3-bookmark-collapsed");
       }
@@ -1533,7 +1475,6 @@
         toggleBookmark(bookmark);
       });
 
-      // Add hover and touch expand behaviors
       addHoverExpandBehavior(bookmark, "ao3-bookmark-collapsed");
       addTouchExpandBehavior(bookmark, "ao3-bookmark-collapsed");
     });
@@ -1594,7 +1535,6 @@
     });
   }
 
-  // Track if initial setup has completed to avoid redundant fallback processing
   let initialSetupComplete = false;
 
   function init() {
@@ -1604,7 +1544,6 @@
     updateHoverClass();
     initSharedMenu();
 
-    // Initial setup for static content
     const workId = getWorkId();
     if (workId) {
       setupComments();
@@ -1623,7 +1562,6 @@
       let debounceTimer = null;
 
       const contentObserver = new MutationObserver((mutations) => {
-        // Debounce to batch multiple DOM changes together (e.g., loading 20 works at once)
         clearTimeout(debounceTimer);
 
         debounceTimer = setTimeout(() => {
@@ -1633,12 +1571,10 @@
           for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
               if (node.nodeType === 1) {
-                // Check for comments
                 if (elementMatchesOrContains(node, SELECTORS.COMMENTS)) {
                   hasNewComments = true;
                 }
 
-                // Check for blurbs and bookmarks
                 if (
                   elementMatchesOrContains(node, SELECTORS.WORK_BLURBS) ||
                   elementMatchesOrContains(node, SELECTORS.BOOKMARKS)
@@ -1680,7 +1616,6 @@
         subtree: true,
       });
 
-      // Mark setup as complete after observer is established
       initialSetupComplete = true;
     }
 
