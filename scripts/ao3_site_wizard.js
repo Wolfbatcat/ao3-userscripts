@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
-// @version       3.7
+// @version       3.6.1
 // @description   Make AO3 easier to read: customize fonts and sizes, set site colors, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author        BlackBatcat
 // @match         *://archiveofourown.org/*
@@ -18,7 +18,7 @@
   const DEFAULT_FORMATTER_CONFIG = {
     paragraphWidthPercent: 70,
     paragraphFontSizePercent: 100,
-    paragraphTextAlign: "left",
+    paragraphTextAlign: "",
     paragraphFontFamily: "",
     fixParagraphSpacing: true,
     removeIndentation: false,
@@ -32,6 +32,9 @@
     codeFontStyle: "normal",
     codeFontSize: "",
     expandCodeFontUsage: false,
+    applyCodeFontToDates: false,
+    applyCodeFontSizeToDates: false,
+    applyCodeFontStyleToDates: false,
     backgroundColor: "",
     textColor: "",
     headerColor: "",
@@ -104,7 +107,7 @@
       } = FORMATTER_CONFIG;
 
       cachedElements.paraStyle.textContent = `
-        #workskin p { text-align: ${paragraphTextAlign} !important; }
+        ${paragraphTextAlign ? `#workskin p { text-align: ${paragraphTextAlign} !important; }` : ""}
         ${
           paragraphTextAlign === "justify" || paragraphTextAlign === "left"
             ? `#workskin dd { text-align: ${paragraphTextAlign} !important; }`
@@ -132,9 +135,9 @@
         #workskin p {
           margin-bottom: ${paragraphGap}em !important;
         }
-        #workskin p[align] {
+        ${paragraphTextAlign ? `#workskin p[align] {
           text-align: ${paragraphTextAlign} !important;
-        }
+        }` : ""}
         ${
           paragraphTextAlign === "right"
             ? `
@@ -198,6 +201,9 @@
       codeFontStyle,
       codeFontSize,
       expandCodeFontUsage,
+      applyCodeFontToDates,
+      applyCodeFontSizeToDates,
+      applyCodeFontStyleToDates,
       backgroundColor,
       textColor,
       headerColor,
@@ -334,6 +340,18 @@
          direction: ltr !important;
        }`
     );
+
+    if (applyCodeFontToDates) {
+      const dateFontFamily = codeFontFamily || "Consolas, Monaco, Courier, monospace";
+      const dateRules = [`font-family: ${dateFontFamily} !important`];
+      if (applyCodeFontSizeToDates && codeFontSize)
+        dateRules.push(`font-size: ${codeFontSize} !important`);
+      if (applyCodeFontStyleToDates && codeFontStyle && codeFontStyle !== "normal")
+        dateRules.push(`font-style: ${codeFontStyle} !important`);
+      rules.push(
+        `.splash .news .meta, .splash .news .meta *, .datetime, .datetime * { ${dateRules.join("; ")}; }`
+      );
+    }
 
     rules.push(
       `#cmtFmtDialog #stdbutton label, ul.comment-format, ul.comment-format * { font-family: "FontAwesome", sans-serif !important; font-weight: normal !important; }`,
@@ -897,6 +915,11 @@ form.verbose legend,
       label: "Text Alignment",
       options: [
         {
+          value: "",
+          label: "Default",
+          selected: !FORMATTER_CONFIG.paragraphTextAlign,
+        },
+        {
           value: "left",
           label: "Left Aligned",
           selected: FORMATTER_CONFIG.paragraphTextAlign === "left",
@@ -1027,6 +1050,44 @@ form.verbose legend,
         "Applies code font to all textareas. Requires a code/monospace font to be specified above.",
     });
     elementSection.appendChild(expandCodeFont);
+
+    const applyCodeFontDates = window.AO3MenuHelpers.createCheckbox({
+      id: "apply-code-font-dates-checkbox",
+      label: "Apply code font to dates",
+      checked: FORMATTER_CONFIG.applyCodeFontToDates,
+      tooltip:
+        "Applies code/monospace font to date and news metadata elements (.datetime, .splash .news .meta).",
+    });
+    elementSection.appendChild(applyCodeFontDates);
+
+    const dateSubOptions = document.createElement("div");
+    dateSubOptions.style.paddingLeft = "1.5em";
+    dateSubOptions.style.display = FORMATTER_CONFIG.applyCodeFontToDates ? "" : "none";
+
+    const applyCodeFontDatesInput = applyCodeFontDates.querySelector("input[type='checkbox']");
+    if (applyCodeFontDatesInput) {
+      applyCodeFontDatesInput.addEventListener("change", () => {
+        dateSubOptions.style.display = applyCodeFontDatesInput.checked ? "" : "none";
+      });
+    }
+
+    const applyCodeFontSizeDates = window.AO3MenuHelpers.createCheckbox({
+      id: "apply-code-font-size-dates-checkbox",
+      label: "Apply code font size to dates",
+      checked: FORMATTER_CONFIG.applyCodeFontSizeToDates,
+      tooltip: "Applies the Code Font Size setting to date elements. Requires a code font size to be specified above.",
+    });
+    dateSubOptions.appendChild(applyCodeFontSizeDates);
+
+    const applyCodeFontStyleDates = window.AO3MenuHelpers.createCheckbox({
+      id: "apply-code-font-style-dates-checkbox",
+      label: "Apply code font style to dates",
+      checked: FORMATTER_CONFIG.applyCodeFontStyleToDates,
+      tooltip: "Applies the Code Font Style setting (e.g. italic) to date elements.",
+    });
+    dateSubOptions.appendChild(applyCodeFontStyleDates);
+
+    elementSection.appendChild(dateSubOptions);
 
     dialog.appendChild(elementSection);
 
@@ -1264,6 +1325,12 @@ form.verbose legend,
         window.AO3MenuHelpers.getValue("code-fontsize-input") || "";
       FORMATTER_CONFIG.expandCodeFontUsage =
         window.AO3MenuHelpers.getValue("expand-code-font-checkbox") ?? false;
+      FORMATTER_CONFIG.applyCodeFontToDates =
+        window.AO3MenuHelpers.getValue("apply-code-font-dates-checkbox") ?? false;
+      FORMATTER_CONFIG.applyCodeFontSizeToDates =
+        window.AO3MenuHelpers.getValue("apply-code-font-size-dates-checkbox") ?? false;
+      FORMATTER_CONFIG.applyCodeFontStyleToDates =
+        window.AO3MenuHelpers.getValue("apply-code-font-style-dates-checkbox") ?? false;
       FORMATTER_CONFIG.backgroundColor =
         window.AO3MenuHelpers.getValue("sw_background_color") || "";
       FORMATTER_CONFIG.textColor =
