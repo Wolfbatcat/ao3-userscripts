@@ -6,8 +6,12 @@ Get a quick feel for any fic at a glance:
 - **Quality Score Bar** ⭐ – a smarter kudos/hits ratio that accounts for fic length.
 - **Both features are independent** — use one or both
 
-> **v4 Update – Improved Quality Score Formula:**  
- > The Quality Score model has been updated to give more reliable results across all fic lengths. Short works no longer drop too low, and longfics aren’t pushed higher than they should be, leading to a more even score distribution overall. Because this changes how raw scores are calculated, your max score and threshold settings were reset to the new defaults (max raw score is now 22 instead of 32). If you're updating from an older version, you may want to adjust these based on the typical scores in your fandom.
+🚨**Important Note**🚨
+> The name "Quality Score" is shorthand — it measures **reader engagement** (kudos-to-hits ratio adjusted for length), **not the quality of anyone's writing**. A lower score doesn't mean a fic is bad. It can reflect genre trends (i.e. omegaverse fics tend to score lower), smaller audiences, posting timing, or a dozen other things that have nothing to do with how good the writing is.  
+>  
+> This feature exists to help **you, the reader**, privately prioritize your reading list. That's it.  
+>  
+> **Do not share scores on social media, send them to authors, or use them to rank or criticize anyone's work.** In fact, don't discuss them with anyone at all. If I see this feature being weaponized against writers, **I will unlist the script without warning.**
 
 
 ---
