@@ -1,15 +1,16 @@
-## Copilot Instructions for AO3 Userscripts
+<!-- AO3-GUIDE:START -->
+# AO3 Dev Guide Routing
 
-**Target Platform:**
-- Archive of Our Own (AO3), static site, max 20 works per page.
+## AO3 Dev Guide Routing
 
-**Coding Guidelines:**
-- Keep code lightweight and efficient.
-- Always cache DOM selectors to minimize repeated queries and improve performance.
+AO3 reference docs live in docs/ao3/. Start with docs/ao3/agent-routing.md and load only task-relevant docs.
 
-**Conflict Checks:**
-- Before making changes, check the `ao3-userscripts/scripts/` directory for potential conflicts with existing scripts.
+Rule type meanings:
+- HARD RULE: AO3 enforces this through sanitizer, parser, runtime, or config.
+- BASELINE: AO3 currently ships this style, DOM, class, or behavior; useful to match or override, not a requirement.
+- RECOMMENDATION: Safer authoring or userscript practice; valid alternatives may exist.
+- REFERENCE: Lookup data for selectors, tokens, constants, sprites, or routing.
 
-**Code Review Policy:**
-- Only flag actual bugs or functional issues during reviews.
-- Do not comment on style preferences or minor formatting choices.
+Use docs/ao3/ao3-dev-guide.json as machine-readable routing metadata.
+When answering AO3 skin or userscript questions, consult docs/ao3/agent-routing.md and the listed task-specific docs. Keep responses clear about HARD RULE vs BASELINE vs RECOMMENDATION.
+<!-- AO3-GUIDE:END -->

@@ -15,7 +15,7 @@ The script runs automatically on all AO3 work list pages:
 
 ### ⚙️ How to Use
 
->  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
+>  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209). For the Tampermonkey iOS app, see [this video](https://www.youtube.com/watch?v=e7Sme3FY0vI).
 
 
 1. Install with a userscript manager:  
@@ -33,12 +33,19 @@ The script runs automatically on all AO3 work list pages:
 
 ---
 
-### 📜 Check out my other scripts:
-- [AO3: Advanced Blocker](https://greasyfork.org/en/scripts/549942-ao3-advanced-blocker) - Block works on AO3 based on tags, authors, titles, word counts, language, completion status, and much more. 
-- [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537-ao3-site-wizard) - Customize fonts and sizes across the entire site, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
-- [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820-ao3-skin-switcher) - Change skins from anywhere on AO3.
-- [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/549777-ao3-reading-time-quality-score) - Adds reading time estimates and quality indicators to works.
-- [AO3: Chapter Shortcuts](https://greasyfork.org/en/scripts/549571-ao3-chapter-shortcuts) - Add a customizable shortcut to the latest chapter of works.
-- [AO3: No Re-Kudos](https://greasyfork.org/en/scripts/551623-ao3-no-re-kudos) - Hide kudos button if you've already left kudos.
-- [AO3: Auto Pseud](https://greasyfork.org/en/scripts/556232-ao3-auto-pseud) - Assign pseuds based on fandoms when commenting and bookmarking works.
+> 💡 **Using AO3 on multiple devices?** Check out [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) — it automatically syncs your settings and data across devices using Google Sheets.
+
+---
+
+## 📜 Check Out My Other Scripts
+
+- [AO3: Advanced Blocker](https://greasyfork.org/en/scripts/549942) – Block works on AO3 based on tags, authors, titles, word counts, and more.
+- [AO3: Quick Hide](https://greasyfork.org/en/scripts/564383) - Quickly hide works, bookmarks, and comments while browsing AO3.
+- [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/551106) – See reading time and engagement scores at a glance.
+- [AO3: Script Sync](https://greasyfork.org/en/scripts/568443) Sync AO3 userscript settings and data across multiple devices.
+- [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537) – Customize fonts, sizes, and work spacing site-wide.
+- [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820) – Quickly switch between AO3 site skins.
+- [AO3: Chapter Shortcuts](https://greasyfork.org/en/scripts/549571) – Quick links to the latest chapter of any work.
+- [AO3: No Re-Kudos](https://greasyfork.org/en/scripts/551623) – Prevent accidentally re-kudosing works.
+- [AO3: Auto Pseud](https://greasyfork.org/en/scripts/556232) – Auto-select pseuds based on fandom when commenting and bookmarking.
 

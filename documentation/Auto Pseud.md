@@ -31,7 +31,7 @@ Auto-selects your pseud for comments and bookmarks on AO3, based on fandom.
 
 ## ⚙️ Installation
 
->  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step may be required. [See Tampermonkey FAQ.](https://www.tampermonkey.net/faq.php?locale=en#Q209)
+>  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209). For the Tampermonkey iOS app, see [this video](https://www.youtube.com/watch?v=e7Sme3FY0vI).
 
 1. Install a userscript manager (e.g., Tampermonkey):
    - [Chrome/Chromium](...)
@@ -40,14 +40,18 @@ Auto-selects your pseud for comments and bookmarks on AO3, based on fandom.
    - [Edge](...)
 2. Add this script to your userscript manager (via install link or by copying the code).
 
+> 💡 **Using AO3 on multiple devices?** Check out [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) — it automatically syncs your settings and data across devices using Google Sheets.
+
 ---
 
 ## 📜 Check Out My Other Scripts
 
-- [AO3: Advanced Blocker](https://greasyfork.org/en/scripts/549942-ao3-advanced-blocker) - Block works on AO3 based on tags, authors, titles, word counts, language, completion status, and much more. 
-- [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537-ao3-site-wizard) – Customize fonts, sizes, and work spacing site-wide.
-- [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/551106-ao3-reading-time-quality-score) – See reading time and engagement scores at a glance.
-- [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820-ao3-skin-switcher) – Quickly switch between AO3 site skins.
-- [AO3: Chapter Shortcuts](https://greasyfork.org/en/scripts/549571-ao3-chapter-shortcuts) – Quick links to the latest chapter of any work.
-- [AO3: No Re-Kudos](https://greasyfork.org/en/scripts/551623-ao3-no-re-kudos) – Prevent accidentally re-kudosing works.
-- [AO3: Reorder Ship Tags](https://greasyfork.org/en/scripts/562812-ao3-reorder-ship-tags) – Automatically reorder romantic ships (/) before platonic ships (&).
+- [AO3: Advanced Blocker](https://greasyfork.org/en/scripts/549942) – Block works on AO3 based on tags, authors, titles, word counts, and more.
+- [AO3: Quick Hide](https://greasyfork.org/en/scripts/564383) - Quickly hide works, bookmarks, and comments while browsing AO3.
+- [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/551106) – See reading time and engagement scores at a glance.
+- [AO3: Script Sync](https://greasyfork.org/en/scripts/568443) Sync AO3 userscript settings and data across multiple devices.
+- [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537) – Customize fonts, sizes, and work spacing site-wide.
+- [AO3: Skin Switcher](https://greasyfork.org/en/scripts/551820) – Quickly switch between AO3 site skins.
+- [AO3: Chapter Shortcuts](https://greasyfork.org/en/scripts/549571) – Quick links to the latest chapter of any work.
+- [AO3: No Re-Kudos](https://greasyfork.org/en/scripts/551623) – Prevent accidentally re-kudosing works.
+- [AO3: Reorder Ship Tags](https://greasyfork.org/en/scripts/562812) – Automatically reorder romantic ships (/) before platonic ships (&).
