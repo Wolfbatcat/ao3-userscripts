@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         AO3: Comment Formatting and Preview - Tweaked
+// @name         AO3: Comment Formatting and Preview - Custom
 // @namespace    https://greasyfork.org/en/users/906106-escctrl
 // @version      7.2
 // @description  Adds buttons to insert HTML formatting, and shows a live preview box of what the comment will look like
@@ -8,8 +8,6 @@
 // @match        *://*.archiveofourown.org/*
 // @require      https://update.greasyfork.org/scripts/542049/1780689/AO3%3A%20Initialize%20jQueryUI.js
 // @grant        none
-// @downloadURL https://update.greasyfork.org/scripts/484002/AO3%3A%20Comment%20Formatting%20and%20Preview.user.js
-// @updateURL https://update.greasyfork.org/scripts/484002/AO3%3A%20Comment%20Formatting%20and%20Preview.meta.js
 // ==/UserScript==
 
 /* global q, qa, ins, $, createMenu, initGUI */
