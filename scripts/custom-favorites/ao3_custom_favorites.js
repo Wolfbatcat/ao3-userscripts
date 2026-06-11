@@ -6,7 +6,7 @@
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1757286/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
+// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js
 // @grant         none
 // ==/UserScript==
 
@@ -185,6 +185,29 @@
     }
 
     /**
+     * Finds the native "Find your favorites" section regardless of whether
+     * it's a div.favorite (user has favorited tags) or div.browse.module
+     * (user has 0 favorite tags — AO3 shows media category links instead).
+     * @returns {HTMLElement|null}
+     */
+    function findNativeSection() {
+        // Standard section when user has favorited tags
+        const fav = document.querySelector("div.favorite:not(#" + SIDEBAR_ID + ")");
+        if (fav) return fav;
+        // Fallback when user has 0 favorite tags: browse module with "Find your favorites" heading
+        const headings = document.querySelectorAll("div.splash h3.heading");
+        for (const h of headings) {
+            if (h.textContent.trim() === "Find your favorites") {
+                const mod = h.closest("div.module, div.favorite");
+                if (mod) return mod;
+            }
+        }
+        // Check stash
+        const stash = document.getElementById(NATIVE_STASH_ID);
+        return stash ? stash.firstElementChild : null;
+    }
+
+    /**
      * Restores stashed native favorites section back into div.splash
      * at its original position. Uses __last__ sentinel when native
      * section was the final child (no next sibling).
@@ -232,9 +255,8 @@
         // Remove or restore the native "Find your favorites" section.
         // We physically move it out of div.splash rather than display:none so it
         // doesn't occupy a grid slot when hidden.
-        const nativeSection =
-            document.querySelector("div.favorite:not(#" + SIDEBAR_ID + ")") ||
-            document.getElementById(NATIVE_STASH_ID)?.firstElementChild;
+        // When user has 0 favorite tags, AO3 shows a div.browse.module fallback.
+        const nativeSection = findNativeSection();
         const stash = document.getElementById(NATIVE_STASH_ID);
 
         if (settings.hideNative) {
@@ -806,7 +828,8 @@
             if (parsed.displayStyle && parsed.displayStyle !== "list") return;
             const style = document.createElement("style");
             style.id = EARLY_HIDE_ID;
-            style.textContent = "div.splash div.favorite { visibility: hidden; }";
+            style.textContent =
+                "div.splash div.favorite, div.splash div.browse.module { visibility: hidden; }";
             document.head.appendChild(style);
         } catch {
             // ignore

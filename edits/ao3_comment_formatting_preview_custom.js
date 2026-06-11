@@ -230,7 +230,8 @@
                 }
             }}
         });
-        obsComment.observe(qa('#feedback, #reply-to-comment, #main.comments-show')[0], { attributes: false, childList: true, subtree: true });
+        const commentRoot = q('#feedback, #reply-to-comment, #main.comments-show');
+        if (commentRoot) obsComment.observe(commentRoot, { attributes: false, childList: true, subtree: true });
     }
     if (qa('div[id^="bookmark_form_placement_for_"]').length > 0) {
         // on bookmarks, there's either an Edit button to manage my own bookmark, or a Save button to bookmark that work
@@ -277,8 +278,11 @@
                     }
                 }}
             });
-            obsSafeKeeping.observe(q('.work.index ul.actions'), { attributes: false, childList: true, subtree: false });
-            let timeout = setTimeout(() => { obsSafeKeeping.disconnect(); }, 5000); // failsafe: stop listening after 5 seconds (in case the other script isn't installed)
+            const workActions = q('.work.index ul.actions');
+            if (workActions) {
+                obsSafeKeeping.observe(workActions, { attributes: false, childList: true, subtree: false });
+                let timeout = setTimeout(() => { obsSafeKeeping.disconnect(); }, 5000); // failsafe: stop listening after 5 seconds (in case the other script isn't installed)
+            }
         }
         else qa('.work.blurb').forEach((el) => obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }) );
     }
@@ -297,7 +301,7 @@
                 }
             }}
         });
-        obsStickyComment.observe(q('body'), { attributes: false, childList: true, subtree: false });
+        if (document.body) obsStickyComment.observe(document.body, { attributes: false, childList: true, subtree: false });
         let timeout = setTimeout(() => { obsStickyComment.disconnect(); }, 5000); // failsafe: stop listening after 5 seconds (in case the other script isn't installed)
     }
     if (q('#wrangulator')) {
@@ -313,7 +317,7 @@
                 }
             }}
         });
-        obsCommentFromBin.observe(main, { attributes: false, childList: true, subtree: false });
+        if (main) obsCommentFromBin.observe(main, { attributes: false, childList: true, subtree: false });
         let timeout = setTimeout(() => { obsCommentFromBin.disconnect(); }, 5000); // failsafe: stop listening after 5 seconds (in case the other script isn't installed)
     }
 

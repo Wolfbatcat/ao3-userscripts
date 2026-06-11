@@ -5,9 +5,11 @@ Tired of extra clicks just to get to the latest chapter? This script adds handy 
 - **First and last chapter buttons** added directly on work pages.  
 - Fully customizable — pick your own symbol for the shortcut button!  
 
-![Chapter Shortcuts Menu](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_chapter-shortcuts-1.png "Chapter Shortcuts Menu")
+![Chapter Shortcuts Menu](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_1.png "Chapter Shortcuts Menu")
 
-![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_ao3_chapter_shortcuts_2.png "Chapter Shortcuts Menu")
+![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_2.png "Chapter Shortcuts Menu")
+
+![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_3.png "Chapter Shortcuts Menu")
 
 ---
 

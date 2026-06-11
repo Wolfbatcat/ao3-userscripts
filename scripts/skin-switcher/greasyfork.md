@@ -1,38 +1,62 @@
 # AO3: Skin Switcher
 
-Tired of navigating to your skins page every time you want to switch themes? This script lets you change site skins from anywhere on AO3 without leaving the page. 
+Tired of navigating to your skins page every time you want to switch themes? This script lets you change site skins from anywhere on AO3 without leaving the page — and adds sorting, filtering, searching, and pinning to your skins page so it's easier to manage.
 
-- **Normal mode**: Switch skins by picking from your usable (non-parent) skins. Skins are sorted alphabetically.
-- **Edit mode**: Click a skin to view its edit page. Skins are sorted by last modified.
-- **Home button**: Go to the site skins page.
+- **Skin Switcher** 🎨 – switch skins from anywhere via the header menu.
+  - 🆕 Search and pin your favorite skins right in the popup!
+- **Skins Organizer** 🗂️ – sort, filter, search, and pin skins on your skins page.
+- **Both features are independent** — use one or both.
 
+---
+
+### ✨ Features
+
+#### 🎨 Skin Switcher (Popup Menu)
+- **Normal mode:** Switch skins by picking from your usable (non-parent) skins. Skins are sorted alphabetically.
+- **Edit mode:** Click a skin to view its edit page. Skins are sorted by last modified.
+- **Search:** Filter your skin list by name right inside the popup.
+- **Pin favorites:** Pin frequently-used skins to the top for instant access.
+- **Home button:** Go to the site skins page.
 
 **Normal Mode**
 
-![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_skin-switcher-1.png "Skin Switcher")
+![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin-switcher-1.png "Skin Switcher")
 
 **Edit Mode**
 
-![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_skin-switcher-2.png "Skin Switcher")
+![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin-switcher-2.png "Skin Switcher")
+
+#### 🗂️ Skin Organizer
+**NEW:** Thank you to [autocomplete](https://greasyfork.org/users/1603527) for allowing me to merge in features from the amazing [Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) script. Note that Skin Organizer has been integrated into this script and is no longer needed.
+
+- **Sort:** Order your skins by date updated, date created, or title — ascending or descending.
+- **Filter:** Narrow the list by name, whether a skin is currently in use, has a description, or is a parent skin.
+- **Pin to top:** Keep your go-to skins pinned at the top of the page.
+- **Site and work skins:** The tools work on both (the "in use" and "parent skin" filters apply to site skins only).
+
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_image-skin-switcher-3.png" width="720" alt="Skin Organizer">
 
 ---
+
 ### ⚙️ How to Use
 
 >  **⚠️ Important for Chromium-based browsers:** If you're using Chrome, Brave, Vivaldi, or Microsoft Edge on PC, an extra activation step is required. [Follow these instructions.](https://www.tampermonkey.net/faq.php?locale=en#Q209). For the Tampermonkey iOS app, see [this video](https://www.youtube.com/watch?v=e7Sme3FY0vI).
 
-
-1. Install with a userscript manager:  
+1. Install with a userscript manager:
    - **Tampermonkey**
-     - [Chrome/Chromium](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)  
-     - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)  
-     - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)  
+     - [Chrome/Chromium](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+     - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
+     - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)
      - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
-2. Click **Userscripts** -> **Skin Switcher** in the header to to bring up the menu.
-3. Select the skin you want.
+2. Click **Userscripts** → **Skin Switcher** in the header to bring up the menu, then select the skin you want.
+3. To sort, filter, or pin your skins, just visit your **skins page** — the organizing tools appear there automatically.
+
+> 💡 **Using AO3 on multiple devices?** Check out [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) — it automatically syncs your settings and data across devices using Google Sheets.
 
 ---
 
-> 💡 **Using AO3 on multiple devices?** Check out [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) — it automatically syncs your settings and data across devices using Google Sheets.
+### 🙌 Credits
+- [autocomplete’s AO3: Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) — original sort/filter/pin features for the skins page.
 
 ---
 

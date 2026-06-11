@@ -18,15 +18,15 @@ Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state i
 
 ## 🎨 Visual Styles
 
-![Default Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-0.png)
+![Default Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/quick-hide/images/image_quick-hide-0.png)
 
 *Default: Shows title, author, date, and ratings.*
 
-![Minimal Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-1.png)
+![Minimal Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/quick-hide/images/image_quick-hide-1.png)
 
 *Minimal: Shows only title, author, and date.*
 
-![FicTracker Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_quick-hide-2.png)
+![FicTracker Style](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/quick-hide/images/image_quick-hide-2.png)
 
 *FicTracker: Shows title, author, date, ratings, stats, and [FicTracker](https://greasyfork.org/en/scripts/513435-ao3-fictracker) notes (if enabled).*
 

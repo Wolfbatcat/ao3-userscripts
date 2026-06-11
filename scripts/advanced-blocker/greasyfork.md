@@ -2,7 +2,7 @@
 
 Block works on AO3 by tags, authors, titles, summaries, word counts, and more. Filter by completion status, language, last update, and primary pairings. Customize what you see—or don't.
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-2.png" width="600" alt="Advanced Blocker in action">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/advanced-blocker/images/image_advanced_blocker_1.png" width="600" alt="Advanced Blocker in action">
 
 ---
 
@@ -49,7 +49,7 @@ Block works on AO3 by tags, authors, titles, summaries, word counts, and more. F
 - **Pause Blocking** – Temporarily disable all filtering without changing your settings.
 - **Import / Export Settings** – Save and restore your configuration across devices or browsers.
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/images/image_advanced-blocker-1.png" width="600" alt="Advanced Blocker settings panel">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/advanced-blocker/images/image_advanced_blocker_2.png" width="600" alt="Advanced Blocker settings panel">
 
 ---
 

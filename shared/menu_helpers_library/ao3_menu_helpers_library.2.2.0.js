@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
 // @version      2.2.0
-// @description  Shared UI components and styling for AO3 userscripts - Enhanced theme detection
+// @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
 // @license      MIT
