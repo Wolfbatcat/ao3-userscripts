@@ -2,14 +2,13 @@
 
 Tired of extra clicks just to get to the latest chapter? This script adds handy shortcuts so you can jump straight where you want:  
 - A **latest chapter button** right next to author names on works.  
-- **First and last chapter buttons** added directly on work pages.  
+- **First and last chapter buttons** added directly on work pages.
+- **Hide work page buttons** — Optionally hide the entire work, download, share, invite to collections, first chapter, and last chapter buttons.
 - Fully customizable — pick your own symbol for the shortcut button!  
 
-![Chapter Shortcuts Menu](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_1.png "Chapter Shortcuts Menu")
+![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_3.png "Chapter Shortcuts Menu")
 
 ![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_2.png "Chapter Shortcuts Menu")
-
-![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_3.png "Chapter Shortcuts Menu")
 
 ---
 

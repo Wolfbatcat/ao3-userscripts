@@ -22,13 +22,13 @@ Get a quick feel for any fic at a glance:
 - Fully customizable reading speed (**WPM setting**) so it matches your pace.  
 - Color thresholds highlight short, medium, and long reads at a glance.  
 
-![Reading Time](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-1.png "Reading Time Settings")
+![Reading Time](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_1.png "Reading Time Settings")
 
-##### **NEW** - Chapter Reading Time & Word Count
+##### Chapter Reading Time & Word Count
 - Provides reading time and word count at the start of the chapter
 - Three different visual options (Default, Notice, and Time Only)
 
-![Chapter Reading Time](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-10.png "Chapter Reading Time Settings")
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_10.png" alt="Chapter Reading Time Settings" width="600">
 
 
 #### **Quality Score**
@@ -46,25 +46,25 @@ Get a quick feel for any fic at a glance:
   - **Hide works by score:** Optionally filter out works below a minimum quality score threshold.
 - **Hide scores on specific works:** Exclude specific works from scoring by work ID—useful for authors who don't want to see scores on their own works.
 
-![Quality Score](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-2.png "Quality Score Settings")
+![Quality Score](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_2.png "Quality Score Settings")
 
 ### **Highly Customizable**
 - Hide work metrics on blurbs (kudos, hits, bookmarks, and comments)
 - Three different visual options (Default, Colored, and Bar)
 - Optional icons to go with [Rose Pine site skin](https://archiveofourown.org/works/69993411) or [Stat Icons with Hover Text](https://archiveofourown.org/works/55604875/chapters/141130912)
 
-![Visual Options](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-3.png)
+![Visual Options](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_3.png)
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-5.png "Reading Time & Quality Score Bar")
+![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_5.png "Reading Time & Quality Score Bar")
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-9.png "Reading Time & Quality Score Bar")
+![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_9.png "Reading Time & Quality Score Bar")
 
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-6.png "Reading Time & Quality Score Bar")
+![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_6.png "Reading Time & Quality Score Bar")
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-7.png "Reading Time & Quality Score Bar")
+![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_7.png "Reading Time & Quality Score Bar")
 
-![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading-time-quality-score-8.png "Reading Time & Quality Score Bar")
+![Bar](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/reading-time-quality-score/images/image_reading_time_quality_score_8.png "Reading Time & Quality Score Bar")
 
 ---
 

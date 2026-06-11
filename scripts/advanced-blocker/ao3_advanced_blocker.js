@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       4.1.2
+// @version       4.2.0
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -29,7 +29,7 @@
     // ============================================================
 
     const CSS_NAMESPACE = "ao3-blocker";
-    const VERSION = "4.1.2"; // Keep in sync with @version in userscript header
+    const VERSION = "4.2.0"; // Keep in sync with @version in userscript header
     const WORKS_PAGE_REGEX = /^https?:\/\/archiveofourown\.org\/(works|chapters)\/\d+/;
 
     const DEFAULTS = {

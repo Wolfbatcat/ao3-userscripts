@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
 // @version       3.0.0
-// @description   Change site skins from anywhere, or sort/filter/pin on your skins page.
-// @author        BlackBatCat, autocompleted
+// @description   Change site skins from anywhere. Sort/filter/pin on your skins page.
+// @author        BlackBatCat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
 // @grant         none
 // @run-at        document-start
 // ==/UserScript==
@@ -150,6 +150,9 @@
         orGroups.push(andGroup);
         return orGroups;
     }
+
+    // Backslash literal — editors/consoles can mangle inline escape sequences.
+    const BS = String.fromCharCode(92);
 
     function escapeRegexLiteral(value) {
         const special = new Set([".", "+", "?", "^", "$", "{", "}", "(", ")", "|", "[", "]", BS]);
@@ -1159,8 +1162,10 @@
                         const db = b.lastModified ? b.lastModified.getTime() : 0;
                         return db - da;
                     });
-                const q = searchQuery.trim().toLowerCase();
-                if (q) r = r.filter((s) => s.name.toLowerCase().includes(q));
+                if (searchQuery.trim()) {
+                    const tokens = tokenizeQuery(searchQuery);
+                    r = r.filter((s) => matchesTokenizedQuery(tokens, s.name));
+                }
                 const pinned = r.filter((s) => pins.has(s.id));
                 const unpinned = r.filter((s) => !pins.has(s.id));
                 return { pinned, unpinned, total: r.length };

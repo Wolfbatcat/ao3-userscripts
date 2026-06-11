@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.7.0
+// @version       2.6.1
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js
+// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
 // @grant         none
 // @namespace https://greasyfork.org/users/1498004
 // ==/UserScript==
@@ -40,6 +40,7 @@
         lastChapterSymbol: "»",
         hideMenuOptions: false,
         enableBottomButtons: true,
+        disableTopNavButtons: false,
         hideEntireWorkButton: false,
         hideShareButton: false,
         hideDownloadButton: false,
@@ -204,18 +205,20 @@
         const hasPrev = navList && navList.querySelector("li.previous");
         if (workNav && !indexList) {
             // Insert First Chapter button before Last Chapter button (top nav)
-            let firstChapterBtn = null;
-            let lastChapterBtn = null;
-            if (hasPrev) {
-                firstChapterBtn = createFirstChapterButton("go_to_first_chap");
-                workNav.prepend(firstChapterBtn);
-            }
-            if (hasNext) {
-                lastChapterBtn = createLastChapterButton("go_to_last_chap");
-                if (firstChapterBtn && firstChapterBtn.nextSibling) {
-                    firstChapterBtn.insertAdjacentElement("afterend", lastChapterBtn);
-                } else {
-                    workNav.prepend(lastChapterBtn);
+            if (!CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons) {
+                let firstChapterBtn = null;
+                let lastChapterBtn = null;
+                if (hasPrev) {
+                    firstChapterBtn = createFirstChapterButton("go_to_first_chap");
+                    workNav.prepend(firstChapterBtn);
+                }
+                if (hasNext) {
+                    lastChapterBtn = createLastChapterButton("go_to_last_chap");
+                    if (firstChapterBtn && firstChapterBtn.nextSibling) {
+                        firstChapterBtn.insertAdjacentElement("afterend", lastChapterBtn);
+                    } else {
+                        workNav.prepend(lastChapterBtn);
+                    }
                 }
             }
         }
@@ -292,9 +295,10 @@
      * Configures last-chapter symbol, bottom buttons, hide-work-buttons.
      */
     function showChapterShortcutsMenu() {
-        helpers.removeAllDialogs();
+        try {
+            helpers.removeAllDialogs();
 
-        const dialog = helpers.createDialog("🏃🏻 Chapter Shortcuts 🏃🏻", {
+            const dialog = helpers.createDialog("🏃🏻 Chapter Shortcuts 🏃🏻", {
             maxWidth: "500px",
         });
 
@@ -348,6 +352,13 @@
 
         // ── Options ───────────────────────────────────────
         const optionsSection = helpers.createSection("⚙️ Options");
+
+        const disableTopNavCheckbox = helpers.createCheckbox({
+            id: "disable-top-nav-buttons",
+            label: "Disable First/Last Chapter buttons",
+            checked: CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons,
+        });
+        optionsSection.appendChild(disableTopNavCheckbox);
 
         const enableBottomCheckbox = helpers.createCheckbox({
             id: "enable-bottom-buttons",
@@ -420,6 +431,8 @@
                     CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol =
                         helpers.getValue("custom-symbol") || "»";
                     CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions = helpers.getValue("hide-menu-option");
+                    CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons =
+                        helpers.getValue("disable-top-nav-buttons");
                     CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons =
                         helpers.getValue("enable-bottom-buttons");
                     CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton =
@@ -452,6 +465,10 @@
         dialog.addEventListener("click", (e) => {
             if (e.target === dialog) dialog.remove();
         });
+        } catch (e) {
+            console.error("[AO3: Chapter Shortcuts] Menu error:", e);
+            alert("Chapter Shortcuts: " + (e && e.message ? e.message : e));
+        }
     }
 
     // ============================================================
@@ -527,24 +544,36 @@
 
     console.log("[AO3: Chapter Shortcuts] loaded.");
 
-    // Add to shared menu using library helper (conditionally)
-    if (!CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions || helpers.isAO3Homepage()) {
-        helpers.addToSharedMenu({
-            id: "opencfg_chapter_shortcuts",
-            text: "Chapter Shortcuts",
-            onClick: showChapterShortcutsMenu,
-        });
+    // Fix: other MHL instances destroy shared stylesheet; re-inject at init time
+    if (!document.getElementById("ao3-menu-helpers-styles")) {
+        const style = document.createElement("style");
+        style.id = "ao3-menu-helpers-styles";
+        style.textContent = helpers._generateSharedStyles();
+        document.head.appendChild(style);
     }
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => {
+            initMenu();
             addChapterButtons();
             hideWorkPageButtons();
             setupBottomNavObserver();
         });
     } else {
+        initMenu();
         addChapterButtons();
         hideWorkPageButtons();
         setupBottomNavObserver();
+    }
+
+    /** Register shared menu item */
+    function initMenu() {
+        if (!CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions || helpers.isAO3Homepage()) {
+            helpers.addToSharedMenu({
+                id: "opencfg_chapter_shortcuts",
+                text: "Chapter Shortcuts",
+                onClick: showChapterShortcutsMenu,
+            });
+        }
     }
 })();

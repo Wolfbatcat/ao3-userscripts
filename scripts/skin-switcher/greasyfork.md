@@ -14,27 +14,28 @@ Tired of navigating to your skins page every time you want to switch themes? Thi
 #### 🎨 Skin Switcher (Popup Menu)
 - **Normal mode:** Switch skins by picking from your usable (non-parent) skins. Skins are sorted alphabetically.
 - **Edit mode:** Click a skin to view its edit page. Skins are sorted by last modified.
-- **Search:** Filter your skin list by name right inside the popup.
+- **Search:** Search your skin list by name right inside the popup. Supports search operators (see Skin Organizer section).
 - **Pin favorites:** Pin frequently-used skins to the top for instant access.
 - **Home button:** Go to the site skins page.
 
 **Normal Mode**
 
-![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin-switcher-1.png "Skin Switcher")
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_1.png" width="400" alt="Skin Organizer">
 
 **Edit Mode**
 
-![Skin Switcher](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin-switcher-2.png "Skin Switcher")
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_2.png" width="400" alt="Skin Organizer">
 
 #### 🗂️ Skin Organizer
-**NEW:** Thank you to [autocomplete](https://greasyfork.org/users/1603527) for allowing me to merge in features from the amazing [Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) script. Note that Skin Organizer has been integrated into this script and is no longer needed.
+**NEW:** Thank you to [autocompleted](https://greasyfork.org/users/1603527) for allowing me to merge in features from the amazing [Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) script. Note that Skin Organizer has been integrated into this script and is no longer needed.
 
 - **Sort:** Order your skins by date updated, date created, or title — ascending or descending.
 - **Filter:** Narrow the list by name, whether a skin is currently in use, has a description, or is a parent skin.
 - **Pin to top:** Keep your go-to skins pinned at the top of the page.
 - **Site and work skins:** The tools work on both (the "in use" and "parent skin" filters apply to site skins only).
+- **Search operators:** Filter by name using `*` (any characters), `""` (exact phrase), space or `AND` (all terms), `||` or `OR` (either), `-` or `NOT` (exclude).
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_image-skin-switcher-3.png" width="720" alt="Skin Organizer">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_3.png" width="720" alt="Skin Organizer">
 
 ---
 
@@ -56,7 +57,7 @@ Tired of navigating to your skins page every time you want to switch themes? Thi
 ---
 
 ### 🙌 Credits
-- [autocomplete’s AO3: Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) — original sort/filter/pin features for the skins page.
+- [autocompleted’s AO3: Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) — original sort/filter/pin features for the skins page.
 
 ---
 

@@ -11,37 +11,36 @@ Transform your AO3 reading experience with complete font and layout control:
 ### ✨ Features
 
 #### **Site-Wide Formatting**
-![Alt text](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site-wizard-1.png "Site-Wide Settings")
 - **Base Font Size**: Adjust the overall text size for the entire site (50-200% of browser default).
 - **General Text Font**: Set a custom font family for most site text.
 - **Font Weight**: Control the boldness of general text across AO3.
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site_wizard_1.png" alt="Site-Wide Settings" width="570">
 
 #### **Work Formatting**
-![Alt text](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site-wizard-2.png "Work Settings")
 - **Work Margin Width**: Control how wide the work reader appears (10-100% of viewport).
 - **Font Size**: Scale work text relative to your site base size (50-200%).
 - **Text Alignment**: Choose between left-aligned, justified, or right-aligned text.
 - **Line Spacing**: Fine-tune vertical space between paragraphs with decimal precision.
 - **Work Font**: Set a specific font family just for reading stories.
 - **Spacing Fix**: Automatically removes unnecessary blank lines and excessive spacing.
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site_wizard_2.png" alt="Work Settings" width="570">
 
 #### **Element-Specific Formatting**
-![Alt text](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site-wizard-3.png "Element-Specific Settings")
 - **Header Font**: Customize fonts for all headings (H1-H6).
 - **Header Weight**: Control header text boldness separately from body text.
 - **Code/Monospace Font**: Set fonts for code blocks and preformatted text.
 - **Code Font Style**: Choose normal or italic styling for code elements.
 - **Code Font Size**: Scale code text relative to surrounding content.
 - **Apply code font to comments**: Use code font on all textareas.
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site_wizard_3.png" alt="Element-Specific Settings" width="570">
 
 #### **Colors**
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site-wizard-4.png" alt="Color Settings" width="50%">
-
 - **Background Color**: Customize the background color of the entire site.
 - **Text Color**: Change the default text color across AO3.
 - **Header Color**: Set a custom color for headers and primary UI elements.
 - **Accent Color**: Control the color of accent elements like borders and highlights.
 - **Logo Color**: Transform the AO3 logo color using CSS filters. Use the [color filter generator](https://angel-rs.github.io/css-color-filter-generator/) to create custom filter values for any desired logo color.
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/site-wizard/images/image_site_wizard_4.png" alt="Color Settings" width="570">
 
 ---
 ### ⚙️ How to Use

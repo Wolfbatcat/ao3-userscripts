@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.2.0
+// @version      2.2.1
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -1006,7 +1006,7 @@
          * into the document head. Safe to call multiple times — only injects once.
          */
         injectSharedStyles() {
-            if (stylesInjected) return;
+            if (stylesInjected && document.getElementById("ao3-menu-helpers-styles")) return;
             if (!document.head) {
                 if (document.readyState === "loading") {
                     document.addEventListener("DOMContentLoaded", () => {
