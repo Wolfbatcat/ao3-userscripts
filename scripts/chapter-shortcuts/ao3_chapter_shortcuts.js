@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.6.4
+// @version       2.6.5
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -15,7 +15,6 @@
 // @match         *://archiveofourown.org/series/*
 // @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
 // @grant         none
-// @namespace https://greasyfork.org/users/1498004
 // ==/UserScript==
 
 (function () {
@@ -38,6 +37,8 @@
     const CHAPTER_SHORTCUTS_CONFIG_KEY = "ao3_chapter_shortcuts_config";
     const DEFAULT_CHAPTER_SHORTCUTS_CONFIG = {
         lastChapterSymbol: "»",
+        enableLastChapterSymbol: true,
+        bookmarksOnly: false,
         hideMenuOptions: false,
         enableBottomButtons: true,
         disableTopNavButtons: false,
@@ -55,6 +56,9 @@
 
     // Dedup in-flight chapter fetches by story ID
     const CHAPTER_FETCH_IN_FLIGHT = new Map();
+
+    // sessionStorage key prefix for caching last-chapter URLs
+    const CHAPTER_CACHE_PREFIX = "ao3_cs_last_chap_";
 
     // ============================================================
     // UTILITY FUNCTIONS
@@ -77,6 +81,42 @@
             }
         }
         return null;
+    }
+
+    function detectUsername() {
+        // Try nav link first (most reliable — present on all pages when logged in)
+        const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
+        if (userLink) {
+            const username = userLink.textContent.trim();
+            if (username) return username;
+            // Fall back to href if text is empty
+            const hrefMatch = userLink.getAttribute("href").match(/^\/users\/([^/]+)/);
+            if (hrefMatch) return decodeURIComponent(hrefMatch[1]);
+        }
+        // Try extracting from the current URL on user-scoped pages
+        const pathMatch = window.location.pathname.match(/^\/users\/([^/]+)/);
+        if (pathMatch) return decodeURIComponent(pathMatch[1]);
+        // Try extracting from user_id query param on /bookmarks pages
+        const userIdMatch = window.location.search.match(/(?:^[?]|&)user_id=([^&]+)/);
+        if (userIdMatch) return decodeURIComponent(userIdMatch[1]);
+        return null;
+    }
+
+    function isUsersBookmarksPage(username) {
+        if (!username) return false;
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const escaped = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        // /users/{name}[/pseuds/{psued}]/bookmarks
+        if (new RegExp(`^/users/${escaped}(?:/pseuds/[^/]+)?/bookmarks/?`, "i").test(path))
+            return true;
+        // /bookmarks?...&user_id={name} or /bookmarks?user_id={name}...
+        if (
+            /^\/bookmarks\/?/.test(path) &&
+            new RegExp(`(?:^|&)user_id=${escaped}(?:&|$)`, "i").test(search.slice(1))
+        )
+            return true;
+        return false;
     }
 
     // ============================================================
@@ -248,40 +288,79 @@
             }
         }
 
-        // Add last chapter links to work listings
-        if (document.querySelector(".header h4.heading")) {
+        // Add last chapter links to work listings (staggered eager fetch, sessionStorage-cached)
+        if (
+            CHAPTER_SHORTCUTS_CONFIG.enableLastChapterSymbol &&
+            (!CHAPTER_SHORTCUTS_CONFIG.bookmarksOnly || isUsersBookmarksPage(detectUsername())) &&
+            document.querySelector(".header h4.heading")
+        ) {
             const headings = document.querySelectorAll(".header h4.heading");
+            let delay = 0;
             headings.forEach((heading) => {
                 const link = heading.querySelector("a");
-                if (link) {
-                    const storyPath = link.getAttribute("href");
-                    const match = storyPath.match(/works\/(\d+)/);
-                    if (match) {
-                        const storyId = match[1];
-                        if (CHAPTER_FETCH_IN_FLIGHT.has(storyId)) return;
-                        CHAPTER_FETCH_IN_FLIGHT.set(storyId, true);
-                        fetch(`/works/${storyId}/navigate`)
-                            .then((response) => response.text())
-                            .then((data) => {
-                                const parser = new DOMParser();
-                                const doc = parser.parseFromString(data, "text/html");
-                                const lastChapterLink = doc.querySelector("ol li:last-child a");
-                                if (lastChapterLink) {
-                                    const lastChapterPath = lastChapterLink.getAttribute("href");
-                                    const lastChapterEl = document.createElement("a");
-                                    lastChapterEl.href = lastChapterPath;
-                                    lastChapterEl.title = "Jump to last chapter";
-                                    lastChapterEl.textContent = ` ${
-                                        CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol || "»"
-                                    }`;
-                                    lastChapterEl.className = "ao3-last-chapter-link";
-                                    heading.appendChild(lastChapterEl);
-                                }
-                            })
-                            .catch((error) => console.error("Error fetching chapter data:", error))
-                            .finally(() => CHAPTER_FETCH_IN_FLIGHT.delete(storyId));
-                    }
+                if (!link) return;
+                const storyPath = link.getAttribute("href");
+                const match = storyPath.match(/works\/(\d+)/);
+                if (!match) return;
+                const storyId = match[1];
+                const cacheKey = CHAPTER_CACHE_PREFIX + storyId;
+
+                const injectLastChapterLink = (lastChapterPath) => {
+                    if (heading.querySelector(".ao3-last-chapter-link")) return;
+                    const lastChapterEl = document.createElement("a");
+                    lastChapterEl.href = lastChapterPath;
+                    lastChapterEl.title = "Jump to last chapter";
+                    lastChapterEl.textContent = ` ${
+                        CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol || "»"
+                    }`;
+                    lastChapterEl.className = "ao3-last-chapter-link";
+                    heading.appendChild(lastChapterEl);
+                };
+
+                // Skip single-chapter works
+                const blurb = heading.closest("li.blurb");
+                const chaptersText = blurb?.querySelector("dd.chapters")?.textContent?.trim();
+                if (chaptersText) {
+                    const chaptersMatch = chaptersText
+                        .replace(/&nbsp;/g, " ")
+                        .match(/^(\d+)\s*\/\s*([\d?]+)/);
+                    if (
+                        chaptersMatch &&
+                        chaptersMatch[2] !== "?" &&
+                        parseInt(chaptersMatch[2], 10) === 1
+                    )
+                        return;
                 }
+
+                // If cached, inject immediately with no fetch
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) {
+                    injectLastChapterLink(cached);
+                    return;
+                }
+
+                if (CHAPTER_FETCH_IN_FLIGHT.has(storyId)) return;
+                CHAPTER_FETCH_IN_FLIGHT.set(storyId, true);
+
+                setTimeout(() => {
+                    fetch(`/works/${storyId}/navigate`)
+                        .then((response) => response.text())
+                        .then((data) => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(data, "text/html");
+                            const lastChapterLink = doc.querySelector("ol li:last-child a");
+                            if (lastChapterLink) {
+                                const lastChapterPath = lastChapterLink.getAttribute("href");
+                                try {
+                                    sessionStorage.setItem(cacheKey, lastChapterPath);
+                                } catch (_) {}
+                                injectLastChapterLink(lastChapterPath);
+                            }
+                        })
+                        .catch((error) => console.error("Error fetching chapter data:", error))
+                        .finally(() => CHAPTER_FETCH_IN_FLIGHT.delete(storyId));
+                }, delay);
+                delay += 150;
             });
         }
     }
@@ -299,174 +378,201 @@
             helpers.removeAllDialogs();
 
             const dialog = helpers.createDialog("🏃🏻 Chapter Shortcuts 🏃🏻", {
-            maxWidth: "500px",
-        });
-
-        // ── Last Chapter Symbol ──────────────────────────
-        const symbolSection = helpers.createSection("🔤 Last Chapter Symbol");
-        const symbolHeading = symbolSection.querySelector("h3, h4, .heading");
-        if (symbolHeading) symbolHeading.style.display = "none";
-        const presetGroup = helpers.createSettingGroup();
-        presetGroup.appendChild(
-            helpers.createLabel("Choose a symbol for the Last Chapter button:"),
-        );
-
-        const presetSymbols = ["»", "➼", "➺", "✦", "♥", "✿", "ɞɞ"];
-        const presetButtons = presetSymbols.map((symbol) => {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "preset-symbol";
-            btn.dataset.symbol = symbol;
-            btn.textContent = symbol;
-            btn.style.cssText =
-                "display: inline-flex; align-items: center; justify-content: center; font-family: inherit; font-size: inherit; line-height: 1; color: inherit;";
-            return btn;
-        });
-
-        const buttonContainer = helpers.createHorizontalLayout(presetButtons, {
-            gap: "10px",
-            justifyContent: "center",
-        });
-        buttonContainer.style.marginBottom = "10px";
-        presetGroup.appendChild(buttonContainer);
-
-        symbolSection.appendChild(presetGroup);
-
-        const customInput = helpers.createTextInput({
-            id: "custom-symbol",
-            label: "Or enter your own:",
-            value: CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol,
-            placeholder: "",
-        });
-        const customSymbolInput = customInput.querySelector("#custom-symbol");
-        if (customSymbolInput) customSymbolInput.maxLength = 4;
-        symbolSection.appendChild(customInput);
-
-        // Add preset button click handlers
-        presetButtons.forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const el = document.getElementById("custom-symbol");
-                if (el) el.value = btn.dataset.symbol;
+                maxWidth: "600px",
             });
-        });
 
-        dialog.appendChild(symbolSection);
+            // ── Last Chapter Symbol ──────────────────────────
+            const symbolSection = helpers.createSection("🔤 Last Chapter Symbol");
+            const presetGroup = helpers.createSettingGroup();
+            presetGroup.appendChild(helpers.createLabel("Choose a Last Chapter symbol:"));
 
-        // ── Options ───────────────────────────────────────
-        const optionsSection = helpers.createSection("⚙️ Options");
+            const presetSymbols = ["»", "➼", "➺", "✦", "♥", "✿", "ɞɞ"];
+            const presetButtons = presetSymbols.map((symbol) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "preset-symbol";
+                btn.dataset.symbol = symbol;
+                btn.textContent = symbol;
+                btn.style.cssText =
+                    "display: inline-flex; align-items: center; justify-content: center; font-family: inherit; font-size: inherit; line-height: 1; color: inherit;";
+                return btn;
+            });
 
-        const disableTopNavCheckbox = helpers.createCheckbox({
-            id: "disable-top-nav-buttons",
-            label: "Disable First/Last Chapter buttons",
-            checked: CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons,
-        });
-        optionsSection.appendChild(disableTopNavCheckbox);
+            const buttonContainer = helpers.createHorizontalLayout(presetButtons, {
+                gap: "10px",
+                justifyContent: "center",
+            });
+            buttonContainer.style.marginBottom = "10px";
+            presetGroup.appendChild(buttonContainer);
 
-        const enableBottomCheckbox = helpers.createCheckbox({
-            id: "enable-bottom-buttons",
-            label: "Enable bottom navigation buttons",
-            checked: CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons,
-        });
-        optionsSection.appendChild(enableBottomCheckbox);
+            symbolSection.appendChild(presetGroup);
 
-        const hideButtonsSubsettings = helpers.createSubsettings();
+            const customInput = helpers.createTextInput({
+                id: "custom-symbol",
+                label: "Or enter your own:",
+                value: CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol,
+                placeholder: "",
+            });
+            const customSymbolInput = customInput.querySelector("#custom-symbol");
+            if (customSymbolInput) customSymbolInput.maxLength = 4;
+            symbolSection.appendChild(customInput);
 
-        const hideButtonsRow1 = helpers.createTwoColumnLayout(
-            helpers.createCheckbox({
-                id: "hide-entire-work-button",
-                label: "Entire work",
-                checked: CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton,
-                inGroup: false,
-            }),
-            helpers.createCheckbox({
-                id: "hide-share-button",
-                label: "Share",
-                checked: CHAPTER_SHORTCUTS_CONFIG.hideShareButton,
-                inGroup: false,
-            }),
-        );
-        hideButtonsSubsettings.appendChild(hideButtonsRow1);
+            // Add preset button click handlers
+            presetButtons.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const el = document.getElementById("custom-symbol");
+                    if (el) el.value = btn.dataset.symbol;
+                });
+            });
 
-        const hideButtonsRow2 = helpers.createTwoColumnLayout(
-            helpers.createCheckbox({
-                id: "hide-download-button",
-                label: "Download",
-                checked: CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton,
-                inGroup: false,
-            }),
-            helpers.createCheckbox({
-                id: "hide-invite-button",
-                label: "Invite to collections",
-                checked: CHAPTER_SHORTCUTS_CONFIG.hideInviteButton,
-                inGroup: false,
-            }),
-        );
-        hideButtonsSubsettings.appendChild(hideButtonsRow2);
+            const hideLastChapterSymbolCheckbox = helpers.createCheckbox({
+                id: "hide-last-chapter-symbol",
+                label: "Hide last chapter symbol",
+                checked: CHAPTER_SHORTCUTS_CONFIG.enableLastChapterSymbol === false,
+            });
+            symbolSection.appendChild(hideLastChapterSymbolCheckbox);
 
-        const hideButtonsCheckbox = helpers.createConditionalCheckbox({
-            id: "hide-buttons-option",
-            label: "Hide buttons on work pages",
-            checked:
-                CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton ||
-                CHAPTER_SHORTCUTS_CONFIG.hideShareButton ||
-                CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton ||
-                CHAPTER_SHORTCUTS_CONFIG.hideInviteButton,
-            subsettings: hideButtonsSubsettings,
-        });
-        optionsSection.appendChild(hideButtonsCheckbox);
+            const bookmarksOnlyCheckbox = helpers.createCheckbox({
+                id: "bookmarks-only-symbol",
+                label: "Show on bookmarks pages only",
+                checked: CHAPTER_SHORTCUTS_CONFIG.bookmarksOnly === true,
+            });
+            symbolSection.appendChild(bookmarksOnlyCheckbox);
 
-        const hideMenuCheckbox = helpers.createHideMenuCheckbox({
-            id: "hide-menu-option",
-            checked: CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions,
-        });
-        optionsSection.appendChild(hideMenuCheckbox);
+            // Toggle picker and bookmarks-only visibility when symbol is hidden
+            function updateSymbolVisibility() {
+                const hidden = helpers.getValue("hide-last-chapter-symbol");
+                presetGroup.style.display = hidden ? "none" : "";
+                customInput.style.display = hidden ? "none" : "";
+                bookmarksOnlyCheckbox.style.display = hidden ? "none" : "";
+            }
+            updateSymbolVisibility();
+            hideLastChapterSymbolCheckbox
+                .querySelector("input[type=checkbox]")
+                ?.addEventListener("change", updateSymbolVisibility);
 
-        dialog.appendChild(optionsSection);
+            dialog.appendChild(symbolSection);
 
-        // ── Buttons ───────────────────────────────────────
-        const buttons = helpers.createButtonGroup([
-            {
-                text: "Save",
-                id: "chapter-shortcuts-save",
-                primary: true,
-                onClick: () => {
-                    CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol =
-                        helpers.getValue("custom-symbol") || "»";
-                    CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions = helpers.getValue("hide-menu-option");
-                    CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons =
-                        helpers.getValue("disable-top-nav-buttons");
-                    CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons =
-                        helpers.getValue("enable-bottom-buttons");
-                    CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton =
-                        helpers.getValue("hide-entire-work-button");
-                    CHAPTER_SHORTCUTS_CONFIG.hideShareButton =
-                        helpers.getValue("hide-share-button");
-                    CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton =
-                        helpers.getValue("hide-download-button");
-                    CHAPTER_SHORTCUTS_CONFIG.hideInviteButton =
-                        helpers.getValue("hide-invite-button");
-                    saveChapterShortcutsConfig();
-                    dialog.remove();
-                    addChapterButtons(true);
-                    hideWorkPageButtons();
+            // ── Options ───────────────────────────────────────
+            const optionsSection = helpers.createSection("⚙️ Options");
+
+            const showTopNavCheckbox = helpers.createCheckbox({
+                id: "show-top-nav-buttons",
+                label: "Show First/Last Chapter buttons",
+                checked: !CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons,
+            });
+            optionsSection.appendChild(showTopNavCheckbox);
+
+            const enableBottomCheckbox = helpers.createCheckbox({
+                id: "enable-bottom-buttons",
+                label: "Show bottom navigation buttons",
+                checked: CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons,
+            });
+            optionsSection.appendChild(enableBottomCheckbox);
+
+            const hideButtonsSubsettings = helpers.createSubsettings();
+
+            const hideButtonsRow1 = helpers.createTwoColumnLayout(
+                helpers.createCheckbox({
+                    id: "hide-entire-work-button",
+                    label: "Entire work",
+                    checked: CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton,
+                    inGroup: false,
+                }),
+                helpers.createCheckbox({
+                    id: "hide-share-button",
+                    label: "Share",
+                    checked: CHAPTER_SHORTCUTS_CONFIG.hideShareButton,
+                    inGroup: false,
+                }),
+            );
+            hideButtonsSubsettings.appendChild(hideButtonsRow1);
+
+            const hideButtonsRow2 = helpers.createTwoColumnLayout(
+                helpers.createCheckbox({
+                    id: "hide-download-button",
+                    label: "Download",
+                    checked: CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton,
+                    inGroup: false,
+                }),
+                helpers.createCheckbox({
+                    id: "hide-invite-button",
+                    label: "Invite to collections",
+                    checked: CHAPTER_SHORTCUTS_CONFIG.hideInviteButton,
+                    inGroup: false,
+                }),
+            );
+            hideButtonsSubsettings.appendChild(hideButtonsRow2);
+
+            const hideButtonsCheckbox = helpers.createConditionalCheckbox({
+                id: "hide-buttons-option",
+                label: "Hide buttons on work pages",
+                checked:
+                    CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton ||
+                    CHAPTER_SHORTCUTS_CONFIG.hideShareButton ||
+                    CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton ||
+                    CHAPTER_SHORTCUTS_CONFIG.hideInviteButton,
+                subsettings: hideButtonsSubsettings,
+            });
+            optionsSection.appendChild(hideButtonsCheckbox);
+
+            const hideMenuCheckbox = helpers.createHideMenuCheckbox({
+                id: "hide-menu-option",
+                checked: CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions,
+            });
+            optionsSection.appendChild(hideMenuCheckbox);
+
+            dialog.appendChild(optionsSection);
+
+            // ── Buttons ───────────────────────────────────────
+            const buttons = helpers.createButtonGroup([
+                {
+                    text: "Save",
+                    id: "chapter-shortcuts-save",
+                    primary: true,
+                    onClick: () => {
+                        CHAPTER_SHORTCUTS_CONFIG.enableLastChapterSymbol =
+                            helpers.getValue("hide-last-chapter-symbol") !== true;
+                        CHAPTER_SHORTCUTS_CONFIG.bookmarksOnly =
+                            helpers.getValue("bookmarks-only-symbol") === true;
+                        CHAPTER_SHORTCUTS_CONFIG.lastChapterSymbol =
+                            helpers.getValue("custom-symbol") || "»";
+                        CHAPTER_SHORTCUTS_CONFIG.hideMenuOptions =
+                            helpers.getValue("hide-menu-option");
+                        CHAPTER_SHORTCUTS_CONFIG.disableTopNavButtons =
+                            !helpers.getValue("show-top-nav-buttons");
+                        CHAPTER_SHORTCUTS_CONFIG.enableBottomButtons =
+                            helpers.getValue("enable-bottom-buttons");
+                        CHAPTER_SHORTCUTS_CONFIG.hideEntireWorkButton =
+                            helpers.getValue("hide-entire-work-button");
+                        CHAPTER_SHORTCUTS_CONFIG.hideShareButton =
+                            helpers.getValue("hide-share-button");
+                        CHAPTER_SHORTCUTS_CONFIG.hideDownloadButton =
+                            helpers.getValue("hide-download-button");
+                        CHAPTER_SHORTCUTS_CONFIG.hideInviteButton =
+                            helpers.getValue("hide-invite-button");
+                        saveChapterShortcutsConfig();
+                        dialog.remove();
+                        addChapterButtons(true);
+                        hideWorkPageButtons();
+                    },
                 },
-            },
-            {
-                text: "Cancel",
-                id: "chapter-shortcuts-cancel",
-                onClick: () => {
-                    dialog.remove();
+                {
+                    text: "Cancel",
+                    id: "chapter-shortcuts-cancel",
+                    onClick: () => {
+                        dialog.remove();
+                    },
                 },
-            },
-        ]);
-        dialog.appendChild(buttons);
+            ]);
+            dialog.appendChild(buttons);
 
-        document.body.appendChild(dialog);
+            document.body.appendChild(dialog);
 
-        // Close on background click
-        dialog.addEventListener("click", (e) => {
-            if (e.target === dialog) dialog.remove();
-        });
+            // Close on background click
+            dialog.addEventListener("click", (e) => {
+                if (e.target === dialog) dialog.remove();
+            });
         } catch (e) {
             console.error("[AO3: Chapter Shortcuts] Menu error:", e);
             alert("Chapter Shortcuts: " + (e && e.message ? e.message : e));
