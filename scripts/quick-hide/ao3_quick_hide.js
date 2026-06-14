@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.0.6
+// @version       1.0.8
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==

@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Skin Switcher
-// @version       3.0.0
+// @version       3.0.5
 // @description   Change site skins from anywhere. Sort/filter/pin on your skins page.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
 // @grant         none
 // @run-at        document-start
 // ==/UserScript==
@@ -171,10 +171,13 @@
      * if every term matches (AND). Uses whole-word regex with Unicode fallback.
      * @param {Array} orGroups - from tokenizeQuery
      * @param {string} text - skin name to test
+     * @param {Object} [opts] - options
+     * @param {boolean} [opts.loose] - if true, plain terms match as substrings instead of whole words
      * @returns {boolean}
      */
-    function matchesTokenizedQuery(orGroups, text) {
+    function matchesTokenizedQuery(orGroups, text, opts) {
         if (!orGroups || orGroups.length === 0) return true;
+        const loose = opts && opts.loose;
         const lowerText = text.toLowerCase();
         function testWholeWord(v) {
             const e = escapeRegexLiteral(v);
@@ -192,6 +195,7 @@
             if (t.type === "phrase") r = lowerText.includes(t.value);
             else if (t.type === "wildcard")
                 r = new RegExp(wildcardToRegexSource(t.value)).test(lowerText);
+            else if (loose) r = lowerText.includes(t.value);
             else r = testWholeWord(t.value);
             return t.negate ? !r : r;
         }
@@ -442,6 +446,7 @@
 
     function buildSectionDivider() {
         const li = document.createElement("li");
+        li.className = "skin-section-divider";
         li.setAttribute("aria-hidden", "true");
         li.setAttribute("role", "presentation");
         li.style.cssText = "list-style:none;margin:1.5em 0;padding:0";
@@ -1164,7 +1169,7 @@
                     });
                 if (searchQuery.trim()) {
                     const tokens = tokenizeQuery(searchQuery);
-                    r = r.filter((s) => matchesTokenizedQuery(tokens, s.name));
+                    r = r.filter((s) => matchesTokenizedQuery(tokens, s.name, { loose: true }));
                 }
                 const pinned = r.filter((s) => pins.has(s.id));
                 const unpinned = r.filter((s) => !pins.has(s.id));
@@ -1219,8 +1224,8 @@
                     // Size icon, move before text
                     const iconSvg = ri.querySelector("svg");
                     if (iconSvg) {
-                        iconSvg.style.width = "1em";
-                        iconSvg.style.height = "1em";
+                        iconSvg.style.setProperty("width", "1em", "important");
+                        iconSvg.style.setProperty("height", "1em", "important");
                         const iconDiv = iconSvg.parentElement;
                         if (iconDiv) {
                             iconDiv.style.marginRight = "0.5em";

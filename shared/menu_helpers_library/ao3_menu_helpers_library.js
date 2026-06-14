@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.2.1
+// @version      2.2.2
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -15,7 +15,7 @@
     const html = (strings, ...values) =>
         strings.reduce((out, s, i) => out + s + (i < values.length ? values[i] : ""), "");
 
-    const VERSION = "2.2.0";
+    const VERSION = "2.2.2";
 
     // Prevent multiple injections - but always replace old versions without version property
     if (window.AO3MenuHelpers) {
@@ -336,9 +336,8 @@
         getDialogStyles() {
             if (this.cache.dialog) return this.cache.dialog;
 
-            // Always sample #modal first — keep its border/radius/shadow values even
-            // if the background is transparent or default. Only fall back for individual
-            // properties that are transparent/zero.
+            // Sample #modal first. Most skins don't style #modal directly (it's
+            // transparent), so fieldset fills in any transparent/default properties.
             const modalEl = document.querySelector("#modal");
             const modalStyles =
                 modalEl && !modalEl.classList.contains("ao3-menu-modal")
@@ -365,42 +364,34 @@
                 return this.cache.dialog;
             }
 
-            let backgroundColor = modalStyles?.backgroundColor || null;
-            let borderColor = modalStyles?.borderColor || null;
-            let borderWidth = modalStyles?.borderWidth || null;
-            let borderRadius = modalStyles?.borderRadius || null;
-            let boxShadow = modalStyles?.boxShadow || null;
+            let backgroundColor = modalStyles.backgroundColor || null;
+            let borderColor = modalStyles.borderColor || null;
+            let borderWidth = modalStyles.borderWidth || null;
+            let borderRadius = modalStyles.borderRadius || null;
+            let boxShadow = modalStyles.boxShadow || null;
 
-            // Fall back to fieldset for individual properties that are transparent/default
+            // Fall back to fieldset for individual properties that are transparent/default.
+            // Most skins don't style #modal directly, so fieldset is the reliable source.
             const fieldset = this.getFieldsetStyles();
 
             if (this._isTransparent(backgroundColor) || AO3_DEFAULT_RGB.has(backgroundColor)) {
                 backgroundColor = fieldset.backgroundColor;
             }
-
             if (this._isTransparent(borderColor)) {
                 borderColor = fieldset.borderColor;
             }
-
-            // Only replace radius from fieldset if truly missing (null/undefined/transparent).
-            // Keep 0px/0 — skin may intentionally set no rounding, v2.1.7 kept it.
             if (!borderRadius || this._isTransparent(borderRadius)) {
                 borderRadius = fieldset.borderRadius;
             }
-
-            if (borderWidth === "0px" || borderWidth === "0" || !borderWidth) {
+            if (!borderWidth || borderWidth === "0px" || borderWidth === "0") {
                 borderWidth = fieldset.borderWidth;
             }
 
-            // No box-shadow on MHL dialogs/modals
-            boxShadow = "none";
-
             this.cache.dialog = {
-                backgroundColor: backgroundColor || "#ffffff",
-                borderColor: borderColor || "#d1d1d1",
-                borderWidth:
-                    borderWidth === "0px" || borderWidth === "0" ? "0" : borderWidth || "1px",
-                borderRadius: borderRadius || "8px",
+                backgroundColor,
+                borderColor,
+                borderWidth,
+                borderRadius,
                 boxShadow: "none",
             };
 
@@ -1022,19 +1013,6 @@
                 return;
             }
 
-            // On mobile, if we got transparent backgrounds, retry once
-            // (use cached getters — full theme computation deferred to _generateSharedStyles)
-            if (this.themeDetector.isMobile && !stylesInjected) {
-                const ds = this.themeDetector.getDialogStyles();
-                const bs = this.themeDetector.getButtonStyles();
-                if (
-                    this.themeDetector._isTransparent(ds.backgroundColor) ||
-                    this.themeDetector._isTransparent(bs.backgroundColor)
-                ) {
-                    this.themeDetector.retryOnMobile();
-                }
-            }
-
             const style = document.createElement("style");
             style.id = "ao3-menu-helpers-styles";
             style.textContent = this._generateSharedStyles();
@@ -1065,16 +1043,16 @@
             }
             
             .ao3-theme-toggle svg {
-              width: 1em;
-              height: 1em;
-              display: block;
-              pointer-events: none;
+              width: 1em !important;
+              height: 1em !important;
+              display: block !important;
+              pointer-events: none !important;
             }
 
             .ao3-menu-dialog .icon-button svg {
-              width: 1.2em;
-              height: 1.2em;
-              display: block;
+              width: 1.2em !important;
+              height: 1.2em !important;
+              display: block !important;
             }
             
             .item-badge {
@@ -1193,6 +1171,13 @@
               padding: 0;
             }
 
+            /* Undo aggressive skin rules that resize all img/svg globally */
+            .ao3-menu-dialog img,
+            .ao3-menu-dialog svg {
+              max-width: unset !important;
+              height: unset !important;
+            }
+
             /* Badge-like spans are sampled from AO3 span.unread, then pinned inside dialogs. */
             .ao3-menu-dialog .item-badge.unread,
             .ao3-menu-dialog span.unread:not(.replied):not(.claimed) {
@@ -1222,11 +1207,11 @@
               top: 50%;
               left: 50%;
               transform: translate(-50%, -50%);
-              background: ${dialogTheme.backgroundColor};
+              background: ${dialogTheme.backgroundColor}${palette ? " !important" : ""};
               padding: 20px;
-              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor};
-              border-radius: ${dialogTheme.borderRadius};
-              box-shadow: ${dialogTheme.boxShadow};
+              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor}${palette ? " !important" : ""};
+              border-radius: ${dialogTheme.borderRadius}${palette ? " !important" : ""};
+              box-shadow: ${dialogTheme.boxShadow}${palette ? " !important" : ""};
               z-index: 10000;
               width: 90%;
               max-width: 600px;
@@ -1234,7 +1219,7 @@
               overflow-y: auto;
               font-family: inherit;
               font-size: inherit;
-              color: ${textColor};
+              color: ${textColor}${palette ? " !important" : ""};
               box-sizing: border-box;
               scrollbar-color: ${scrollbarTheme.thumbColor} ${scrollbarTheme.trackColor};
               scrollbar-width: thin;
@@ -1259,8 +1244,8 @@
 
             .ao3-menu-dialog a,
             #modal.tall.ao3-menu-modal a {
-              color: ${linkColor};
-              border-bottom: none;
+              color: ${linkColor}${palette ? " !important" : ""};
+              border-bottom: none${palette ? " !important" : ""};
             }
 
             ${
@@ -1268,7 +1253,7 @@
                     ? `
             .ao3-menu-dialog a:visited,
             #modal.tall.ao3-menu-modal a:visited {
-              color: ${linkVisitedColor};
+              color: ${linkVisitedColor} !important;
             }
             `
                     : ""
@@ -1278,17 +1263,17 @@
             .ao3-menu-dialog a:focus,
             #modal.tall.ao3-menu-modal a:hover,
             #modal.tall.ao3-menu-modal a:focus {
-              color: ${linkHoverColor || linkColor};
-              border-bottom: 1px solid ${linkHoverColor || linkColor};
+              color: ${linkHoverColor || linkColor}${palette ? " !important" : ""};
+              border-bottom: 1px solid ${linkHoverColor || linkColor}${palette ? " !important" : ""};
             }
 
             /* AO3-native modal theming — scoped to .ao3-menu-modal to avoid AO3's own modals */
             #modal.tall.ao3-menu-modal {
-              background: ${dialogTheme.backgroundColor};
-              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor};
-              border-radius: ${dialogTheme.borderRadius};
-              box-shadow: ${dialogTheme.boxShadow};
-              color: ${textColor};
+              background: ${dialogTheme.backgroundColor}${palette ? " !important" : ""};
+              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor}${palette ? " !important" : ""};
+              border-radius: ${dialogTheme.borderRadius}${palette ? " !important" : ""};
+              box-shadow: ${dialogTheme.boxShadow}${palette ? " !important" : ""};
+              color: ${textColor}${palette ? " !important" : ""};
               overflow-y: auto;
               margin: 0;
             }
@@ -1355,17 +1340,17 @@
               margin: 0.5375em 0;
               margin-top: 0;
               font-weight: bold;
-              color: inherit;
-              font-family: inherit;
+              color: inherit${palette ? " !important" : ""};
+              font-family: inherit${palette ? " !important" : ""};
             }
-            
+
             .ao3-menu-dialog .settings-section {
-              background: ${fieldsetTheme.backgroundColor};
-              border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor};
-              border-radius: ${fieldsetTheme.borderRadius};
+              background: ${fieldsetTheme.backgroundColor}${palette ? " !important" : ""};
+              border: ${fieldsetTheme.borderWidth} solid ${fieldsetTheme.borderColor}${palette ? " !important" : ""};
+              border-radius: ${fieldsetTheme.borderRadius}${palette ? " !important" : ""};
               padding: 15px;
               margin-bottom: 20px;
-              box-shadow: ${fieldsetTheme.boxShadow};
+              box-shadow: ${fieldsetTheme.boxShadow}${palette ? " !important" : ""};
             }
 
             .ao3-menu-dialog .settings-section > *:last-child,
@@ -1384,10 +1369,10 @@
               margin-bottom: 15px;
               line-height: 1.125;
               font-size: 1.2em;
-              font-weight: bold;
-              color: inherit;
+              font-weight: bold${palette ? " !important" : ""};
+              color: inherit${palette ? " !important" : ""};
               opacity: 0.85;
-              font-family: inherit;
+              font-family: inherit${palette ? " !important" : ""};
               cursor: pointer;
             }
 
@@ -1414,45 +1399,47 @@
             .ao3-menu-dialog label {
               line-height: normal;
               cursor: default;
+              color: inherit${palette ? " !important" : ""};
             }
 
             .ao3-menu-dialog label[for] {
               line-height: normal;
               cursor: default;
+              color: inherit${palette ? " !important" : ""};
             }
 
             .ao3-menu-dialog .setting-label {
               display: block;
               margin: 0;
               margin-bottom: 6px;
-              font-weight: bold;
-              color: inherit;
+              font-weight: bold${palette ? " !important" : ""};
+              color: inherit${palette ? " !important" : ""};
               opacity: 0.9;
               border: 0;
               outline: 0;
               padding: 0;
             }
-            
+
             .ao3-menu-dialog .setting-description {
               display: block;
               margin-bottom: 8px;
               font-size: 0.9em;
-              color: inherit;
+              color: inherit${palette ? " !important" : ""};
               opacity: 0.6;
               line-height: 1.4;
             }
-            
+
             .ao3-menu-dialog .checkbox-label {
               display: block;
-              font-weight: normal;
-              color: inherit;
+              font-weight: normal${palette ? " !important" : ""};
+              color: inherit${palette ? " !important" : ""};
               margin-bottom: 15px;
             }
-            
+
             .ao3-menu-dialog .radio-label {
               display: block;
-              font-weight: normal;
-              color: inherit;
+              font-weight: normal${palette ? " !important" : ""};
+              color: inherit${palette ? " !important" : ""};
               margin-left: 20px;
               margin-bottom: 8px;
             }
@@ -1512,14 +1499,14 @@
             .ao3-menu-dialog textarea {
               width: 100%;
               box-sizing: border-box;
-              padding: ${inputTheme.padding || "0.25em 0.5em"};
-              background: ${inputTheme.backgroundColor};
-              border: ${inputTheme.borderWidth} solid ${inputTheme.borderColor};
-              border-radius: ${inputTheme.borderRadius};
-              box-shadow: none;
-              color: ${inputTheme.color};
+              padding: ${inputTheme.padding || "0.25em 0.5em"}${palette ? " !important" : ""};
+              background: ${inputTheme.backgroundColor}${palette ? " !important" : ""};
+              border: ${inputTheme.borderWidth} solid ${inputTheme.borderColor}${palette ? " !important" : ""};
+              border-radius: ${inputTheme.borderRadius}${palette ? " !important" : ""};
+              box-shadow: none${palette ? " !important" : ""};
+              color: ${inputTheme.color}${palette ? " !important" : ""};
               font-size: 100%;
-              background-image: none;
+              background-image: none${palette ? " !important" : ""};
             }
 
             .ao3-menu-dialog textarea {
@@ -1527,14 +1514,14 @@
               resize: vertical;
               font-family: inherit;
             }
-            
+
             .ao3-menu-dialog input[type="text"]:focus,
             .ao3-menu-dialog input[type="number"]:focus,
             .ao3-menu-dialog input[type="color"]:focus,
             .ao3-menu-dialog select:focus,
             .ao3-menu-dialog textarea:focus {
               background: ${inputTheme.backgroundColor} !important;
-              outline: 2px solid ${linkColor};
+              outline: 2px solid ${linkColor} !important;
             }
 
             .ao3-menu-dialog input[type="text"]:hover,
@@ -2025,6 +2012,9 @@
               opacity: 0.7;
               transition: opacity 0.2s;
               transform: none !important;
+              width: 1.25em !important;
+              height: 1.25em !important;
+              flex-shrink: 0 !important;
             }
 
             .ao3-menu-dialog .icon-button:hover,
@@ -3136,6 +3126,7 @@
          */
         createDialog(title, options = {}) {
             this.injectSharedStyles();
+            this.injectListItemStyles();
 
             const {
                 width = "90%",

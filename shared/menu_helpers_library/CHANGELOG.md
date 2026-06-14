@@ -11,6 +11,8 @@
 -->
 
 ## Unreleased
+
+- **Hardened CSS against aggressive site skins** — All injected dialog, button, input, link, and heading styles now use `!important` to resist skins that apply `!important` broadly (e.g. Moonlit Wisteria). SVG icon sizes locked with `max-width`/`max-height` against AO3's `.icon` class.
 - **Theme toggle** — Switch between Auto, Light, and Dark fallback modes with a new button in dialog headers
 - **Custom checkbox and radio styling** — Checkboxes and radio buttons now have a polished custom look in dialog settings
 - **AO3-native help modals** — Scripts can now show help and about dialogs that match AO3's native modal style

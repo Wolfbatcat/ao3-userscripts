@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.6.1
+// @version       2.6.4
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
 // @grant         none
 // @namespace https://greasyfork.org/users/1498004
 // ==/UserScript==
@@ -304,6 +304,8 @@
 
         // ── Last Chapter Symbol ──────────────────────────
         const symbolSection = helpers.createSection("🔤 Last Chapter Symbol");
+        const symbolHeading = symbolSection.querySelector("h3, h4, .heading");
+        if (symbolHeading) symbolHeading.style.display = "none";
         const presetGroup = helpers.createSettingGroup();
         presetGroup.appendChild(
             helpers.createLabel("Choose a symbol for the Last Chapter button:"),

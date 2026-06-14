@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name          AO3: Custom Favorites
-// @version       2.0.0
+// @version       1.0.1
 // @description   Add custom favorite links to the AO3 homepage sidebar. Manage, edit, and reorder them from the Userscripts menu.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.0
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
 // @grant         none
 // ==/UserScript==
 
@@ -89,14 +89,13 @@
 
     /**
      * Loads display settings with defaults applied.
-     * @returns {{displayStyle: string, newWindow: boolean, hideNative: boolean, sectionTitle: string, sectionPosition: number, showAddShortcut: boolean}}
+     * @returns {{newWindow: boolean, hideNative: boolean, sectionTitle: string, sectionPosition: number, showAddShortcut: boolean, hideMenuOptions: boolean}}
      */
     function loadSettings() {
         try {
             const raw = localStorage.getItem(STORAGE_SETTINGS);
             if (!raw)
                 return {
-                    displayStyle: "list",
                     newWindow: false,
                     hideNative: false,
                     sectionTitle: "",
@@ -106,7 +105,6 @@
                 };
             const parsed = JSON.parse(raw);
             return {
-                displayStyle: parsed.displayStyle || "list",
                 newWindow: !!parsed.newWindow,
                 hideNative: !!parsed.hideNative,
                 sectionTitle: typeof parsed.sectionTitle === "string" ? parsed.sectionTitle : "",
@@ -118,7 +116,6 @@
             };
         } catch {
             return {
-                displayStyle: "list",
                 newWindow: false,
                 hideNative: false,
                 sectionTitle: "",
@@ -128,10 +125,6 @@
             };
         }
     }
-
-    // Display style values:
-    //   "list"   — separate "Custom Favorites" section in sidebar
-    //   "native" — entries appended directly into AO3's "Find your favorites" section
 
     /** Persists settings object to localStorage. */
     /** @param {Object} obj */
@@ -223,21 +216,28 @@
         let anchor = null;
         // __last__ sentinel: native section was final child, append at end
         if (nextId && nextId !== "__last__") anchor = document.getElementById(nextId);
-        if (!anchor && nextClass)
-            anchor = splash.querySelector("." + nextClass.trim().split(/\s+/)[0]);
+        if (!anchor && nextClass) {
+            // Match each class individually so a multi-class sibling is found correctly,
+            // but skip our own custom sidebar to avoid a self-referential insertion.
+            for (const cls of nextClass.trim().split(/\s+/)) {
+                const candidate = splash.querySelector("." + cls);
+                if (candidate && candidate.id !== SIDEBAR_ID) {
+                    anchor = candidate;
+                    break;
+                }
+            }
+        }
         splash.insertBefore(restored, anchor || null);
+        restored.style.display = "";
+        stash.removeAttribute("data-next-sibling-id");
+        stash.removeAttribute("data-next-sibling-class");
     }
 
-    /** Dispatches to renderStandalone or renderNative based on displayStyle setting. */
+    /** Renders the custom favorites sidebar section. */
     function renderSidebar() {
         const favs = loadFavs();
         const settings = loadSettings();
-
-        if (settings.displayStyle === "native") {
-            renderNative(favs, settings);
-        } else {
-            renderStandalone(favs, settings);
-        }
+        renderStandalone(favs, settings);
     }
 
     /**
@@ -279,7 +279,6 @@
             }
         } else {
             restoreStashedNative();
-            if (nativeSection) nativeSection.style.display = "";
         }
 
         const splash = document.querySelector("div.splash");
@@ -330,46 +329,6 @@
         removeEarlyHide();
     }
 
-    /**
-     * Injects custom favorites into AO3's native "Find your favorites"
-     * section, appending items to its existing <ul>.
-     */
-    function renderNative(favs, settings) {
-        // Remove any leftover standalone section
-        const existing = document.getElementById(SIDEBAR_ID);
-        if (existing) existing.remove();
-
-        // Remove previously injected native items
-        document.querySelectorAll(`li[${NATIVE_ITEM_ATTR}]`).forEach((el) => el.remove());
-
-        // Restore the native section if it was previously stashed
-        restoreStashedNative();
-
-        removeEarlyHide();
-
-        // Target the native "Find your favorites" <ul> — always visible in this mode
-        const nativeSection = document.querySelector("div.favorite:not(#" + SIDEBAR_ID + ")");
-        if (!nativeSection) return;
-        const nativeUl = nativeSection.querySelector("ul");
-        if (!nativeUl) return;
-
-        favs.forEach((fav) => {
-            const li = document.createElement("li");
-            li.setAttribute(NATIVE_ITEM_ATTR, "true");
-            li.appendChild(buildFavLink(fav, settings));
-            nativeUl.appendChild(li);
-        });
-
-        // Add shortcut after the <ul>, not inside it
-        const existingShortcut = nativeSection.querySelector("p.custom-fav-add");
-        if (existingShortcut) existingShortcut.remove();
-        if (settings.showAddShortcut) {
-            const shortcut = buildAddShortcut();
-            shortcut.className = "custom-fav-add";
-            nativeSection.appendChild(shortcut);
-        }
-    }
-
     // ============================================================
     // DOM / UI
     // ============================================================
@@ -387,13 +346,19 @@
         }
         MH.removeAllDialogs();
 
-        const dialog = MH.createDialog("⭐ Custom Favorites ⭐", {
+        const dialog = MH.createDialog("♥️ Custom Favorites ♥️", {
             maxWidth: "700px",
         });
         document.body.appendChild(dialog);
 
         // ── Section: Favorites list ──────────────────────────────────────────────
-        const favsSection = MH.createSection("📋 My Favorites");
+        const settings = loadSettings();
+        const favsSectionTitle =
+            settings.sectionTitle && settings.sectionTitle.trim()
+                ? settings.sectionTitle.trim()
+                : "My Favorites";
+        const favsSection = MH.createSection("❣️ " + favsSectionTitle);
+        const favsSectionHeading = favsSection.querySelector(".section-title");
 
         let reorderMode = false;
 
@@ -534,31 +499,8 @@
         dialog.appendChild(mgmtHoverStyle);
 
         // ── Section: Display options ─────────────────────────────────────────────
-        const settings = loadSettings();
         const displaySection = MH.createSection("⚙️ Display Options");
 
-        displaySection.appendChild(
-            MH.createSelect({
-                id: "favs-display-style",
-                label: "Display Style",
-                tooltip:
-                    '"Own Section" creates a separate Custom Favorites section on the homepage. "Use AO3 Favorites" appends your links to AO3\'s existing "Find Your Favorites" section — you can reorder your own entries, but AO3\'s native links cannot be edited here.',
-                options: [
-                    {
-                        value: "list",
-                        label: "Own Section",
-                        selected: settings.displayStyle === "list",
-                    },
-                    {
-                        value: "native",
-                        label: "Use AO3 Favorites",
-                        selected: settings.displayStyle === "native",
-                    },
-                ],
-            }),
-        );
-
-        // ── Standalone-only subsettings ──────────────────────────────────────────
         const sectionTitleInput = MH.createTextInput({
             id: "favs-section-title",
             label: "Title",
@@ -567,6 +509,14 @@
             tooltip:
                 "The heading shown above your favorites on the homepage. Leave blank to use the default.",
         });
+
+        const sectionTitleEl = sectionTitleInput.querySelector("input");
+        if (sectionTitleEl && favsSectionHeading) {
+            sectionTitleEl.addEventListener("input", () => {
+                const val = sectionTitleEl.value.trim();
+                favsSectionHeading.textContent = "📋 " + (val || "My Favorites");
+            });
+        }
 
         const sectionPositionInput = MH.createNumberInput({
             id: "favs-section-position",
@@ -579,35 +529,17 @@
                 "Where your section appears among the homepage modules. AO3 has up to 4 native modules (Find Your Favorites, Inbox, Latest News, Follow Us), so position 1 places yours first.",
         });
 
-        const titlePositionRow = MH.createTwoColumnLayout(sectionTitleInput, sectionPositionInput);
-        titlePositionRow.style.display = settings.displayStyle === "list" ? "" : "none";
-        displaySection.appendChild(titlePositionRow);
-
-        const hideNativeCheckbox = MH.createCheckbox({
-            id: "favs-hide-native",
-            label: 'Hide AO3\'s "Find Your Favorites" section',
-            checked: settings.hideNative,
-            tooltip:
-                'Hides the native "Find Your Favorites" module so only your custom section is shown.',
-        });
-        hideNativeCheckbox.style.display = settings.displayStyle === "list" ? "" : "none";
-        displaySection.appendChild(hideNativeCheckbox);
-
-        // Show/hide standalone-only controls when display style changes
-        const styleSelect = document.getElementById("favs-display-style");
-        if (styleSelect) {
-            styleSelect.addEventListener("change", () => {
-                const show = styleSelect.value === "list" ? "" : "none";
-                titlePositionRow.style.display = show;
-                hideNativeCheckbox.style.display = show;
-            });
-        }
+        displaySection.appendChild(
+            MH.createTwoColumnLayout(sectionTitleInput, sectionPositionInput),
+        );
 
         displaySection.appendChild(
             MH.createCheckbox({
-                id: "favs-new-window",
-                label: "Open links in a new tab",
-                checked: settings.newWindow,
+                id: "favs-hide-native",
+                label: 'Hide AO3\'s default "Find Your Favorites" section',
+                checked: settings.hideNative,
+                tooltip:
+                    'Hides the native "Find Your Favorites" module so only your custom section is shown.',
             }),
         );
 
@@ -618,6 +550,14 @@
                 checked: settings.showAddShortcut,
                 tooltip:
                     'Displays a small "+ add favorite" link at the bottom of your favorites section for quick access without opening the menu.',
+            }),
+        );
+
+        displaySection.appendChild(
+            MH.createCheckbox({
+                id: "favs-new-window",
+                label: "Open links in a new tab",
+                checked: settings.newWindow,
             }),
         );
 
@@ -637,21 +577,14 @@
                 id: "favs-save",
                 onClick: (e) => {
                     e.preventDefault();
-                    const displayStyle = MH.getValue("favs-display-style") || "list";
-                    const isStandalone = displayStyle === "list";
-                    const sectionTitle = isStandalone
-                        ? MH.getValue("favs-section-title") || ""
-                        : "";
+                    const sectionTitle = MH.getValue("favs-section-title") || "";
                     const rawPos = MH.getValue("favs-section-position");
-                    const sectionPosition = isStandalone
-                        ? Math.max(1, Math.min(5, rawPos || 1))
-                        : 1;
-                    const hideNative = isStandalone ? !!MH.getValue("favs-hide-native") : false;
+                    const sectionPosition = Math.max(1, Math.min(5, rawPos || 1));
+                    const hideNative = !!MH.getValue("favs-hide-native");
                     const newWindow = !!MH.getValue("favs-new-window");
                     const showAddShortcut = !!MH.getValue("favs-show-add-shortcut");
                     const hideMenuOptions = !!MH.getValue("favs-hide-menu");
                     saveSettings({
-                        displayStyle,
                         newWindow,
                         hideNative,
                         sectionTitle,
@@ -676,7 +609,6 @@
                 onReset: () => {
                     saveFavs([]);
                     saveSettings({
-                        displayStyle: "list",
                         newWindow: false,
                         hideNative: false,
                         sectionTitle: "",
@@ -821,25 +753,27 @@
     /** Hides native favorites section early to prevent FOUC before render. */
     function earlyHide() {
         try {
-            const raw = localStorage.getItem(STORAGE_SETTINGS);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            // Only hide in standalone mode — native mode shows AO3 section normally
-            if (parsed.displayStyle && parsed.displayStyle !== "list") return;
             const style = document.createElement("style");
             style.id = EARLY_HIDE_ID;
-            style.textContent =
-                "div.splash div.favorite, div.splash div.browse.module { visibility: hidden; }";
+            style.textContent = `div.splash div.favorite:not(#${SIDEBAR_ID}), div.splash div.browse.module { visibility: hidden; }`;
             document.head.appendChild(style);
         } catch {
             // ignore
         }
     }
 
-    /** Removes the early-hide style element so favorites become visible. */
+    /** Removes the early-hide style element and ensures hidden elements are visible. */
     function removeEarlyHide() {
         const el = document.getElementById(EARLY_HIDE_ID);
         if (el) el.remove();
+        // Ensure anything the early-hide may have caught is explicitly visible
+        document
+            .querySelectorAll(
+                `div.splash div.favorite:not(#${SIDEBAR_ID}), div.splash div.browse.module`,
+            )
+            .forEach((el) => {
+                if (el.style.visibility === "hidden") el.style.visibility = "";
+            });
     }
 
     /** Initializes the script: registers shared menu item and renders sidebar. */

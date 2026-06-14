@@ -248,7 +248,7 @@
 
         // listening to the places where Ao3 adds the HTML for the add/edit bookmark box
         // unfortunately the only way to listen to multiple elements is to loop through the list, but then we don't need to listen to the whole tree (:
-        qa('div[id^="bookmark_form_placement_for_"]').forEach((el) => obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }) );
+        qa('div[id^="bookmark_form_placement_for_"]').forEach((el) => { if (el) obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }); });
     }
     if (qa('.work.index, .work.listbox', main).length > 0) {
         // on works listings, we might have the Safekeeping Buttons
@@ -272,7 +272,7 @@
                     // check if the added node is our bookmark button
                     if (node.nodeType == 1 && node.tagName === "LI" && node.className == 'bookmark') {
                         obsSafeKeeping.disconnect(); // we only need to wait for the first
-                        qa('.work.blurb').forEach((el) => obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }) );
+                        qa('.work.blurb').forEach((el) => { if (el) obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }); });
                     }
                 }}
             });
@@ -282,7 +282,7 @@
                 let timeout = setTimeout(() => { obsSafeKeeping.disconnect(); }, 5000); // failsafe: stop listening after 5 seconds (in case the other script isn't installed)
             }
         }
-        else qa('.work.blurb').forEach((el) => obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }) );
+        else qa('.work.blurb').forEach((el) => { if (el) obsBookmark.observe(el, { attributes: false, childList: true, subtree: false }); });
     }
 
     // ** the dynamically loaded ones, without preview:
