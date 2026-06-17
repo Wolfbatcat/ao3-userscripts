@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          AO3: Site Wizard
-// @version       3.6.5
+// @version       3.6.6
 // @description   Make AO3 easier to read: customize fonts and sizes, set site colors, adjust work reader margins, fix spacing issues, and configure text alignment preferences.
 // @author        BlackBatcat
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
 // @grant         none
 // @run-at        document-start
 // ==/UserScript==

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.2.2
+// @version      2.2.3
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -15,7 +15,7 @@
     const html = (strings, ...values) =>
         strings.reduce((out, s, i) => out + s + (i < values.length ? values[i] : ""), "");
 
-    const VERSION = "2.2.2";
+    const VERSION = "2.2.3";
 
     // Prevent multiple injections - but always replace old versions without version property
     if (window.AO3MenuHelpers) {
@@ -3763,8 +3763,8 @@
          */
         isAO3Homepage() {
             return (
-                window.location.href === "https://archiveofourown.org/" ||
-                window.location.href === "https://archiveofourown.org"
+                window.location.hostname === "archiveofourown.org" &&
+                window.location.pathname === "/"
             );
         },
 

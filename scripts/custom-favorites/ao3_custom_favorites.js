@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name          AO3: Custom Favorites
-// @version       1.0.1
+// @version       1.0.0
 // @description   Add custom favorite links to the AO3 homepage sidebar. Manage, edit, and reorder them from the Userscripts menu.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
 // @grant         none
 // ==/UserScript==
 
@@ -293,7 +293,7 @@
         heading.textContent =
             settings.sectionTitle && settings.sectionTitle.trim()
                 ? settings.sectionTitle.trim()
-                : "Custom Favorites";
+                : "My Favorites";
         section.appendChild(heading);
 
         if (favs.length === 0) {
@@ -498,14 +498,14 @@
         mgmtHoverStyle.textContent = ".favs-mgmt-row:hover{background-color:rgba(128,128,128,0.1)}";
         dialog.appendChild(mgmtHoverStyle);
 
-        // ── Section: Display options ─────────────────────────────────────────────
-        const displaySection = MH.createSection("⚙️ Display Options");
+        // ── Section: Options ─────────────────────────────────────────────
+        const displaySection = MH.createSection("⚙️ Options");
 
         const sectionTitleInput = MH.createTextInput({
             id: "favs-section-title",
             label: "Title",
             value: settings.sectionTitle || "",
-            placeholder: "Custom Favorites",
+            placeholder: "Are we there yet?",
             tooltip:
                 "The heading shown above your favorites on the homepage. Leave blank to use the default.",
         });
@@ -536,10 +536,10 @@
         displaySection.appendChild(
             MH.createCheckbox({
                 id: "favs-hide-native",
-                label: 'Hide AO3\'s default "Find Your Favorites" section',
+                label: 'Hide AO3\'s default "Find your favorites" section',
                 checked: settings.hideNative,
                 tooltip:
-                    'Hides the native "Find Your Favorites" module so only your custom section is shown.',
+                    'Hides the native "Find your favorites" module so only your custom section is shown.',
             }),
         );
 

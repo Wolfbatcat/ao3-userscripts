@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.6.5
+// @version       2.6.6
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
-// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
+// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
 // @grant         none
 // ==/UserScript==
 
