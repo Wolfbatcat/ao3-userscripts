@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## v1.0.9
 -
+- **Updated to Menu Helpers Library v2.2.3** — Fixed menu bug on AO3 homepage.
 
 ## v1.0.6 — 2026-06-10
 - **Updated to Menu Helpers Library v2.2.0** — Dialog theming with Auto/Light/Dark toggle, improved skin detection, polished form controls, and a themed import/export/reset row

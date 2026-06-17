@@ -11,7 +11,7 @@
 // @match         *://archiveofourown.org/users/*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1850777/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
+// @require       https://update.greasyfork.org/scripts/552743/1853381/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==

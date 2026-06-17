@@ -1,5 +1,8 @@
 # Changelog
 
+## v3.0.6
+- **Updated to Menu Helpers Library v2.2.3** — Fixed menu bug on AO3 homepage.
+
 ## v3.0.3 — 2026-06-13
 - **Fix: duplicate dividers on skins page** — Multiple dividers were accumulating between the pinned and unpinned sections on each filter/sort re-render. The section divider `<li>` was missing its `skin-section-divider` class, so the cleanup pass couldn't find and remove it before rebuilding.
 

@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## v2.6.6
+- **Updated to Menu Helpers Library v2.2.3** — Fixed menu bug on AO3 homepage.
 
 ## v2.6.5 — 2026-06-14
 
