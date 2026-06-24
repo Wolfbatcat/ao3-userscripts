@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: Menu Helpers Library
-// @version      2.2.3
+// @version      2.3.0
 // @description  Shared UI components and styling for AO3 userscripts
 // @author       BlackBatCat
 // @match        *://archiveofourown.org/*
@@ -15,7 +15,7 @@
     const html = (strings, ...values) =>
         strings.reduce((out, s, i) => out + s + (i < values.length ? values[i] : ""), "");
 
-    const VERSION = "2.2.3";
+    const VERSION = "2.3.0";
 
     // Prevent multiple injections - but always replace old versions without version property
     if (window.AO3MenuHelpers) {
@@ -82,6 +82,7 @@
             // Rosé Pine Dawn
             dialog: {
                 backgroundColor: "#fffaf5",
+                surfaceColor: "#faf4ed",
                 borderColor: "#e4d1c9",
                 borderWidth: "1px",
                 borderRadius: "0.75rem",
@@ -172,6 +173,7 @@
             // Rosé Pine Moon
             dialog: {
                 backgroundColor: "#2a273f",
+                surfaceColor: "#232136",
                 borderColor: "#3f3857",
                 borderWidth: "1px",
                 borderRadius: "0.75rem",
@@ -2059,7 +2061,205 @@
 
           `;
 
-            return css;
+            // Datepicker theming only applies in forced light/dark mode, scoped to a
+            // marker class added/removed per-show (see _attachDatepicker) so it never
+            // leaks onto AO3's own native, unthemed date_from/date_to datepicker fields.
+            //
+            // AO3 only ships minimal structural CSS for the datepicker (container
+            // padding, table background) — the colorable state classes
+            // (.ui-state-default/-hover/-active/-highlight, .ui-widget-header,
+            // .ui-icon) come from jQuery UI's own base theme, loaded independently of
+            // any site skin. Site skins (including ao3-rose-pine itself) only ever
+            // recolor on top of that assumed base and never use !important, so a
+            // partial recolor here would still show whatever the loaded skin or
+            // jQuery UI base theme drew underneath. To render reliably under any
+            // active skin, every rule below is a complete, self-contained
+            // replacement of structure AND color — nothing is left for the page's
+            // own CSS to fill in.
+            const datepickerCSS = palette
+                ? `
+            #ui-datepicker-div.ao3-mh-datepicker-light,
+            #ui-datepicker-div.ao3-mh-datepicker-dark,
+            .ui-datepicker.ao3-mh-datepicker-light,
+            .ui-datepicker.ao3-mh-datepicker-dark {
+              width: 17em !important;
+              background: ${dialogTheme.backgroundColor} !important;
+              border: ${dialogTheme.borderWidth} solid ${dialogTheme.borderColor} !important;
+              border-radius: ${dialogTheme.borderRadius} !important;
+              box-shadow: ${dialogTheme.boxShadow === "none" ? "0 4px 16px 0 rgba(0,0,0,0.15)" : dialogTheme.boxShadow} !important;
+              color: ${textColor} !important;
+              font-family: inherit !important;
+              font-size: 87.5% !important;
+              line-height: normal !important;
+              margin: 0 !important;
+              padding: 0.643em !important;
+              overflow: hidden !important;
+              transition: none !important;
+            }
+
+            /* AO3 lays the nav links out with float, not absolute positioning —
+               matched here so prev/next sit in the header's top corners and the
+               title simply clears below them, same as AO3's native datepicker. */
+            .ui-datepicker.ao3-mh-datepicker-light a.ui-datepicker-prev,
+            .ui-datepicker.ao3-mh-datepicker-dark a.ui-datepicker-prev {
+              float: left !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light a.ui-datepicker-next,
+            .ui-datepicker.ao3-mh-datepicker-dark a.ui-datepicker-next {
+              float: right !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-prev,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-prev,
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-next,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-next {
+              cursor: pointer !important;
+              color: ${textColor} !important;
+              font-size: 0.85em !important;
+              text-decoration: none !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-prev span,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-prev span,
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-next span,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-next span {
+              display: inline !important;
+              position: static !important;
+              width: auto !important;
+              height: auto !important;
+              line-height: 1 !important;
+              text-indent: 0 !important;
+              background: none !important;
+              color: ${linkColor} !important;
+              font-weight: bold !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-prev:hover span,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-prev:hover span,
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-next:hover span,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-next:hover span {
+              text-decoration: underline !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-title,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-title {
+              clear: both !important;
+              text-align: center !important;
+              color: ${textColor} !important;
+              background: transparent !important;
+              font-weight: bold !important;
+              font-size: 1em !important;
+              margin: 0 !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light table,
+            .ui-datepicker.ao3-mh-datepicker-dark table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              background: ${inputTheme.backgroundColor} !important;
+              border: ${inputTheme.borderWidth} solid ${inputTheme.borderColor} !important;
+              margin: 0 !important;
+              font-size: 0.9em !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light a,
+            .ui-datepicker.ao3-mh-datepicker-dark a {
+              cursor: pointer !important;
+              border-bottom: none !important;
+              text-decoration: none !important;
+              background-image: none !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light th,
+            .ui-datepicker.ao3-mh-datepicker-dark th,
+            .ui-datepicker.ao3-mh-datepicker-light td,
+            .ui-datepicker.ao3-mh-datepicker-dark td,
+            .ui-datepicker.ao3-mh-datepicker-light tr,
+            .ui-datepicker.ao3-mh-datepicker-dark tr,
+            .ui-datepicker.ao3-mh-datepicker-light span,
+            .ui-datepicker.ao3-mh-datepicker-dark span {
+              line-height: normal !important;
+              transition: none !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light th,
+            .ui-datepicker.ao3-mh-datepicker-dark th {
+              color: ${textColor} !important;
+              border: 1px solid ${dialogTheme.borderColor} !important;
+              opacity: 0.7;
+              padding: 0.15em 0.5em 0.25em !important;
+              text-align: center !important;
+              font-weight: normal !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light th,
+            .ui-datepicker.ao3-mh-datepicker-dark th {
+              background-color: ${dialogTheme.surfaceColor} !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light tr,
+            .ui-datepicker.ao3-mh-datepicker-dark tr,
+            .ui-datepicker.ao3-mh-datepicker-light thead,
+            .ui-datepicker.ao3-mh-datepicker-dark thead,
+            .ui-datepicker.ao3-mh-datepicker-light tbody,
+            .ui-datepicker.ao3-mh-datepicker-dark tbody {
+              border-color: ${inputTheme.borderColor} !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light td,
+            .ui-datepicker.ao3-mh-datepicker-dark td {
+              background: transparent !important;
+              border: 1px solid ${inputTheme.borderColor} !important;
+              padding: 0 !important;
+              text-align: center !important;
+              line-height: normal !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light tr:hover,
+            .ui-datepicker.ao3-mh-datepicker-dark tr:hover {
+              background: ${buttonTheme.borderColor} !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-state-default,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-state-default {
+              display: block !important;
+              background: transparent !important;
+              border: none !important;
+              color: ${textColor} !important;
+              text-decoration: none !important;
+              text-align: center !important;
+              padding: 0.3em 0 !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light td:hover,
+            .ui-datepicker.ao3-mh-datepicker-dark td:hover {
+              background: ${dialogTheme.surfaceColor} !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-unselectable .ui-state-default,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-unselectable .ui-state-default {
+              opacity: 0.35 !important;
+              cursor: default !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-datepicker-today .ui-state-default,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-datepicker-today .ui-state-default {
+              font-weight: bold !important;
+            }
+
+            .ui-datepicker.ao3-mh-datepicker-light .ui-state-active,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-state-active,
+            .ui-datepicker.ao3-mh-datepicker-light .ui-state-highlight,
+            .ui-datepicker.ao3-mh-datepicker-dark .ui-state-highlight {
+              background: ${linkColor} !important;
+              color: #ffffff !important;
+              font-weight: bold !important;
+            }
+          `
+                : "";
+
+            return css + datepickerCSS;
         },
 
         // ── Dialog event helpers ───────────────────────────
@@ -2364,6 +2564,54 @@
             if (placeholder) input.placeholder = placeholder;
 
             group.appendChild(input);
+            return group;
+        },
+
+        /**
+         * Wires a jQuery UI datepicker onto a text input, relying on AO3's
+         * own globally-loaded jQuery UI (the same widget AO3 attaches to its
+         * native date_from/date_to filter fields). In auto theme mode the
+         * popup is left unstyled so it inherits the active site skin's own
+         * jQuery UI theme. In forced light/dark mode, a marker class is
+         * added to the shared singleton #ui-datepicker-div only while it's
+         * showing for this input (and removed before the next show), so
+         * Rosé Pine styling never leaks onto AO3's own native date fields.
+         * @private
+         */
+        _attachDatepicker(input) {
+            const $ = window.jQuery;
+            if (!$ || !$.fn || !$.fn.datepicker) return;
+            $(input).datepicker({
+                dateFormat: "yy-mm-dd",
+                beforeShow: (el, inst) => {
+                    const mode = this.getFallbackMode();
+                    const dpDiv = inst.dpDiv;
+                    dpDiv.removeClass("ao3-mh-datepicker-light ao3-mh-datepicker-dark");
+                    if (mode) dpDiv.addClass(`ao3-mh-datepicker-${mode}`);
+                },
+            });
+        },
+
+        /**
+         * Text input with an attached calendar popup (AO3's native jQuery UI
+         * datepicker). Stays manually typable — the calendar is a
+         * convenience, not a replacement for typing a date directly.
+         */
+        createDateInput(config) {
+            const { id, label, value = "", placeholder = "YYYY-MM-DD", tooltip = "" } = config;
+
+            const group = this.createSettingGroup();
+            group.appendChild(this.createLabel(label, id, tooltip));
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.id = id;
+            input.value = value;
+            input.placeholder = placeholder;
+            input.autocomplete = "off";
+
+            group.appendChild(input);
+            this._attachDatepicker(input);
             return group;
         },
 
@@ -3766,6 +4014,72 @@
                 window.location.hostname === "archiveofourown.org" &&
                 window.location.pathname === "/"
             );
+        },
+
+        /**
+         * Detects the logged-in AO3 username from the page header (the "Hi,
+         * Username!" greeting or the older nav-link layout), falling back to
+         * the current URL if neither is present.
+         *
+         * The header-derived username is authoritative — it reflects who is
+         * actually logged in — and is persisted via `getStored`/`setStored`.
+         * The URL fallback is NOT authoritative: the URL may belong to a
+         * profile the user is merely viewing, not the logged-in user. It is
+         * returned for this call only; callers must check `isAuthoritative`
+         * before caching the result themselves, since memoizing the URL
+         * guess would let a visit to someone else's profile silently
+         * overwrite the real logged-in username for the rest of the page's
+         * lifetime.
+         *
+         * @param {Object} [config]
+         * @param {Function} [config.getStored] - Returns the previously stored username, or falsy.
+         * @param {Function} [config.setStored] - Called with the newly detected username when an authoritative source is found and it differs from the stored value.
+         * @returns {{username: string|null, isAuthoritative: boolean}}
+         */
+        detectUsername(config = {}) {
+            const { getStored, setStored } = config;
+            const stored = typeof getStored === "function" ? getStored() : null;
+
+            const persistIfChanged = (username) => {
+                if (typeof setStored === "function" && username !== stored) {
+                    setStored(username);
+                }
+            };
+
+            // "Hi, Username!" greeting — present on most modern skins.
+            let greeting = document.querySelector("a.dropdown-toggle[href^='/users/']");
+            if (!greeting) {
+                greeting = document.querySelector("#greeting .dropdown-toggle, #greeting .user");
+            }
+            if (greeting) {
+                const text = greeting.textContent.trim();
+                const hiMatch = text.match(/^Hi,\s*(.+?)!?$/);
+                if (hiMatch && hiMatch[1] && !hiMatch[1].includes(" ")) {
+                    persistIfChanged(hiMatch[1]);
+                    return { username: hiMatch[1], isAuthoritative: true };
+                }
+            }
+
+            // Older nav-link layout (some skins).
+            const navLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
+            if (navLink) {
+                const hrefMatch = navLink.getAttribute("href")?.match(/\/users\/([^\/?]+)/);
+                const username = hrefMatch?.[1] || navLink.textContent.trim();
+                if (username) {
+                    persistIfChanged(username);
+                    return { username, isAuthoritative: true };
+                }
+            }
+
+            if (stored) return { username: stored, isAuthoritative: true };
+
+            // URL fallback — NOT authoritative, intentionally not persisted or cached.
+            const urlMatch = window.location.href.match(/\/users\/([^\/?]+)/);
+            if (urlMatch && urlMatch[1]) {
+                return { username: urlMatch[1], isAuthoritative: false };
+            }
+
+            return { username: null, isAuthoritative: false };
         },
 
         /**

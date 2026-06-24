@@ -7,23 +7,33 @@
      copy that block into the GreasyFork changelog box,
      then start a fresh empty "Unreleased" at the top.
   GreasyFork renders Markdown, so bullets / **bold** / `code` carry over.
-  Keep entries short and user-facing — this is release notes, not commit log.
+
+  Bullet style — every bullet must satisfy ALL of:
+  - One line, one sentence. No sub-clauses explaining mechanism or cause.
+  - Lead with **what changed**, in user-facing terms (feature/fix name, not function/variable names).
+  - Say what changed, not how it was implemented or why it broke.
+  - Cut anything a non-developer wouldn't need: internal reasons, code paths, "instead of X" explanations.
+  - This is release notes, not a commit log — when in doubt, cut it shorter.
+
+  Bad:  "Fixed X — it was checking a stale saved value instead of re-detecting the current one"
+  Good: "Fixed X not working after switching accounts"
 -->
 
-## Unreleased
+## v2.3.0 — 2026-06-23
 
-- **Hardened CSS against aggressive site skins** — All injected dialog, button, input, link, and heading styles now use `!important` to resist skins that apply `!important` broadly (e.g. Moonlit Wisteria). SVG icon sizes locked with `max-width`/`max-height` against AO3's `.icon` class.
-- **Theme toggle** — Switch between Auto, Light, and Dark fallback modes with a new button in dialog headers
-- **Custom checkbox and radio styling** — Checkboxes and radio buttons now have a polished custom look in dialog settings
-- **AO3-native help modals** — Scripts can now show help and about dialogs that match AO3's native modal style
-- **Import, Export, and Reset row** — A single themed row replaces separate import, export, and reset buttons across scripts
-- **Search input component** — Filter fields now match AO3's own site search bar for a consistent feel
-- **Horizontal dividers and SVG icons** — New visual elements including separators and 18+ SVG icons for a polished interface
-- **Improved skin detection** — The library now filters out AO3's default background colors, detecting custom skin styling only when a skin actually changes it
-- Various small fixes and improvements
+- **Date input with calendar popup** matching AO3's own datepicker style
+- **Smarter username detection** for scripts that need to know who's logged in
+
+## v2.2.2 — 2026-06-19
+
+- **Hardened CSS against aggressive site skins**
 
 ## v2.2.0 — 2026-06-10
-
+- **Theme toggle** (Auto/Light/Dark) with custom checkbox, radio, and form control styling
+- **AO3-native help modals** that match AO3's own popup style
+- **Import, Export, and Reset buttons** for settings dialogs
+- **Better skin auto-detection** and mobile polish
+- Various small bug fixes and stability improvements
 
 ## v1.0.0 — YYYY-MM-DD
 - Initial release
