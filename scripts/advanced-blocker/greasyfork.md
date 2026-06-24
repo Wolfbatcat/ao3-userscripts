@@ -144,6 +144,7 @@ Big thanks to [AO3 Blocker](https://greasyfork.org/en/scripts/409956-ao3-blocker
 ## 📜 Check Out My Other Scripts
 
 - [AO3: Quick Hide](https://greasyfork.org/en/scripts/564383) – Quickly hide works, bookmarks, and comments while browsing AO3.
+- [AO3: Custom Favorites](https://greasyfork.org/en/scripts/582586) – Replace AO3's "Find your favorites" with custom shortcuts to any page.
 - [AO3: Reading Time & Quality Score](https://greasyfork.org/en/scripts/551106) – See reading time and engagement scores at a glance.
 - [AO3: Script Sync](https://greasyfork.org/en/scripts/568443) – Sync AO3 userscript settings and data across multiple devices.
 - [AO3: Site Wizard](https://greasyfork.org/en/scripts/550537) – Customize fonts, sizes, and work spacing site-wide.
