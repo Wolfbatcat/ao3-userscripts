@@ -1,13 +1,16 @@
 # Changelog
 
+## v2.6.7
+- **Updated to Menu Helpers Library v2.3.0** — more reliable username detection
+
 ## v2.6.6
-- **Updated to Menu Helpers Library v2.2.3** — Fixed menu bug on AO3 homepage.
+- **Updated to Menu Helpers Library v2.2.3** — fixed menu bug on AO3 homepage
 
 ## v2.6.5 — 2026-06-14
 
-- **Reduced AO3 rate-limit pressure** — Last chapter fetches are now staggered and cached per session; single-chapter works are skipped entirely
+- **Reduced AO3 rate-limit pressure** from last chapter fetches
 - **New options** — "Hide last chapter symbol" and "Show on bookmarks pages only"
-- **Settings menu reorganised** — Symbol options consolidated into the Last Chapter Symbol section
+- **Settings menu reorganised** for clarity
 
 ## v2.6.3 — 2026-06-13
 
@@ -15,7 +18,7 @@
 
 ## v2.6.1 — 2026-06-10
 
-- **Updated to Menu Helpers Library v2.2.0** — Dialog theming with Auto/Light/Dark toggle, improved skin detection, polished form controls, and settings organized into collapsible sections
-- **Hide "Invite to collections" button** — New option in the settings to hide the invite button on work pages
-- **Deduplicated chapter navigation fetches** — Prevents redundant network requests on work listing pages
+- **Updated to Menu Helpers Library v2.2.0** — Auto/Light/Dark theming and collapsible settings sections
+- **New option to hide the "Invite to collections" button** on work pages
+- **Fewer redundant network requests** on work listing pages
 - Various small fixes and improvements

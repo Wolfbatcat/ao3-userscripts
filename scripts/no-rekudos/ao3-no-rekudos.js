@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AO3: No Re-Kudos
-// @version      1.1.1
+// @version      1.2.0
 // @author       BlackBatCat
 // @description  Hide kudos button if you've already left kudos.
 // @license      MIT
@@ -17,6 +17,7 @@
     // ============================================================
 
     const STORAGE_KEY = "ao3_no_rekudos_config";
+    const FICTRACKER_KEY = "FT_kudosGiven"; // read-only cross-compat with AO3 FicTracker
 
     // ============================================================
     // STORAGE
@@ -31,6 +32,16 @@
             return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
         } catch (e) {
             return {};
+        }
+    }
+
+    /** Check FicTracker's kudos history (comma-separated work IDs) as a fallback. */
+    function hasFicTrackerKudos(workId) {
+        try {
+            const raw = localStorage.getItem(FICTRACKER_KEY) || "";
+            return raw.split(",").includes(workId);
+        } catch (e) {
+            return false;
         }
     }
 
@@ -50,7 +61,7 @@
 
     const kudosHistory = loadKudosHistory();
 
-    if (kudosHistory[workId]) {
+    if (kudosHistory[workId] || hasFicTrackerKudos(workId)) {
         kudoButton.style.display = "none";
     } else {
         // Record kudos on click, then hide button

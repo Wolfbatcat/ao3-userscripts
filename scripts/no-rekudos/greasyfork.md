@@ -1,14 +1,17 @@
 # AO3: No Re-Kudos
 
-Automatically hide the kudos button on works where you've already left kudos. Unlike the original version, it tracks your kudos history using browser storage instead of checking for your username in the kudos list. To transfer your kudos history to other browsers, use [AO3: Import & Export Script Storage](https://greasyfork.org/en/scripts/545336-ao3-import-export-script-storage).
+Automatically hide the kudos button on works where you've already left kudos. Unlike the original version, it tracks your kudos history using browser storage instead of checking for your username in the kudos list. To transfer your kudos history to other browsers, use [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) or [AO3: Import & Export Script Storage](https://greasyfork.org/en/scripts/545336-ao3-import-export-script-storage).
+
+
+> 🔄 **Using [AO3 FicTracker - BlackBatCat's Version](https://greasyfork.org/en/scripts/566605-ao3-fictracker-blackbatcat-s-version)?** It has the same kudos-hiding feature built in, making this script unneeded — but it's safe to run both at once, since each one reads the other's kudos history.
+
+> 💡 **Tip — Sync your kudos history across devices:** If you use AO3 on multiple devices, [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) will keep your No Re-Kudos history automatically in sync using Google Sheets.
+
+---
 
 ### 🙌 Credits
 
 Inspired by the original [ao3 no rekudos](https://greasyfork.org/en/scripts/406616-ao3-no-rekudos) by scriptfairy.
-
----
-
-> 💡 **Tip — Sync your kudos history across devices:** If you use AO3 on multiple devices, [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) will keep your No Re-Kudos history automatically in sync using Google Sheets.
 
 ---
 

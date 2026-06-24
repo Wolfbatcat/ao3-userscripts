@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.0.9
+// @version       1.1.0
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -12,7 +12,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1853381/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
+// @require       https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -79,38 +79,25 @@
         console.error(`[AO3: Quick Hide] ${context}`, error);
     }
 
-    /** Detect logged-in username from DOM or URL. Caches result. */
+    /**
+     * Detects the logged-in username, memoized for the lifetime of the page.
+     * Delegates to MHL, which only persists authoritative (header-derived)
+     * detections — never the non-authoritative URL fallback. Only
+     * authoritative results are cached here too, so a later call (after the
+     * header has rendered) can still recover the real username instead of
+     * being stuck on an unreliable URL guess for the rest of the page.
+     */
     function detectUsername() {
         if (cachedUsername) return cachedUsername;
-
-        if (SETTINGS.username) {
-            cachedUsername = SETTINGS.username;
-            return SETTINGS.username;
-        }
-
-        const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
-        if (userLink) {
-            const username = userLink.textContent.trim();
-            if (username && SETTINGS.username !== username) {
+        const { username, isAuthoritative } = window.AO3MenuHelpers.detectUsername({
+            getStored: () => SETTINGS.username,
+            setStored: (username) => {
                 SETTINGS.username = username;
                 saveSettings();
-            }
-            cachedUsername = username;
-            return username;
-        }
-
-        const urlMatch = window.location.href.match(/\/users\/([^\/]+)/);
-        if (urlMatch && urlMatch[1]) {
-            const username = urlMatch[1];
-            if (SETTINGS.username !== username) {
-                SETTINGS.username = username;
-                saveSettings();
-            }
-            cachedUsername = username;
-            return username;
-        }
-
-        return null;
+            },
+        });
+        if (username && isAuthoritative) cachedUsername = username;
+        return username;
     }
 
     /** Check if current page is the logged-in user's bookmarks page. */

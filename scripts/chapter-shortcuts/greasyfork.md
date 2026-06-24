@@ -6,9 +6,9 @@ Tired of extra clicks just to get to the latest chapter? This script adds handy 
 - **Hide work page buttons** — Optionally hide the entire work, download, share, invite to collections, first chapter, and last chapter buttons.
 - Fully customizable — pick your own symbol for the shortcut button!  
 
-![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_3.png "Chapter Shortcuts Menu")
+![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image-chapter-shortcuts-3.png "Chapter Shortcuts Menu")
 
-![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image_ao3_chapter_shortcuts_2.png "Chapter Shortcuts Menu")
+![Chapter Shortcuts Work Page](https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/chapter-shortcuts/images/image-chapter-shortcuts-2.png "Chapter Shortcuts Menu")
 
 ---
 

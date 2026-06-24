@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        AO3: Reading Time & Quality Score
-// @version     4.1.0
+// @version     4.1.1
 // @author       BlackBatCat
 // @description  Add reading time, chapter reading time, and quality scores to AO3 works with color coding, score normalization and sorting.
 // @match       *://archiveofourown.org/
@@ -12,7 +12,7 @@
 // @match       *://archiveofourown.org/bookmarks*
 // @match       *://archiveofourown.org/series/*
 // @license     MIT
-// @require     https://update.greasyfork.org/scripts/552743/1853381/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
+// @require     https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant       none
 // ==/UserScript==
 
@@ -91,28 +91,13 @@
 
     /** Detect logged-in username from DOM, URL params, or stored config. */
     const detectAndStoreUsername = () => {
-        let username = null;
-        const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
-        if (userLink) {
-            const match = userLink.getAttribute("href").match(/^\/users\/([^\/]+)/);
-            if (match) username = match[1];
-        }
-        if (!username && CONFIG.username) {
-            username = CONFIG.username;
-        }
-        if (!username) {
-            const urlMatch = window.location.pathname.match(/^\/users\/([^\/]+)/);
-            if (urlMatch) username = urlMatch[1];
-        }
-        if (!username) {
-            const params = new URLSearchParams(window.location.search);
-            const paramUserId = params.get("user_id");
-            if (paramUserId) username = paramUserId;
-        }
-        if (username && username !== CONFIG.username) {
-            saveSetting("username", username);
-        }
-        return username;
+        const { username } = window.AO3MenuHelpers.detectUsername({
+            getStored: () => CONFIG.username,
+            setStored: (username) => saveSetting("username", username),
+        });
+        if (username) return username;
+        const params = new URLSearchParams(window.location.search);
+        return params.get("user_id") || null;
     };
 
     /** Check if current page belongs to the given username. */

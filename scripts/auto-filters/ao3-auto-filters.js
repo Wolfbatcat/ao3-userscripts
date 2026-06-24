@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Auto Filters
 // @version       1.0.0-beta
-// @description   Automatically prefills AO3's filter sidebar with your saved preferences — tags, ratings, warnings, categories, completion, crossovers, word count, language, and search query.
+// @description   Automatically prefills AO3's filter sidebar with your saved preferences — tags, ratings, warnings, categories, completion, crossovers, word count, date updated, language, and search query.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*
@@ -11,7 +11,7 @@
 // @match         *://archiveofourown.org/users/*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1853381/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
+// @require       https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -71,16 +71,21 @@
         completionFilter: "",
         minWords: "",
         maxWords: "",
+        dateFrom: "",
+        dateTo: "",
         searchQuery: "",
         language: "",
 
-        showIncludeChips: true,
-        showExcludeChips: true,
-        autoSubmit: false,
+        showChips: true,
+        autoSubmit: true,
         pauseFilters: false,
+        disableOnMyContent: true,
+        username: null,
         hideMenu: false,
         _version: VERSION,
     };
+
+    let cachedUsername = null;
 
     // ============================================================
     // STORAGE
@@ -118,6 +123,51 @@
             .filter(Boolean);
     }
 
+    /**
+     * Checks whether the current page belongs to the given username,
+     * matching dashboard, works, bookmarks, readings, and individual bookmark pages.
+     */
+    function isMyContentPage(username) {
+        if (!username || !username.trim()) return false;
+        const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const path = window.location.pathname;
+        const myContentRegex = new RegExp(
+            `^/users/${escapedUsername}(?:/pseuds/[^/]+)?(?:/(?:bookmarks|works|readings))?/?(?:$|[?#])`,
+            "i",
+        );
+        if (myContentRegex.test(path)) return true;
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get("user_id");
+        if (userId && userId.toLowerCase() === username.toLowerCase()) return true;
+        // Check for individual bookmark pages
+        if (path.match(/^\/bookmarks\/\d+$/)) {
+            const userLink = document.querySelector(`a[href="/users/${username}"]`);
+            if (userLink) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Detects the logged-in username, memoized for the lifetime of the page.
+     * Delegates to MHL, which only persists authoritative (header-derived)
+     * detections — never the non-authoritative URL fallback. Only
+     * authoritative results are cached here too, so a later call (after the
+     * header has rendered) can still recover the real username instead of
+     * being stuck on an unreliable URL guess for the rest of the page.
+     */
+    function detectUsername(config) {
+        if (cachedUsername) return cachedUsername;
+        const { username, isAuthoritative } = window.AO3MenuHelpers.detectUsername({
+            getStored: () => config.username,
+            setStored: (username) => {
+                config.username = username;
+                saveConfig(config);
+            },
+        });
+        if (username && isAuthoritative) cachedUsername = username;
+        return username;
+    }
+
     // ============================================================
     // UI HELPERS
     // ============================================================
@@ -127,6 +177,91 @@
         return parseTagList(raw)
             .map((name) => map.get(name.toLowerCase()) ?? null)
             .filter(Boolean);
+    }
+
+    function unknownLabels(raw, map) {
+        if (!raw) return [];
+        return parseTagList(raw).filter((name) => !map.has(name.toLowerCase()));
+    }
+
+    /**
+     * Validates the settings form before save.
+     * Returns { errors, warnings } — errors block save, warnings need user confirmation.
+     */
+    function validateSettingsForm(values) {
+        const errors = [];
+        const warnings = [];
+
+        const includeRatingIds = labelToIds(values.includeRatings, RATINGS_BY_LABEL);
+        if (includeRatingIds.length > 1) {
+            errors.push(
+                "Include Ratings: only one rating can be included at a time (AO3 limitation). Please enter a single rating.",
+            );
+        }
+
+        const excludeRatingIds = labelToIds(values.excludeRatings, RATINGS_BY_LABEL);
+        if (excludeRatingIds.length >= RATINGS.length) {
+            warnings.push(
+                "Exclude Ratings: every rating is excluded, so no works can ever match. Is this intended?",
+            );
+        }
+
+        if (values.language.includes(",")) {
+            errors.push(
+                "Language: AO3's filter only accepts one language at a time. Please enter a single language.",
+            );
+        }
+
+        [
+            ["Include Ratings", values.includeRatings, RATINGS_BY_LABEL],
+            ["Exclude Ratings", values.excludeRatings, RATINGS_BY_LABEL],
+            ["Include Warnings", values.includeWarnings, WARNINGS_BY_LABEL],
+            ["Exclude Warnings", values.excludeWarnings, WARNINGS_BY_LABEL],
+            ["Include Categories", values.includeCategories, CATEGORIES_BY_LABEL],
+            ["Exclude Categories", values.excludeCategories, CATEGORIES_BY_LABEL],
+        ].forEach(([field, raw, map]) => {
+            const unknown = unknownLabels(raw, map);
+            if (unknown.length > 0) {
+                warnings.push(
+                    `${field}: "${unknown.join(", ")}" doesn't match any known option and will be ignored.`,
+                );
+            }
+        });
+
+        const minWords = values.minWords.trim();
+        const maxWords = values.maxWords.trim();
+        if (minWords && !/^\d+$/.test(minWords)) {
+            errors.push("Min Word Count must be a whole number.");
+        }
+        if (maxWords && !/^\d+$/.test(maxWords)) {
+            errors.push("Max Word Count must be a whole number.");
+        }
+        if (
+            minWords &&
+            maxWords &&
+            /^\d+$/.test(minWords) &&
+            /^\d+$/.test(maxWords) &&
+            Number(minWords) > Number(maxWords)
+        ) {
+            errors.push("Min Word Count cannot be greater than Max Word Count.");
+        }
+
+        const dateFrom = values.dateFrom.trim();
+        const dateTo = values.dateTo.trim();
+        const isValidDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+        if (dateFrom && !isValidDate(dateFrom)) {
+            errors.push("Date Updated From must be a valid date (YYYY-MM-DD).");
+        }
+        if (dateTo && !isValidDate(dateTo)) {
+            errors.push("Date Updated To must be a valid date (YYYY-MM-DD).");
+        }
+        if (dateFrom && dateTo && isValidDate(dateFrom) && isValidDate(dateTo)) {
+            if (Date.parse(dateFrom) > Date.parse(dateTo)) {
+                errors.push("Date Updated From cannot be later than Date Updated To.");
+            }
+        }
+
+        return { errors, warnings };
     }
 
     // ============================================================
@@ -306,12 +441,29 @@
     }
 
     /**
+     * Locates the active AO3 filter form on this page and identifies which
+     * search param namespace it uses ("work_search" on works/series listings,
+     * "bookmark_search" on bookmark listings). The two forms share most field
+     * names under their respective namespace, but bookmark forms lack
+     * crossover/completion filters and use different names for the query and
+     * tag-autocomplete fields.
+     */
+    function getActiveFilterForm() {
+        const workForm = document.getElementById("work-filters");
+        if (workForm) return { filterForm: workForm, ns: "work_search" };
+        const bookmarkForm = document.getElementById("bookmark-filters");
+        if (bookmarkForm) return { filterForm: bookmarkForm, ns: "bookmark_search" };
+        return null;
+    }
+
+    /**
      * Strips previously injected auto-filter state from the filter form so
      * applyAutoFilters can be called again without duplicating chips or values.
      */
     function resetFilterForm() {
-        const filterForm = document.getElementById("work-filters");
-        if (!filterForm) return;
+        const active = getActiveFilterForm();
+        if (!active) return;
+        const { filterForm, ns } = active;
 
         // Remove chips this script injected (showChips=true mode)
         filterForm.querySelectorAll("li[data-auto-filter]").forEach((li) => {
@@ -341,27 +493,34 @@
         // Uncheck all rating/warning/category checkboxes and radios set by this script
         filterForm
             .querySelectorAll(
-                "input[name='include_work_search[rating_ids][]']," +
-                    "input[name='include_work_search[archive_warning_ids][]']," +
-                    "input[name='include_work_search[category_ids][]']," +
-                    "input[name='exclude_work_search[rating_ids][]']," +
-                    "input[name='exclude_work_search[archive_warning_ids][]']," +
-                    "input[name='exclude_work_search[category_ids][]']",
+                `input[name='include_${ns}[rating_ids][]'],` +
+                    `input[name='include_${ns}[archive_warning_ids][]'],` +
+                    `input[name='include_${ns}[category_ids][]'],` +
+                    `input[name='exclude_${ns}[rating_ids][]'],` +
+                    `input[name='exclude_${ns}[archive_warning_ids][]'],` +
+                    `input[name='exclude_${ns}[category_ids][]']`,
             )
             .forEach((el) => (el.checked = false));
 
-        // Reset selects and text fields
-        const crossoverSel = filterForm.querySelector(`select[name="work_search[crossover]"]`);
-        if (crossoverSel) crossoverSel.value = "";
-        const completeSel = filterForm.querySelector(`select[name="work_search[complete]"]`);
-        if (completeSel) completeSel.value = "";
-        const wordsFrom = filterForm.querySelector(`input[name="work_search[words_from]"]`);
+        // Reset crossover/completion radio groups and text fields
+        const crossoverDefault = filterForm.querySelector(
+            `input[name="${ns}[crossover]"][value=""]`,
+        );
+        if (crossoverDefault) crossoverDefault.checked = true;
+        const completeDefault = filterForm.querySelector(`input[name="${ns}[complete]"][value=""]`);
+        if (completeDefault) completeDefault.checked = true;
+        const wordsFrom = filterForm.querySelector(`input[name="${ns}[words_from]"]`);
         if (wordsFrom) wordsFrom.value = "";
-        const wordsTo = filterForm.querySelector(`input[name="work_search[words_to]"]`);
+        const wordsTo = filterForm.querySelector(`input[name="${ns}[words_to]"]`);
         if (wordsTo) wordsTo.value = "";
-        const query = filterForm.querySelector(`input[name="work_search[query]"]`);
+        const dateFrom = filterForm.querySelector(`input[name="${ns}[date_from]"]`);
+        if (dateFrom) dateFrom.value = "";
+        const dateTo = filterForm.querySelector(`input[name="${ns}[date_to]"]`);
+        if (dateTo) dateTo.value = "";
+        const queryName = ns === "bookmark_search" ? "bookmarkable_query" : "query";
+        const query = filterForm.querySelector(`input[name="${ns}[${queryName}]"]`);
         if (query) query.value = "";
-        const lang = filterForm.querySelector(`select[name="work_search[language_id]"]`);
+        const lang = filterForm.querySelector(`select[name="${ns}[language_id]"]`);
         if (lang) lang.value = "";
     }
 
@@ -371,21 +530,26 @@
      * @param {Object} config
      */
     function applyAutoFilters(config, { suppressAutoSubmit = false } = {}) {
-        const filterForm = document.getElementById("work-filters");
-        if (!filterForm) return;
+        const active = getActiveFilterForm();
+        if (!active) return;
+        const { filterForm, ns } = active;
         if (config.pauseFilters) return;
 
+        const username = detectUsername(config);
+        if (config.disableOnMyContent && username && isMyContentPage(username)) return;
+
         const urlParams = new URLSearchParams(location.search);
+        const tagAutocompleteId = ns === "bookmark_search" ? "bookmark_search" : "work_search";
 
         // Build value→element Maps for each checkbox/radio group (one querySelectorAll each)
         const toMap = (sel) =>
             new Map(Array.from(filterForm.querySelectorAll(sel)).map((el) => [el.value, el]));
-        const incRatingMap = toMap(`input[name="include_work_search[rating_ids][]"]`);
-        const incWarningMap = toMap(`input[name="include_work_search[archive_warning_ids][]"]`);
-        const incCategoryMap = toMap(`input[name="include_work_search[category_ids][]"]`);
-        const excRatingMap = toMap(`input[name="exclude_work_search[rating_ids][]"]`);
-        const excWarningMap = toMap(`input[name="exclude_work_search[archive_warning_ids][]"]`);
-        const excCategoryMap = toMap(`input[name="exclude_work_search[category_ids][]"]`);
+        const incRatingMap = toMap(`input[name="include_${ns}[rating_ids][]"]`);
+        const incWarningMap = toMap(`input[name="include_${ns}[archive_warning_ids][]"]`);
+        const incCategoryMap = toMap(`input[name="include_${ns}[category_ids][]"]`);
+        const excRatingMap = toMap(`input[name="exclude_${ns}[rating_ids][]"]`);
+        const excWarningMap = toMap(`input[name="exclude_${ns}[archive_warning_ids][]"]`);
+        const excCategoryMap = toMap(`input[name="exclude_${ns}[category_ids][]"]`);
 
         // Include ratings (radio buttons — AO3 only allows one at a time)
         const includeRatingIds = labelToIds(config.includeRatings, RATINGS_BY_LABEL);
@@ -410,10 +574,10 @@
         const includeTags = parseTagList(config.includeTagNames);
         if (includeTags.length > 0) {
             prefillAutocompleteField(
-                filterForm.querySelector("#work_search_other_tag_names_autocomplete"),
-                filterForm.querySelector("#work_search_other_tag_names"),
+                filterForm.querySelector(`#${tagAutocompleteId}_other_tag_names_autocomplete`),
+                filterForm.querySelector(`#${tagAutocompleteId}_other_tag_names`),
                 includeTags,
-                config.showIncludeChips !== false,
+                config.showChips !== false,
                 urlParams,
             );
         }
@@ -440,40 +604,62 @@
         const excludeTags = parseTagList(config.excludeTagNames);
         if (excludeTags.length > 0) {
             prefillAutocompleteField(
-                filterForm.querySelector("#work_search_excluded_tag_names_autocomplete"),
-                filterForm.querySelector("#work_search_excluded_tag_names"),
+                filterForm.querySelector(`#${tagAutocompleteId}_excluded_tag_names_autocomplete`),
+                filterForm.querySelector(`#${tagAutocompleteId}_excluded_tag_names`),
                 excludeTags,
-                config.showExcludeChips !== false,
+                config.showChips !== false,
                 urlParams,
             );
         }
 
-        // Crossovers filter
-        if (config.crossoversFilter) {
-            const sel = filterForm.querySelector(`select[name="work_search[crossover]"]`);
-            if (sel) sel.value = config.crossoversFilter;
-        }
+        // Crossovers and completion filters — works/series listings only, no
+        // equivalent field exists on the bookmark filter form. AO3 renders
+        // these as radio groups, not <select> elements.
+        if (ns === "work_search") {
+            if (config.crossoversFilter) {
+                const radio = filterForm.querySelector(
+                    `input[name="${ns}[crossover]"][value="${config.crossoversFilter}"]`,
+                );
+                if (radio) radio.checked = true;
+            }
 
-        // Completion filter
-        if (config.completionFilter) {
-            const sel = filterForm.querySelector(`select[name="work_search[complete]"]`);
-            if (sel) sel.value = config.completionFilter;
+            if (config.completionFilter) {
+                const radio = filterForm.querySelector(
+                    `input[name="${ns}[complete]"][value="${config.completionFilter}"]`,
+                );
+                if (radio) radio.checked = true;
+            }
         }
 
         // Word count
         if (config.minWords) {
-            const el = filterForm.querySelector(`input[name="work_search[words_from]"]`);
+            const el = filterForm.querySelector(`input[name="${ns}[words_from]"]`);
             if (el) el.value = config.minWords;
         }
         if (config.maxWords) {
-            const el = filterForm.querySelector(`input[name="work_search[words_to]"]`);
+            const el = filterForm.querySelector(`input[name="${ns}[words_to]"]`);
             if (el) el.value = config.maxWords;
+        }
+
+        // Date updated — works/series listings only, no equivalent field on
+        // the bookmark filter form.
+        if (ns === "work_search") {
+            if (config.dateFrom) {
+                const el = filterForm.querySelector(`input[name="${ns}[date_from]"]`);
+                if (el) el.value = config.dateFrom;
+            }
+            if (config.dateTo) {
+                const el = filterForm.querySelector(`input[name="${ns}[date_to]"]`);
+                if (el) el.value = config.dateTo;
+            }
         }
 
         // Search within results — append to any existing URL query, don't overwrite it.
         // Strip our own suffix first so repeated page loads don't double-append.
+        // Bookmark forms use "bookmarkable_query" instead of "query".
         if (config.searchQuery) {
-            const el = filterForm.querySelector(`input[name="work_search[query]"]`);
+            const queryName = ns === "bookmark_search" ? "bookmarkable_query" : "query";
+            const el = filterForm.querySelector(`input[name="${ns}[${queryName}]"]`);
             if (el) {
                 const suffix = config.searchQuery;
                 const base = el.value
@@ -489,7 +675,7 @@
 
         // Language — match option text case-insensitively
         if (config.language) {
-            const sel = filterForm.querySelector(`select[name="work_search[language_id]"]`);
+            const sel = filterForm.querySelector(`select[name="${ns}[language_id]"]`);
             if (sel) {
                 const target = config.language.toLowerCase();
                 const opt = Array.from(sel.options).find(
@@ -502,7 +688,7 @@
         // Auto-submit: click the Sort and Filter button after all prefills are applied.
         // Skip if the URL already contains filter/sort params — covers paginated results,
         // back-navigation, and any other page where filters are already in effect.
-        if (config.autoSubmit && !suppressAutoSubmit && !location.search.includes("work_search")) {
+        if (config.autoSubmit && !suppressAutoSubmit && !location.search.includes(ns)) {
             const submitBtn = filterForm.querySelector(
                 `input[type="submit"], button[type="submit"]`,
             );
@@ -549,7 +735,7 @@
             value: config.includeRatings || "",
             placeholder: "Teen And Up Audiences, Mature",
             tooltip:
-                "Rating names to include, separated by commas. AO3 only supports one included rating at a time — if multiple are listed, the last one is applied. Options: Not Rated, General Audiences, Teen And Up Audiences, Mature, Explicit.",
+                "Rating name to include. AO3 only supports one included rating at a time. Options: Not Rated, General Audiences, Teen And Up Audiences, Mature, Explicit.",
         });
 
         const includeWarningsInput = window.AO3MenuHelpers.createTextInput({
@@ -627,15 +813,19 @@
 
         // ── More Options section ─────────────────────────────────
 
-        const moreSection = window.AO3MenuHelpers.createSection("⚙️ More Options");
+        const moreSection = window.AO3MenuHelpers.createSection("🛠️ More Options");
 
         const crossoversSelect = window.AO3MenuHelpers.createSelect({
             id: "auto-filter-crossovers",
             label: "Crossovers",
             options: [
-                { value: "", label: "— No preference —", selected: !config.crossoversFilter },
+                { value: "", label: "Include crossovers", selected: !config.crossoversFilter },
                 { value: "T", label: "Only crossovers", selected: config.crossoversFilter === "T" },
-                { value: "F", label: "No crossovers", selected: config.crossoversFilter === "F" },
+                {
+                    value: "F",
+                    label: "Exclude crossovers",
+                    selected: config.crossoversFilter === "F",
+                },
             ],
         });
 
@@ -643,7 +833,7 @@
             id: "auto-filter-completion",
             label: "Completion Status",
             options: [
-                { value: "", label: "— All works —", selected: !config.completionFilter },
+                { value: "", label: "All works", selected: !config.completionFilter },
                 {
                     value: "T",
                     label: "Complete works only",
@@ -683,6 +873,23 @@
         );
         moreSection.appendChild(wordCountRow);
 
+        const dateFromInput = window.AO3MenuHelpers.createDateInput({
+            id: "auto-filter-date-from",
+            label: "Date Updated From",
+            value: config.dateFrom || "",
+            placeholder: "2026-06-02",
+        });
+
+        const dateToInput = window.AO3MenuHelpers.createDateInput({
+            id: "auto-filter-date-to",
+            label: "Date Updated To",
+            value: config.dateTo || "",
+            placeholder: "2026-06-02",
+        });
+
+        const dateRow = window.AO3MenuHelpers.createTwoColumnLayout(dateFromInput, dateToInput);
+        moreSection.appendChild(dateRow);
+
         const searchQueryInput = window.AO3MenuHelpers.createTextInput({
             id: "auto-filter-query",
             label: "Search Within Results",
@@ -698,7 +905,7 @@
             value: config.language || "",
             placeholder: "English",
             tooltip:
-                "Language name as it appears in AO3's filter dropdown (e.g. 'English', 'Русский', '中文-普通话国语'). Case-insensitive.",
+                "Language name as it appears in AO3's filter dropdown (e.g. 'English', 'Русский', '中文-普通话国语'). Case-insensitive. Only one language can be set.",
         });
         moreSection.appendChild(languageInput);
 
@@ -706,27 +913,15 @@
 
         // ── Options section ──────────────────────────────────────
 
-        const optionsSection = window.AO3MenuHelpers.createSection("🛠️ Options");
+        const optionsSection = window.AO3MenuHelpers.createSection("⚙️ Options");
 
-        const showIncludeChipsCheckbox = window.AO3MenuHelpers.createCheckbox({
-            id: "auto-filter-show-include-chips",
-            label: "Show included tags as chips",
-            checked: config.showIncludeChips !== false,
+        const showChipsCheckbox = window.AO3MenuHelpers.createCheckbox({
+            id: "auto-filter-show-chips",
+            label: "Show tags as chips",
+            checked: config.showChips !== false,
             tooltip:
-                "When enabled, included tags appear as removable chips in AO3's filter sidebar. When disabled, tags are applied silently — filtering still works but no chips are shown.",
+                "When enabled, included/excluded tags appear as removable chips in AO3's filter sidebar. When disabled, tags are applied silently — filtering still works but no chips are shown.",
         });
-        const showExcludeChipsCheckbox = window.AO3MenuHelpers.createCheckbox({
-            id: "auto-filter-show-exclude-chips",
-            label: "Show excluded tags as chips",
-            checked: config.showExcludeChips !== false,
-            tooltip:
-                "When enabled, excluded tags appear as removable chips in AO3's filter sidebar. When disabled, tags are applied silently — filtering still works but no chips are shown.",
-        });
-        const chipsRow = window.AO3MenuHelpers.createTwoColumnLayout(
-            showIncludeChipsCheckbox,
-            showExcludeChipsCheckbox,
-        );
-        optionsSection.appendChild(chipsRow);
 
         const autoSubmitCheckbox = window.AO3MenuHelpers.createCheckbox({
             id: "auto-filter-auto-submit",
@@ -735,21 +930,38 @@
             tooltip:
                 "When enabled, AO3's 'Sort and Filter' button is clicked automatically after your saved filters are applied. The page will reload with filtered results immediately.",
         });
-        optionsSection.appendChild(autoSubmitCheckbox);
+        const optionsRow1 = window.AO3MenuHelpers.createTwoColumnLayout(
+            showChipsCheckbox,
+            autoSubmitCheckbox,
+        );
+        optionsSection.appendChild(optionsRow1);
+
+        const disableOnMyContentCheckbox = window.AO3MenuHelpers.createCheckbox({
+            id: "auto-filter-disable-on-my-content",
+            label: "Disable on my content",
+            checked: config.disableOnMyContent !== false,
+            tooltip:
+                "Don't apply saved filters on your own dashboard, bookmarks, history, and works pages.",
+        });
 
         const hideMenuCheckbox = window.AO3MenuHelpers.createHideMenuCheckbox({
             id: "auto-filters-hide-menu-checkbox",
             checked: config.hideMenu,
         });
-        optionsSection.appendChild(hideMenuCheckbox);
+
+        const optionsRow2 = window.AO3MenuHelpers.createTwoColumnLayout(
+            disableOnMyContentCheckbox,
+            hideMenuCheckbox,
+        );
+        optionsSection.appendChild(optionsRow2);
         dialog.appendChild(optionsSection);
 
         // ── Tip ──────────────────────────────────────────────────
 
         const tipContent = document.createElement("span");
         tipContent.innerHTML =
-            "<strong>Tip:</strong> All saved filters are applied automatically on page load. You can adjust or remove them per-session directly in AO3's sidebar before clicking Sort and Filter.";
-        dialog.appendChild(window.AO3MenuHelpers.createTipBox(tipContent, { icon: "ℹ️" }));
+            "<strong>Tip:</strong> Exclude metatags to filter out all similar subtags. For example, instead of excluding `Alternate Universe - Modern Setting`, use `Modern Era` to filter out all modern setting works.";
+        dialog.appendChild(window.AO3MenuHelpers.createTipBox(tipContent, { icon: "🔖" }));
 
         // ── Buttons ──────────────────────────────────────────────
 
@@ -826,16 +1038,29 @@
                         window.AO3MenuHelpers.getValue("auto-filter-completion") || "",
                     minWords: window.AO3MenuHelpers.getValue("auto-filter-min-words") || "",
                     maxWords: window.AO3MenuHelpers.getValue("auto-filter-max-words") || "",
+                    dateFrom: window.AO3MenuHelpers.getValue("auto-filter-date-from") || "",
+                    dateTo: window.AO3MenuHelpers.getValue("auto-filter-date-to") || "",
                     searchQuery: window.AO3MenuHelpers.getValue("auto-filter-query") || "",
                     language: window.AO3MenuHelpers.getValue("auto-filter-language") || "",
-                    showIncludeChips:
-                        window.AO3MenuHelpers.getValue("auto-filter-show-include-chips") === true,
-                    showExcludeChips:
-                        window.AO3MenuHelpers.getValue("auto-filter-show-exclude-chips") === true,
+                    showChips: window.AO3MenuHelpers.getValue("auto-filter-show-chips") === true,
                     autoSubmit: window.AO3MenuHelpers.getValue("auto-filter-auto-submit") === true,
+                    disableOnMyContent:
+                        window.AO3MenuHelpers.getValue("auto-filter-disable-on-my-content") ===
+                        true,
+                    username: config.username || null,
                     hideMenu: window.AO3MenuHelpers.getValue("auto-filters-hide-menu-checkbox"),
                     _version: VERSION,
                 };
+
+                const { errors, warnings } = validateSettingsForm(updatedConfig);
+                if (errors.length > 0) {
+                    alert(errors.join("\n"));
+                    return;
+                }
+                if (warnings.length > 0 && !confirm(warnings.join("\n") + "\n\nSave anyway?")) {
+                    return;
+                }
+
                 if (saveConfig(updatedConfig)) {
                     resetFilterForm();
                     applyAutoFilters(updatedConfig, { suppressAutoSubmit: true });

@@ -20,11 +20,11 @@ Tired of navigating to your skins page every time you want to switch themes? Thi
 
 **Normal Mode**
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_1.png" width="400" alt="Skin Organizer">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image-skin-switcher-1.png" width="400" alt="Skin Organizer">
 
 **Edit Mode**
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_2.png" width="400" alt="Skin Organizer">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image-skin-switcher-2.png" width="400" alt="Skin Organizer">
 
 #### 🗂️ Skin Organizer
 **NEW:** Thank you to [autocompleted](https://greasyfork.org/users/1603527) for allowing me to merge in features from the amazing [Skin Organizer](https://greasyfork.org/en/scripts/579578-ao3-skin-organizer) script. Note that Skin Organizer has been integrated into this script and is no longer needed.
@@ -35,7 +35,7 @@ Tired of navigating to your skins page every time you want to switch themes? Thi
 - **Site and work skins:** The tools work on both (the "in use" and "parent skin" filters apply to site skins only).
 - **Search operators:** Filter by name using `*` (any characters), `""` (exact phrase), space or `AND` (all terms), `||` or `OR` (either), `-` or `NOT` (exclude).
 
-<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image_skin_switcher_3.png" width="720" alt="Skin Organizer">
+<img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/skin-switcher/images/image-skin-switcher-3.png" width="720" alt="Skin Organizer">
 
 ---
 

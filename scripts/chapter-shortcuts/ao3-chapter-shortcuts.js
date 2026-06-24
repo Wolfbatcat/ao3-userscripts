@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Chapter Shortcuts
-// @version       2.6.6
+// @version       2.6.7
 // @description   Add shortcuts for first and last chapters on AO3 works. Customize the latest chapter symbol on work titles.
 // @author        BlackBatCat
 // @license       MIT
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
-// @require       https://update.greasyfork.org/scripts/552743/1853381/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.3
+// @require       https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant         none
 // ==/UserScript==
 
@@ -83,23 +83,13 @@
         return null;
     }
 
+    /**
+     * Detects the logged-in username via MHL. This script has no persisted
+     * config field for it, so every call re-resolves from the DOM/URL —
+     * cheap enough since it's only used to check `isUsersBookmarksPage`.
+     */
     function detectUsername() {
-        // Try nav link first (most reliable — present on all pages when logged in)
-        const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
-        if (userLink) {
-            const username = userLink.textContent.trim();
-            if (username) return username;
-            // Fall back to href if text is empty
-            const hrefMatch = userLink.getAttribute("href").match(/^\/users\/([^/]+)/);
-            if (hrefMatch) return decodeURIComponent(hrefMatch[1]);
-        }
-        // Try extracting from the current URL on user-scoped pages
-        const pathMatch = window.location.pathname.match(/^\/users\/([^/]+)/);
-        if (pathMatch) return decodeURIComponent(pathMatch[1]);
-        // Try extracting from user_id query param on /bookmarks pages
-        const userIdMatch = window.location.search.match(/(?:^[?]|&)user_id=([^&]+)/);
-        if (userIdMatch) return decodeURIComponent(userIdMatch[1]);
-        return null;
+        return window.AO3MenuHelpers.detectUsername().username;
     }
 
     function isUsersBookmarksPage(username) {

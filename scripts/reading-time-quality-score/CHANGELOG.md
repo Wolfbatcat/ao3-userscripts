@@ -1,12 +1,10 @@
 # Changelog
 
-## v4.1.0
--
-- **Updated to Menu Helpers Library v2.2.3** — Fixed menu bug on AO3 homepage.
-
+## v4.1.1
+- **Updated to Menu Helpers Library v2.3.0** — more reliable username detection
 
 ## v4.0.7 — 2026-06-10
-- **Updated to Menu Helpers Library v2.2.0** — Dialog theming with Auto/Light/Dark toggle, improved skin detection, polished form controls, and a themed import/export/reset row
-- **Improved color picker layout** — Colors arranged in two separate rows (Green+Yellow, Red+Text) for better readability
-- **Shortened threshold labels** — Reading time threshold labels now show "Yellow (minutes)" and "Red (minutes)" instead of the longer previous wording
+- **Updated to Menu Helpers Library v2.2.0** — Auto/Light/Dark theming and a themed import/export/reset row
+- **Improved color picker layout** for better readability
+- **Shortened threshold labels** to "Yellow (minutes)" and "Red (minutes)"
 - Various small fixes and improvements 

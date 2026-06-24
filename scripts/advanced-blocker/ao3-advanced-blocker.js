@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Advanced Blocker
-// @version       4.2.1
+// @version       4.2.4
 // @description   Block works by tags, authors, titles, word counts, and more. Filter by language, completion status, and primary pairings with customizable highlighting.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -13,7 +13,7 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/series/*
 // @license       MIT
-// @require       https://update.greasyfork.org/scripts/552743/1848100/AO3%3A%20Menu%20Helpers%20Library.js?v=2.2.2
+// @require       https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant         none
 // @run-at        document-end
 // ==/UserScript==
@@ -29,7 +29,7 @@
     // ============================================================
 
     const CSS_NAMESPACE = "ao3-blocker";
-    const VERSION = "4.2.1"; // Keep in sync with @version in userscript header
+    const VERSION = "4.2.4"; // Keep in sync with @version in userscript header
     const WORKS_PAGE_REGEX = /^https?:\/\/archiveofourown\.org\/(works|chapters)\/\d+/;
 
     const DEFAULTS = {
@@ -344,36 +344,24 @@
     }
 
     /**
-     * Detects logged-in username via DOM nav link, stored config, or URL.
-     * Persists detected username back to config.
+     * Detects the logged-in username, memoized for the lifetime of the page.
+     * Delegates to MHL, which only persists authoritative (header-derived)
+     * detections — never the non-authoritative URL fallback. Only
+     * authoritative results are cached here too, so a later call (after the
+     * header has rendered) can still recover the real username instead of
+     * being stuck on an unreliable URL guess for the rest of the page.
      */
     function detectUsername(config) {
         if (cachedUsername) return cachedUsername;
-        if (config.username) {
-            cachedUsername = config.username;
-            return config.username;
-        }
-        const userLink = document.querySelector('li.user.logged-in a[href^="/users/"]');
-        if (userLink) {
-            const username = userLink.textContent.trim();
-            if (username && config.username !== username) {
+        const { username, isAuthoritative } = window.AO3MenuHelpers.detectUsername({
+            getStored: () => config.username,
+            setStored: (username) => {
                 config.username = username;
                 saveConfig(config);
-            }
-            cachedUsername = username;
-            return username;
-        }
-        const urlMatch = window.location.href.match(/\/users\/([^\/]+)/);
-        if (urlMatch && urlMatch[1]) {
-            const username = urlMatch[1];
-            if (config.username !== username) {
-                config.username = username;
-                saveConfig(config);
-            }
-            cachedUsername = username;
-            return username;
-        }
-        return null;
+            },
+        });
+        if (username && isAuthoritative) cachedUsername = username;
+        return username;
     }
 
     // ============================================================
@@ -846,7 +834,7 @@
 
         let isOnMyContent = false;
 
-        const username = config.username;
+        const username = detectUsername(config);
         if (config.disableOnMyContent && username) {
             isOnMyContent = isMyContentPage(username);
             if (isOnMyContent && !config.enableHighlightingOnMyContent) return;
@@ -1516,7 +1504,7 @@
 
         const menu = menuContainer.querySelector(".dropdown-menu");
         if (menu) {
-            const username = config.username || detectUsername(config);
+            const username = detectUsername(config);
             const isOnMyContent =
                 config.disableOnMyContent && username && isMyContentPage(username);
 
