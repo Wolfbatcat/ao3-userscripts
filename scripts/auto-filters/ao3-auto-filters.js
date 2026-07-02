@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Auto Filters
 // @version       1.0.0-beta
-// @description   Automatically prefills AO3's filter sidebar with your saved preferences — tags, ratings, warnings, categories, completion, crossovers, word count, date updated, language, and search query.
+// @description   Save your favorite AO3 filters and have them auto-applied every time you search.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*

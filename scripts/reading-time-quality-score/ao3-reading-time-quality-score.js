@@ -56,11 +56,11 @@
         colorText: "#ffffff",
         useIcons: false,
         iconColor: "",
-        chapterTimeStyle: "default",
+        chapterTimeStyle: "colored",
         username: "",
         hideWorksEnabled: false,
         hideWorksScore: 4,
-        keepUnscoredVisible: false,
+        keepUnscoredVisible: true,
         hideScoreWorksEnabled: false,
         hideScoreWorks: "",
         hideMenuOptions: false,
@@ -236,7 +236,6 @@
             CONFIG.colorThresholdHigh = 14;
             CONFIG.hideWorksScore = 4;
         }
-        CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
         saveAllSettings();
         buildHideScoreWorksSet();
         if ((CONFIG.enableReadingTime || CONFIG.enableQualityScore) && countable) {
@@ -1442,7 +1441,7 @@
         const keepUnscoredCheckbox = window.AO3MenuHelpers.createCheckbox({
             id: "keepUnscoredVisible",
             label: "Show unscored works",
-            checked: CONFIG.hideWorksEnabled ? true : CONFIG.keepUnscoredVisible,
+            checked: CONFIG.keepUnscoredVisible,
         });
 
         const hideWorksSubsettings = window.AO3MenuHelpers.createSubsettings();
@@ -1716,7 +1715,6 @@
                             }
                             delete imported._hideScoreWorksSet;
                             CONFIG = { ...DEFAULTS, ...imported };
-                            CONFIG.keepUnscoredVisible = CONFIG.hideWorksEnabled ? true : false;
                             saveAllSettings();
                             buildHideScoreWorksSet();
                             alert("Settings imported successfully! Reloading...");
@@ -1868,9 +1866,6 @@
 
             CONFIG.hideWorksEnabled = dialog.querySelector("#hideWorksEnabled").checked;
             CONFIG.keepUnscoredVisible = dialog.querySelector("#keepUnscoredVisible").checked;
-            if (!CONFIG.hideWorksEnabled) {
-                CONFIG.keepUnscoredVisible = false;
-            }
             CONFIG.hideWorksScore = parseFloat(dialog.querySelector("#hideWorksScore").value);
 
             const hideScoreWorksChanged =
