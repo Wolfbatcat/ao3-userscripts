@@ -1,6 +1,8 @@
 
 # AO3: Quick Hide
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 
 ---

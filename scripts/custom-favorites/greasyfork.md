@@ -1,5 +1,7 @@
 # AO3: Custom Favorites
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 AO3's built-in "Find your favorites" section only lets you follow a single tag — no filtering, no customization. Custom Favorites replaces it with your own shortcuts to anything on AO3: a ship search pre-filtered exactly how you like it, your favorite authors' pages, collections, gift exchanges, your own bookmarks, whatever you actually go back to.
 
 <img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/custom-favorites/images/image-custom-favorites-1.png" alt="Custom Favorites">

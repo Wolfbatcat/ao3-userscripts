@@ -1,5 +1,7 @@
 # AO3: Advanced Blocker
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Block works on AO3 by tags, authors, titles, summaries, word counts, and more. Filter by completion status, language, last update, and primary pairings. Customize what you see—or don't.
 
 <img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/advanced-blocker/images/image-advanced-blocker-1.png" width="600" alt="Advanced Blocker in action">

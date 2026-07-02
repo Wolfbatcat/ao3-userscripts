@@ -1,5 +1,7 @@
 # AO3: No Re-Kudos
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Automatically hide the kudos button on works where you've already left kudos. Unlike the original version, it tracks your kudos history using browser storage instead of checking for your username in the kudos list. To transfer your kudos history to other browsers, use [AO3: Script Sync](https://greasyfork.org/en/scripts/568443-ao3-script-sync) or [AO3: Import & Export Script Storage](https://greasyfork.org/en/scripts/545336-ao3-import-export-script-storage).
 
 

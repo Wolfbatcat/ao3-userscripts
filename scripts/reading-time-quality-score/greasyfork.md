@@ -1,5 +1,7 @@
 # AO3: Reading Time & Quality Score
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Get a quick feel for any fic at a glance:
 - **Reading Time Bar** ⏱️ – see how long it’ll take to read.
   - **NEW** - View chapter reading times at the start of works!

@@ -1,5 +1,7 @@
 # AO3: Chapter Shortcuts
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Tired of extra clicks just to get to the latest chapter? This script adds handy shortcuts so you can jump straight where you want:  
 - A **latest chapter button** right next to author names on works.  
 - **First and last chapter buttons** added directly on work pages.

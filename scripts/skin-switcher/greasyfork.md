@@ -1,5 +1,7 @@
 # AO3: Skin Switcher
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Tired of navigating to your skins page every time you want to switch themes? This script lets you change site skins from anywhere on AO3 without leaving the page — and adds sorting, filtering, searching, and pinning to your skins page so it's easier to manage.
 
 - **Skin Switcher** 🎨 – switch skins from anywhere via the header menu.

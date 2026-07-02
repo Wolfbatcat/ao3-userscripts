@@ -1,6 +1,8 @@
 
 # AO3: Auto Pseud
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Auto-selects your pseud for comments and bookmarks on AO3, based on fandom.
 
 ---

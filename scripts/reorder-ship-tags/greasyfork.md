@@ -1,5 +1,7 @@
 # AO3: Reorder Ship Tags
 
+![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
+
 Automatically reorders relationship tags on work blurbs so romantic ships (/) always appear before platonic ships (&).
 
 ---
