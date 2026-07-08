@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.1.1
+- **Fixed bookmark notes with expandable details** — clicking a "Work Details" style dropdown in a bookmark's notes no longer collapses the whole bookmark instead of expanding it
+
 ## v1.1.0
 - **Updated to Menu Helpers Library v2.3.0** — more reliable username detection
 

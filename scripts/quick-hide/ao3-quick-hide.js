@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Quick Hide
-// @version       1.1.0
+// @version       1.1.1
 // @description   Quickly hide works, bookmarks, and comments while browsing AO3. Collapse state is saved so you can hide things you've read or aren't interested in.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -204,7 +204,8 @@
             target.tagName === "INPUT" ||
             target.tagName === "TEXTAREA" ||
             target.tagName === "SELECT" ||
-            target.closest("a, button, input, textarea, select, form") ||
+            target.tagName === "SUMMARY" ||
+            target.closest("a, button, input, textarea, select, form, summary, details") ||
             target.closest(".ao3-blocker-fold, .ao3-blocker-toggle") ||
             target.closest(".actions, .user-note-preview, .navigation.actions, ul[role='menu']")
         );
@@ -1188,14 +1189,15 @@
             comment.addEventListener("click", function (e) {
                 const target = e.target;
 
-                // Skip links, buttons, inputs, selects, textareas — let them handle their own clicks
+                // Skip links, buttons, inputs, selects, textareas, details/summary — let them handle their own clicks
                 if (
                     target.tagName === "A" ||
                     target.tagName === "BUTTON" ||
                     target.tagName === "INPUT" ||
                     target.tagName === "TEXTAREA" ||
                     target.tagName === "SELECT" ||
-                    target.closest("a, button, input, textarea, select, form")
+                    target.tagName === "SUMMARY" ||
+                    target.closest("a, button, input, textarea, select, form, summary, details")
                 ) {
                     return;
                 }
