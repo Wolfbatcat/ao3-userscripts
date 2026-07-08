@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Auto Filters
-// @version       1.0.0-beta
-// @description   Save your favorite AO3 filters and have them auto-applied every time you search.
+// @version       1.0.0
+// @description   Auto-apply your favorite filters every time you search.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*
@@ -9,7 +9,6 @@
 // @match         *://archiveofourown.org/bookmarks*
 // @match         *://archiveofourown.org/collections*
 // @match         *://archiveofourown.org/users/*
-// @match         *://archiveofourown.org/series/*
 // @license       MIT
 // @require       https://update.greasyfork.org/scripts/552743/1859007/AO3%3A%20Menu%20Helpers%20Library.js?v=2.3.0
 // @grant         none
@@ -24,7 +23,7 @@
     // ============================================================
 
     const STORAGE_KEY = "ao3_auto_filters_config";
-    const VERSION = "1.0.0-beta";
+    const VERSION = "1.0.0";
 
     const RATINGS = [
         { id: "9", label: "Not Rated" },
@@ -76,7 +75,7 @@
         searchQuery: "",
         language: "",
 
-        showChips: true,
+        hideChips: false,
         autoSubmit: true,
         pauseFilters: false,
         disableOnMyContent: true,
@@ -577,7 +576,7 @@
                 filterForm.querySelector(`#${tagAutocompleteId}_other_tag_names_autocomplete`),
                 filterForm.querySelector(`#${tagAutocompleteId}_other_tag_names`),
                 includeTags,
-                config.showChips !== false,
+                config.hideChips !== true,
                 urlParams,
             );
         }
@@ -607,7 +606,7 @@
                 filterForm.querySelector(`#${tagAutocompleteId}_excluded_tag_names_autocomplete`),
                 filterForm.querySelector(`#${tagAutocompleteId}_excluded_tag_names`),
                 excludeTags,
-                config.showChips !== false,
+                config.hideChips !== true,
                 urlParams,
             );
         }
@@ -915,12 +914,12 @@
 
         const optionsSection = window.AO3MenuHelpers.createSection("⚙️ Options");
 
-        const showChipsCheckbox = window.AO3MenuHelpers.createCheckbox({
-            id: "auto-filter-show-chips",
-            label: "Show tags as chips",
-            checked: config.showChips !== false,
+        const hideChipsCheckbox = window.AO3MenuHelpers.createCheckbox({
+            id: "auto-filter-hide-chips",
+            label: "Hide tag chips",
+            checked: config.hideChips === true,
             tooltip:
-                "When enabled, included/excluded tags appear as removable chips in AO3's filter sidebar. When disabled, tags are applied silently — filtering still works but no chips are shown.",
+                "When disabled, included/excluded tags appear as removable chips in AO3's filter sidebar. When enabled, tags are applied silently — filtering still works but no chips are shown.",
         });
 
         const autoSubmitCheckbox = window.AO3MenuHelpers.createCheckbox({
@@ -931,7 +930,7 @@
                 "When enabled, AO3's 'Sort and Filter' button is clicked automatically after your saved filters are applied. The page will reload with filtered results immediately.",
         });
         const optionsRow1 = window.AO3MenuHelpers.createTwoColumnLayout(
-            showChipsCheckbox,
+            hideChipsCheckbox,
             autoSubmitCheckbox,
         );
         optionsSection.appendChild(optionsRow1);
@@ -1042,7 +1041,7 @@
                     dateTo: window.AO3MenuHelpers.getValue("auto-filter-date-to") || "",
                     searchQuery: window.AO3MenuHelpers.getValue("auto-filter-query") || "",
                     language: window.AO3MenuHelpers.getValue("auto-filter-language") || "",
-                    showChips: window.AO3MenuHelpers.getValue("auto-filter-show-chips") === true,
+                    hideChips: window.AO3MenuHelpers.getValue("auto-filter-hide-chips") === true,
                     autoSubmit: window.AO3MenuHelpers.getValue("auto-filter-auto-submit") === true,
                     disableOnMyContent:
                         window.AO3MenuHelpers.getValue("auto-filter-disable-on-my-content") ===
