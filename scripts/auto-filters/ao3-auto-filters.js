@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          AO3: Auto Filters
 // @version       1.0.0
-// @description   Auto-apply your favorite filters every time you search.
+// @description   Save your preferred tags, ratings, warnings, categories, and language filters. Auto-applies them every time you browse.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
 // @match         *://archiveofourown.org/tags/*
@@ -81,6 +81,7 @@
         disableOnMyContent: true,
         username: null,
         hideMenu: false,
+        _lastSearchSuffix: "",
         _version: VERSION,
     };
 
@@ -123,8 +124,8 @@
     }
 
     /**
-     * Checks whether the current page belongs to the given username,
-     * matching dashboard, works, bookmarks, readings, and individual bookmark pages.
+     * Whether the current page is the given user's own content
+     * (dashboard, works, bookmarks, readings).
      */
     function isMyContentPage(username) {
         if (!username || !username.trim()) return false;
@@ -147,12 +148,8 @@
     }
 
     /**
-     * Detects the logged-in username, memoized for the lifetime of the page.
-     * Delegates to MHL, which only persists authoritative (header-derived)
-     * detections — never the non-authoritative URL fallback. Only
-     * authoritative results are cached here too, so a later call (after the
-     * header has rendered) can still recover the real username instead of
-     * being stuck on an unreliable URL guess for the rest of the page.
+     * Detects the logged-in username, memoized per page.
+     * Only caches authoritative (header-derived) detections, never URL guesses.
      */
     function detectUsername(config) {
         if (cachedUsername) return cachedUsername;
@@ -281,12 +278,8 @@
     }
 
     /**
-     * Prefills an AO3 autocomplete field with tags.
-     * When showChips is true: writes tags into the autocomplete's backing input and
-     * injects visual chip elements so the user can see and remove them.
-     * When showChips is false: clears the backing input (so AO3's widget renders no
-     * chips) and injects a separate plain hidden input with the same name. AO3's
-     * server merges all values for the same name, so filtering still works.
+     * Prefills an AO3 autocomplete field with tags, either as visible
+     * removable chips or applied silently (showChips false).
      */
     function prefillAutocompleteField(
         autocompleteInput,
@@ -345,16 +338,13 @@
                 existingChips.add(tag.toLowerCase());
             });
         } else {
-            // Strategy: write all tags into the backing input (so AO3 submits them all),
-            // hide only the auto-filter chips visually, and inject visible chips for any
-            // user-added tags that AO3 didn't render on the results page.
-            //
-            // We do NOT use a second hidden input — AO3 uses last-value-wins for
-            // duplicate param names, so a second input would clobber user-added tags.
+            // Write tags into the backing input but hide only the auto-filter chips,
+            // leaving user-added chips visible.
             const tagSet = new Set(tags.map((t) => t.toLowerCase()));
             const ul = autocompleteInput ? autocompleteInput.closest("ul.autocomplete") : null;
 
-            // Merge auto-filter tags into the backing input so all tags submit together.
+            // Merge into the one backing input — a second input would get clobbered
+            // by AO3's last-value-wins handling of duplicate param names.
             if (hiddenInput) mergeTagsIntoHidden(hiddenInput, tags);
 
             // Hide chips belonging to the auto-filter set (leave user chips visible).
@@ -369,16 +359,14 @@
             hideAutoFilterChips();
 
             if (ul) {
+                if (ul._autoFilterObserver) ul._autoFilterObserver.disconnect();
                 const obs = new MutationObserver(hideAutoFilterChips);
                 obs.observe(ul, { childList: true });
-                setTimeout(() => obs.disconnect(), 2000);
+                ul._autoFilterObserver = obs;
             }
 
-            // Inject visible chips for user-added tags that AO3 didn't render.
-            // AO3 only populates the backing input from its own canonical param value —
-            // tags the user added on a previous page may be in the URL but absent from
-            // the backing input (and therefore have no chip). We recover them from the
-            // URL and inject chips so the user can see and remove them.
+            // Recover user tags from the URL that AO3 didn't render a chip for,
+            // and inject visible chips for them.
             if (ul && hiddenInput) {
                 const paramName = hiddenInput.name;
                 const urlTagsMap = new Map(); // lowercase → original-case
@@ -440,12 +428,8 @@
     }
 
     /**
-     * Locates the active AO3 filter form on this page and identifies which
-     * search param namespace it uses ("work_search" on works/series listings,
-     * "bookmark_search" on bookmark listings). The two forms share most field
-     * names under their respective namespace, but bookmark forms lack
-     * crossover/completion filters and use different names for the query and
-     * tag-autocomplete fields.
+     * Locates the active AO3 filter form on this page and returns its
+     * search param namespace ("work_search" or "bookmark_search").
      */
     function getActiveFilterForm() {
         const workForm = document.getElementById("work-filters");
@@ -489,17 +473,11 @@
         // Remove user-tag chips this script injected (showChips=false mode)
         filterForm.querySelectorAll("li[data-auto-filter-user]").forEach((li) => li.remove());
 
-        // Uncheck all rating/warning/category checkboxes and radios set by this script
-        filterForm
-            .querySelectorAll(
-                `input[name='include_${ns}[rating_ids][]'],` +
-                    `input[name='include_${ns}[archive_warning_ids][]'],` +
-                    `input[name='include_${ns}[category_ids][]'],` +
-                    `input[name='exclude_${ns}[rating_ids][]'],` +
-                    `input[name='exclude_${ns}[archive_warning_ids][]'],` +
-                    `input[name='exclude_${ns}[category_ids][]']`,
-            )
-            .forEach((el) => (el.checked = false));
+        // Uncheck only boxes this script checked, leaving manual ones untouched.
+        filterForm.querySelectorAll("input[data-auto-filter='true']").forEach((el) => {
+            el.checked = false;
+            delete el.dataset.autoFilter;
+        });
 
         // Reset crossover/completion radio groups and text fields
         const crossoverDefault = filterForm.querySelector(
@@ -554,19 +532,28 @@
         const includeRatingIds = labelToIds(config.includeRatings, RATINGS_BY_LABEL);
         if (includeRatingIds.length > 0) {
             const radio = incRatingMap.get(includeRatingIds[includeRatingIds.length - 1]);
-            if (radio) radio.checked = true;
+            if (radio) {
+                radio.checked = true;
+                radio.dataset.autoFilter = "true";
+            }
         }
 
         // Include warnings
         labelToIds(config.includeWarnings, WARNINGS_BY_LABEL).forEach((id) => {
             const cb = incWarningMap.get(id);
-            if (cb) cb.checked = true;
+            if (cb) {
+                cb.checked = true;
+                cb.dataset.autoFilter = "true";
+            }
         });
 
         // Include categories
         labelToIds(config.includeCategories, CATEGORIES_BY_LABEL).forEach((id) => {
             const cb = incCategoryMap.get(id);
-            if (cb) cb.checked = true;
+            if (cb) {
+                cb.checked = true;
+                cb.dataset.autoFilter = "true";
+            }
         });
 
         // Include free tags
@@ -584,19 +571,28 @@
         // Exclude ratings
         labelToIds(config.excludeRatings, RATINGS_BY_LABEL).forEach((id) => {
             const cb = excRatingMap.get(id);
-            if (cb) cb.checked = true;
+            if (cb) {
+                cb.checked = true;
+                cb.dataset.autoFilter = "true";
+            }
         });
 
         // Exclude warnings
         labelToIds(config.excludeWarnings, WARNINGS_BY_LABEL).forEach((id) => {
             const cb = excWarningMap.get(id);
-            if (cb) cb.checked = true;
+            if (cb) {
+                cb.checked = true;
+                cb.dataset.autoFilter = "true";
+            }
         });
 
         // Exclude categories
         labelToIds(config.excludeCategories, CATEGORIES_BY_LABEL).forEach((id) => {
             const cb = excCategoryMap.get(id);
-            if (cb) cb.checked = true;
+            if (cb) {
+                cb.checked = true;
+                cb.dataset.autoFilter = "true";
+            }
         });
 
         // Exclude free tags
@@ -611,9 +607,7 @@
             );
         }
 
-        // Crossovers and completion filters — works/series listings only, no
-        // equivalent field exists on the bookmark filter form. AO3 renders
-        // these as radio groups, not <select> elements.
+        // Crossovers/completion — works listings only, no bookmark equivalent.
         if (ns === "work_search") {
             if (config.crossoversFilter) {
                 const radio = filterForm.querySelector(
@@ -653,23 +647,38 @@
             }
         }
 
-        // Search within results — append to any existing URL query, don't overwrite it.
-        // Strip our own suffix first so repeated page loads don't double-append.
-        // Bookmark forms use "bookmarkable_query" instead of "query".
+        // Append to the existing query, stripping whatever suffix we appended last
+        // time so repeated loads or setting changes don't leave stale text behind.
+        const stripSuffix = (value, suffix) =>
+            value
+                .trim()
+                .replace(
+                    new RegExp(`\\s*${suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`),
+                    "",
+                )
+                .trim();
         if (config.searchQuery) {
             const queryName = ns === "bookmark_search" ? "bookmarkable_query" : "query";
             const el = filterForm.querySelector(`input[name="${ns}[${queryName}]"]`);
             if (el) {
                 const suffix = config.searchQuery;
-                const base = el.value
-                    .trim()
-                    .replace(
-                        new RegExp(`\\s*${suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`),
-                        "",
-                    )
-                    .trim();
+                const previousSuffix = config._lastSearchSuffix || "";
+                const base = previousSuffix
+                    ? stripSuffix(el.value, previousSuffix)
+                    : el.value.trim();
                 el.value = base ? `${base} ${suffix}` : suffix;
+                if (config._lastSearchSuffix !== suffix) {
+                    config._lastSearchSuffix = suffix;
+                    saveConfig(config);
+                }
             }
+        } else if (config._lastSearchSuffix) {
+            // Search query was cleared — strip the previously-appended suffix still in the field.
+            const queryName = ns === "bookmark_search" ? "bookmarkable_query" : "query";
+            const el = filterForm.querySelector(`input[name="${ns}[${queryName}]"]`);
+            if (el) el.value = stripSuffix(el.value, config._lastSearchSuffix);
+            config._lastSearchSuffix = "";
+            saveConfig(config);
         }
 
         // Language — match option text case-insensitively
@@ -684,9 +693,7 @@
             }
         }
 
-        // Auto-submit: click the Sort and Filter button after all prefills are applied.
-        // Skip if the URL already contains filter/sort params — covers paginated results,
-        // back-navigation, and any other page where filters are already in effect.
+        // Click Sort and Filter after prefilling, unless filters are already in the URL.
         if (config.autoSubmit && !suppressAutoSubmit && !location.search.includes(ns)) {
             const submitBtn = filterForm.querySelector(
                 `input[type="submit"], button[type="submit"]`,
@@ -994,6 +1001,19 @@
                                 if (Object.prototype.hasOwnProperty.call(imported, key))
                                     valid[key] = imported[key];
                             });
+
+                            const { errors, warnings } = validateSettingsForm(valid);
+                            if (errors.length > 0) {
+                                alert("Import failed:\n" + errors.join("\n"));
+                                return;
+                            }
+                            if (
+                                warnings.length > 0 &&
+                                !confirm(warnings.join("\n") + "\n\nImport anyway?")
+                            ) {
+                                return;
+                            }
+
                             if (saveConfig(valid)) {
                                 alert("Settings imported! Reloading...");
                                 location.reload();

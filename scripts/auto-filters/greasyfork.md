@@ -2,7 +2,7 @@
 
 ![Coded with GitHub Copilot](https://vibecoded.fyi/badges/flat/agents/github-copilot.svg)
 
-Save your go-to search filters once, and Auto Filters fills them in automatically every time you browse works, bookmarks, or series — no more re-entering the same tags, ratings, and word counts on every visit.
+Save your go-to search filters once, and Auto Filters fills them in automatically every time you browse — no more re-entering the same tags, ratings, and word counts on every visit.
 
 <img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/auto-filters/images/image-auto-filters-1.png" width="600" alt="Auto Filters settings panel">
 
@@ -13,7 +13,7 @@ Save your go-to search filters once, and Auto Filters fills them in automaticall
 ### Include & Exclude
 - **Include Tags** – Automatically add tags to AO3's "Other tags to include" filter.
 - **Exclude Tags** – Automatically add tags to AO3's "Other tags to exclude" filter.
-- **Ratings, Warnings & Categories** – Include or exclude them by name, so you don't have to click through the checkboxes every time.
+- **Ratings, Warnings & Categories** – Include or exclude them by name.
 
 ### More Filters
 - **Crossovers** – Include, exclude, or show only crossover works.
@@ -24,12 +24,12 @@ Save your go-to search filters once, and Auto Filters fills them in automaticall
 - **Language** – Show only works in a chosen language.
 
 ### Options
-- **Hide Tag Chips** – Apply tags silently instead of showing them as removable chips in AO3's sidebar.
-- **Auto Sort & Filter** – Automatically clicks AO3's "Sort and Filter" button after your filters are applied, so results load right away.
-- **Disable on My Content** – Skip auto-filtering on your own dashboard, bookmarks, and works pages.
+- **Hide Tag Chips** – Apply tags silently instead of showing them as removable chips in the sidebar.
+- **Auto Sort & Filter** – Automatically clicks "Sort and Filter" button so results load right away.
+- **Disable on My Content** – Skip auto-filtering on your own bookmarks, and works pages.
 
 ### Convenience
-- **Pause Filters** – Turn off auto-filtering temporarily from the Userscripts menu, without losing your saved settings.
+- **Pause Filters** – Turn off auto-filtering temporarily without losing your saved settings.
 - **Import / Export Settings** – Save your configuration as a JSON file, or restore it on another device.
 
 <img src="https://raw.githubusercontent.com/Wolfbatcat/ao3-userscripts/refs/heads/main/scripts/auto-filters/images/image-auto-filters-2.png" width="600" alt="Auto Filters settings panel">
@@ -45,7 +45,7 @@ Save your go-to search filters once, and Auto Filters fills them in automaticall
    - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
    - [Safari](https://apps.apple.com/us/app/tampermonkey/id6738342400)
    - [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd)
-2. Open any AO3 works, bookmarks, or series listing page.
+2. Open any AO3 works listing page.
 3. Click **Userscripts** → **Auto Filters** to open the settings panel.
 4. Enter the tags, ratings, and other filters you want applied, then click **Save**.
 5. Your filters apply immediately — no page reload needed.
@@ -54,7 +54,7 @@ Save your go-to search filters once, and Auto Filters fills them in automaticall
 
 ## ⚙️ Settings Guide
 
-- Tags must match exact tag names but are case-insentive. Separate multiple tags with commas.
+- Tags are case-insentive but must match exact spelling and spacing. Separate multiple tags with commas.
 - AO3 only allows one included rating at a time, but you can exclude several.
 - Language names must match AO3's filter dropdown exactly (e.g. "English", "Русский", "中文-普通话国语").
 
