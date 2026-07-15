@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name          AO3: Auto Filters
-// @version       1.0.0
+// @version       1.0.1
 // @description   Save your preferred tags, ratings, warnings, categories, and language filters. Auto-applies them every time you browse.
 // @author        BlackBatCat
 // @match         *://archiveofourown.org/
@@ -696,7 +696,7 @@
         // Click Sort and Filter after prefilling, unless filters are already in the URL.
         if (config.autoSubmit && !suppressAutoSubmit && !location.search.includes(ns)) {
             const submitBtn = filterForm.querySelector(
-                `input[type="submit"], button[type="submit"]`,
+                `input[type="submit"][name="commit"], button[type="submit"][name="commit"]`,
             );
             if (submitBtn) {
                 requestAnimationFrame(() => submitBtn.click());
